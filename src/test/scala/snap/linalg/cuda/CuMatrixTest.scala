@@ -92,6 +92,34 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert(dense.t === rand)
   }
 
+  test("rand test") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val cumat = CuMatrix.rand(10, 12)
+    val dense = cumat.toDense
+    assert(all(dense))
+    assert(dense.forallValues(_ < 1))
+  }
+
+  test("Multiply") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val a = DenseMatrix((1.0f, 2.0f, 3.0f),(4.0f, 5.0f, 6.0f))
+    val b = DenseMatrix((7.0f, -2.0f, 8.0f),(-3.0f, -3.0f, 1.0f),(12.0f, 0.0f, 5.0f))
+    val ga = CuMatrix.fromDense(a)
+    val gb = CuMatrix.fromDense(b)
+
+    assert( (ga * gb).toDense === DenseMatrix((37.0f, -8.0f, 25.0f), (85.0f, -23.0f, 67.0f)))
+
+
+    val x = ga * ga.t
+    assert(x.toDense === DenseMatrix((14.0f,32.0f),(32.0f,77.0f)))
+
+    val y = ga.t * ga
+    assert(y.toDense === DenseMatrix((17.0f,22.0f,27.0f),(22.0f,29.0f,36.0f),(27.0f,36.0f,45.0f)))
+
+//    val z  = gb * (gb + 1.0f)
+//    assert(z.toDense === DenseMatrix((164.0f,5.0f,107.0f),(-5.0f,10.0f,-27.0f),(161.0f,-7.0f,138.0f)))
+  }
+
 
 
 }

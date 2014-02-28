@@ -50,7 +50,6 @@ package object cuda {
   private object DeviceFreeReleaser extends Pointer.Releaser {
     def release(p: Pointer[_]): Unit = {
       val ptr = fromNativePtr(p.getPeer)
-      println("release " + ptr)
       JCuda.cudaFree(ptr)
     }
   }
@@ -58,7 +57,6 @@ package object cuda {
   private object HostFreeReleaser extends Pointer.Releaser {
     def release(p: Pointer[_]): Unit = {
       val ptr = fromNativePtr(p.getPeer)
-      println("release " + ptr)
       JCuda.cudaFreeHost(ptr)
     }
   }

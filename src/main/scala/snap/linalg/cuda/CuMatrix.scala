@@ -1,7 +1,7 @@
 package snap.linalg.cuda
 
 
-import breeze.linalg.operators.OpSet
+import breeze.linalg.operators.{OpMulMatrix, OpSet}
 import breeze.linalg._
 import breeze.linalg.support.CanTranspose
 import breeze.linalg.support.CanSlice2
@@ -15,6 +15,8 @@ import snap.util.{CanRepresentAs, cuda}
 import jcuda.runtime.{cudaMemcpyKind, cudaStream_t, JCuda}
 import jcuda.driver.CUstream
 import cuda._
+import jcuda.jcurand.{curandRngType, curandGenerator}
+import com.github.fommil.netlib.BLAS._
 
 /**
  * TODO
@@ -170,19 +172,39 @@ class CuMatrix[V](val rows: Int,
     new DenseMatrix(rows, cols, arrayData.getArray.asInstanceOf[Array[V]], 0, _r, isTranspose)
   }
 
-  def copy: Matrix[V] = ???
+  def copy: CuMatrix[V] = ???
 }
 
-object CuMatrix extends LowPriorityNativeMatrix {
+object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps {
   /**
    * The standard way to create an empty matrix, size is rows * cols
    */
-  def zeros[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], dav: DefaultArrayValue[V], blas: cublasHandle): CuMatrix[V] = {
+  def zeros[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], blas: cublasHandle): CuMatrix[V] = {
     val mat = new CuMatrix[V](rows, cols)
 
     JCuda.cudaMemset(mat.data.toCuPointer, 0, mat.size * mat.elemSize)
 
     mat
+  }
+
+  def rand(rows: Int, cols: Int)(implicit blas: cublasHandle) = {
+    import jcuda.jcurand.JCurand._
+    val mat = new CuMatrix[Float](rows, cols)
+    val generator = new curandGenerator()
+    curandCreateGenerator(generator, curandRngType.CURAND_RNG_PSEUDO_DEFAULT)
+    curandSetPseudoRandomGeneratorSeed(generator, 1234)
+
+    curandGenerateUniform(generator, mat.data.toCuPointer, rows * cols)
+    curandDestroyGenerator(generator)
+
+    mat
+  }
+
+
+  def fromDense[V<:AnyVal](mat: DenseMatrix[V])(implicit ct: ClassTag[V], blas: cublasHandle) = {
+    val g = new CuMatrix[V](mat.rows, mat.cols)
+    g := mat
+    g
   }
 
 
@@ -529,7 +551,7 @@ trait LowPriorityNativeMatrix1 {
   //  implicit def setMV[V]: BinaryUpdateOp[CuMatrix[V], Vector[V], OpSet] = new SetDMVOp[V]
 }
 
-trait LowPriorityNativeMatrix extends LowPriorityNativeMatrix1 {
+trait LowPriorityNativeMatrix extends LowPriorityNativeMatrix1 { this: CuMatrix.type =>
 
   class SetCuMCuMVOp[V] extends OpSet.InPlaceImpl2[CuMatrix[V], CuMatrix[V]] {
     def apply(a: CuMatrix[V], b: CuMatrix[V]) {
@@ -601,11 +623,57 @@ trait LowPriorityNativeMatrix extends LowPriorityNativeMatrix1 {
 
   */
 
-  private def transposeOp(a: DenseMatrix[Double]): Int = {
+   def transposeOp(a: CuMatrix[_]): Int = {
     if (a.isTranspose) cublasOperation.CUBLAS_OP_T else cublasOperation.CUBLAS_OP_N
   }
 
 
+}
+
+trait CuMatrixOps { this: CuMatrix.type =>
+  implicit object CuMatrixDMulCuMatrixD
+    extends OpMulMatrix.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
+    def apply(_a : CuMatrix[Double], _b : CuMatrix[Double]): CuMatrix[Double] = {
+      import _a.blas
+      require(_a.cols == _b.rows, "Dimension mismatch!")
+      val rv = CuMatrix.zeros[Double](_a.rows, _b.cols)
+
+      if(_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return rv
+
+      // if we have a weird stride...
+      val a:CuMatrix[Double] = if(_a.majorStride < math.max(if(_a.isTranspose) _a.cols else _a.rows, 1)) _a.copy else _a
+      val b:CuMatrix[Double] = if(_b.majorStride < math.max(if(_b.isTranspose) _b.cols else _b.rows, 1)) _b.copy else _b
+
+      JCublas2.cublasDgemm(_a.blas, transposeOp(a), transposeOp(b),
+        rv.rows, rv.cols, a.cols,
+        hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
+        b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
+        hostZero, rv.data.toCuPointer, rv.rows)
+      rv
+    }
+  }
+
+  implicit object CuMatrixFMulCuMatrixF
+    extends OpMulMatrix.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+    def apply(_a : CuMatrix[Float], _b : CuMatrix[Float]): CuMatrix[Float] = {
+      import _a.blas
+      require(_a.cols == _b.rows, "Dimension mismatch!")
+      val rv = CuMatrix.zeros[Float](_a.rows, _b.cols)
+
+      if(_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return rv
+
+      // if we have a weird stride...
+      val a:CuMatrix[Float] = if(_a.majorStride < math.max(if(_a.isTranspose) _a.cols else _a.rows, 1)) _a.copy else _a
+      val b:CuMatrix[Float] = if(_b.majorStride < math.max(if(_b.isTranspose) _b.cols else _b.rows, 1)) _b.copy else _b
+
+      JCublas2.cublasSgemm(_a.blas, transposeOp(a), transposeOp(b),
+        rv.rows, rv.cols, a.cols,
+        hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
+        b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
+        hostZero, rv.data.toCuPointer, rv.rows)
+      rv
+    }
+  }
 }
 
 

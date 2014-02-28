@@ -11,7 +11,8 @@ libraryDependencies ++= Seq(
   "org.scalanlp" %% "breeze" % "0.7-SNAPSHOT",
   "org.scalatest" %% "scalatest" % "2.0.M5b",
   "com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
-  "org.scalanlp" % "jcublas2" % "0.5.5"
+  "org.scalanlp" % "jcublas2" % "0.5.5",
+  "org.scalanlp" % "jcurand" % "0.5.5"
 )
 
 fork := true
