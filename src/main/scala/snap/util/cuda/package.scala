@@ -87,4 +87,6 @@ package object cuda {
     }
   }
 
+
+  private[snap] val contextLock = new Object()
 }
