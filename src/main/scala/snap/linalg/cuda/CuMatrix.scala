@@ -1,10 +1,9 @@
 package snap.linalg.cuda
 
 
-import breeze.linalg.operators.{OpMulMatrix, OpSet}
+import breeze.linalg.operators.{OpNeg, OpMulScalar, OpMulMatrix, OpSet}
 import breeze.linalg._
-import breeze.linalg.support.CanTranspose
-import breeze.linalg.support.CanSlice2
+import breeze.linalg.support.{CanSlice, CanTranspose, CanSlice2}
 import breeze.util.ArrayUtil
 import breeze.storage.DefaultArrayValue
 import org.bridj.{PointerIO, Pointer}
@@ -17,6 +16,7 @@ import jcuda.driver.CUstream
 import cuda._
 import jcuda.jcurand.{curandRngType, curandGenerator}
 import com.github.fommil.netlib.BLAS._
+import breeze.math.Ring
 
 /**
  * TODO
@@ -149,6 +149,39 @@ class CuMatrix[V](val rows: Int,
 
   }
 
+
+  private def canReshapeView = if(isTranspose) majorStride == cols else majorStride == rows
+
+  /** Reshapes this matrix to have the given number of rows and columns
+    * If view = true (or View.Require), throws an exception if we cannot return a view. otherwise returns a view.
+    * If view == false (or View.Copy) returns a copy
+    * If view == View.Prefer (the default), returns a view if possible, otherwise returns a copy.
+    *
+    * Views are only possible (if(isTranspose) majorStride == cols else majorStride == rows) == true
+    *
+    * rows * cols must equal size, or cols < 0 && (size / rows * rows == size)
+    * @param rows the number of rows
+    * @param cols the number of columns, or -1 to auto determine based on size and rows
+    */
+  def reshape(rows: Int, cols: Int, view: View=View.Prefer):CuMatrix[V] = {
+    val _cols = cols//if(cols < 0) size / rows else cols
+    require(rows * _cols == size, "Cannot reshape a (%d,%d) matrix to a (%d,%d) matrix!".format(this.rows, this.cols, rows, _cols))
+
+    view match {
+      case View.Require =>
+        if(!canReshapeView)
+          throw new UnsupportedOperationException("Cannot make a view of this matrix.")
+        else
+          new CuMatrix(rows, _cols, data, offset, if(isTranspose) cols else rows, isTranspose)
+      case View.Copy =>
+        // calling copy directly gives a verify error. TODO: submit bug
+        val result = copy
+        result.reshape(rows, _cols, View.Require)
+      case View.Prefer =>
+        reshape(rows, cols, canReshapeView)
+    }
+  }
+
   /*
   def assignAsync(b: V)(implicit stream: CUstream = new CUstream(), cast: CanRepresentAs[V, Int]) = {
     require(elemSize == 4)
@@ -167,15 +200,26 @@ class CuMatrix[V](val rows: Int,
 
     val (_r, _c) = if(isTranspose) (cols, rows) else (rows, cols)
 
-   JCublas2.cublasGetMatrix(_r, _c, elemSize.toInt, data.toCuPointer, majorStride, arrayData.toCuPointer, _r)
+    JCublas2.cublasGetMatrix(_r, _c, elemSize.toInt, data.toCuPointer.withByteOffset(elemSize * offset), majorStride, arrayData.toCuPointer, _r)
 
     new DenseMatrix(rows, cols, arrayData.getArray.asInstanceOf[Array[V]], 0, _r, isTranspose)
   }
 
   def copy: CuMatrix[V] = ???
+
+
+  /**
+   * Method for slicing that is tuned for Matrices.
+   * @return
+   */
+  def apply[Slice1, Slice2, Result](slice1: Slice1, slice2: Slice2)(implicit canSlice: CanSlice2[CuMatrix[V], Slice1, Slice2, Result]) = {
+    canSlice(repr, slice1, slice2)
+  }
+
+
 }
 
-object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps {
+object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSliceOps {
   /**
    * The standard way to create an empty matrix, size is rows * cols
    */
@@ -469,9 +513,6 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps {
   }
 
 
-  //  implicit val setMM_D: BinaryUpdateOp[CuMatrix[Double], CuMatrix[Double], OpSet] = new SetCuMCuMOp[Double]
-  //  implicit val setMM_F: BinaryUpdateOp[CuMatrix[Float], CuMatrix[Float], OpSet]  = new SetCuMCuMOp[Float]
-  //  implicit val setMM_I: BinaryUpdateOp[CuMatrix[Int], CuMatrix[Int], OpSet]  = new SetCuMCuMOp[Int]
 
 /*
   implicit def canGaxpy[V: Semiring]: CanAxpy[V, CuMatrix[V], CuMatrix[V]] = {
@@ -496,6 +537,21 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps {
    */
    */
 
+
+
+  /*
+  implicit def setMM[V](implicit stream: CUstream = new CUstream()): OpSet.InPlaceImpl2[CuMatrix[V], CuMatrix[V]] = new OpSet.InPlaceImpl2[CuMatrix[V], CuMatrix[V]] {
+    def apply(v: CuMatrix[V], v2: CuMatrix[V]): Unit = {
+      v.writeFrom(v2)
+    }
+  }
+
+  implicit def setMDM[V](implicit stream: CUstream = new CUstream()): OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] = new OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] {
+    def apply(v: CuMatrix[V], v2: DenseMatrix[V]): Unit = {
+      v.writeFromDense(v2)
+    }
+  }
+  */
 
   protected val hostOnePtr = Pointer.pointerToFloat(1)
 
@@ -559,7 +615,7 @@ trait LowPriorityNativeMatrix extends LowPriorityNativeMatrix1 { this: CuMatrix.
     }
   }
 
-  implicit def SetCuMDMOp[V <: AnyVal]: OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] = new  OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] {
+  implicit def SetCuMDMOp[V]: OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] = new  OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] {
     def apply(a: CuMatrix[V], b: DenseMatrix[V]) {
       a.writeFromDense(b)
     }
@@ -678,5 +734,166 @@ trait CuMatrixOps { this: CuMatrix.type =>
 
 
 
+trait CuMatrixSliceOps { this: CuMatrix.type =>
+  implicit def canSliceRow[V]: CanSlice2[CuMatrix[V], Int, ::.type, CuMatrix[V]] = {
+    new CanSlice2[CuMatrix[V], Int, ::.type, CuMatrix[V]] {
+      def apply(m: CuMatrix[V], rowWNegative: Int, ignored: ::.type) = {
+        import m.blas
+
+        if(rowWNegative < -m.rows || rowWNegative >= m.rows) throw new ArrayIndexOutOfBoundsException("Row must be in bounds for slice!")
+        val row = if(rowWNegative<0) rowWNegative+m.rows else rowWNegative
+
+        if(!m.isTranspose)
+          new CuMatrix(1, m.cols, m.data, m.offset + row, m.majorStride)
+        else
+          new CuMatrix(1, m.cols, m.data, m.offset + row * m.cols, 1)
+      }
+    }
+  }
+
+  implicit def canSliceCol[V]: CanSlice2[CuMatrix[V], ::.type, Int, CuMatrix[V]] = {
+    new CanSlice2[CuMatrix[V], ::.type, Int, CuMatrix[V]] {
+      def apply(m: CuMatrix[V], ignored: ::.type, colWNegative: Int) = {
+        import m.blas
+
+        if(colWNegative < -m.cols || colWNegative >= m.cols) throw new ArrayIndexOutOfBoundsException("Column must be in bounds for slice!")
+        val col = if(colWNegative<0) colWNegative+m.cols else colWNegative
+
+        if(!m.isTranspose)
+          new CuMatrix(m.rows, 1, m.data, col * m.rows + m.offset, m.majorStride)
+        else
+          new CuMatrix(rows=m.rows, 1, m.data, offset = m.offset + col, majorStride = m.majorStride, true)
+      }
+    }
+  }
+
+  implicit def canSliceRows[V]: CanSlice2[CuMatrix[V], Range, ::.type, CuMatrix[V]] = {
+    new CanSlice2[CuMatrix[V], Range, ::.type, CuMatrix[V]] {
+      def apply(m: CuMatrix[V], rowsWNegative: Range, ignored: ::.type) = {
+        import m.blas
+
+        val rows = rowsWNegative.getRangeWithoutNegativeIndexes(m.rows)
+
+        if(rows.isEmpty) new CuMatrix(0, m.cols, m.data, 0, 0)
+        else if(!m.isTranspose) {
+          require(rows.step == 1, "Sorry, we can't support row ranges with step sizes other than 1")
+          val first = rows.head
+          require(rows.last < m.rows)
+          if(rows.last >= m.rows) {
+            throw new IndexOutOfBoundsException(s"Row slice of $rows was bigger than matrix rows of ${m.rows}")
+          }
+          new CuMatrix(rows.length, m.cols, m.data, m.offset + first, m.majorStride)
+        } else {
+          canSliceCols(m.t, ::, rows).t
+        }
+      }
+    }
+  }
+
+  implicit def canSliceCols[V]: CanSlice2[CuMatrix[V], ::.type, Range, CuMatrix[V]] = {
+    new CanSlice2[CuMatrix[V], ::.type, Range, CuMatrix[V]] {
+      def apply(m: CuMatrix[V], ignored: ::.type, colsWNegative: Range) = {
+        import m.blas
+
+        val cols = colsWNegative.getRangeWithoutNegativeIndexes(m.cols)
+
+        if(cols.isEmpty) new CuMatrix(m.rows, 0, m.data, 0, 1)
+        else if(!m.isTranspose) {
+          val first = cols.head
+          if(cols.last >= m.cols) {
+            throw new IndexOutOfBoundsException(s"Col slice of $cols was bigger than matrix cols of ${m.cols}")
+          }
+          new CuMatrix(m.rows, cols.length, m.data, m.offset + first * m.majorStride, m.majorStride * cols.step)
+        } else {
+          canSliceRows(m.t, cols, ::).t
+        }
+      }
+    }
+  }
+
+  implicit def canSliceColsAndRows[V]: CanSlice2[CuMatrix[V], Range, Range, CuMatrix[V]] = {
+    new CanSlice2[CuMatrix[V], Range, Range, CuMatrix[V]] {
+      def apply(m: CuMatrix[V], rowsWNegative: Range, colsWNegative: Range) = {
+        import m.blas
+
+        val rows = rowsWNegative.getRangeWithoutNegativeIndexes(m.rows)
+        val cols = colsWNegative.getRangeWithoutNegativeIndexes(m.cols)
+
+        if(rows.isEmpty || cols.isEmpty) new CuMatrix(rows.size, cols.size, m.data, 0, 1)
+        else if(!m.isTranspose) {
+          require(rows.step == 1, "Sorry, we can't support row ranges with step sizes other than 1 for non transposed matrices")
+          val first = cols.head
+          if(rows.last >= m.rows) {
+            throw new IndexOutOfBoundsException(s"Row slice of $rows was bigger than matrix rows of ${m.rows}")
+          }
+          if(cols.last >= m.cols) {
+            throw new IndexOutOfBoundsException(s"Col slice of $cols was bigger than matrix cols of ${m.cols}")
+          }
+          new CuMatrix(rows.length, cols.length, m.data, m.offset + first * m.rows + rows.head, m.majorStride * cols.step)
+        } else {
+          require(cols.step == 1, "Sorry, we can't support col ranges with step sizes other than 1 for transposed matrices")
+          canSliceColsAndRows(m.t, cols, rows).t
+        }
+      }
+    }
+  }
 
 
+
+  implicit def negFromScale[V](implicit scale: OpMulScalar.Impl2[CuMatrix[V], V, CuMatrix[V]], field: Ring[V]) = {
+    new OpNeg.Impl[CuMatrix[V], CuMatrix[V]] {
+      override def apply(a : CuMatrix[V]) = {
+        scale(a, field.negate(field.one))
+      }
+    }
+  }
+
+  implicit def canSlicePartOfRow[V]: CanSlice2[CuMatrix[V], Int, Range, CuMatrix[V]] = {
+    new CanSlice2[CuMatrix[V], Int, Range, CuMatrix[V]] {
+      def apply(m: CuMatrix[V], rowWNegative: Int, colsWNegative: Range) = {
+        import m.blas
+
+        if(rowWNegative < -m.rows || rowWNegative >= m.rows) throw new ArrayIndexOutOfBoundsException("Row must be in bounds for slice!")
+        val row = if(rowWNegative<0) rowWNegative + m.rows else rowWNegative
+        val cols = colsWNegative.getRangeWithoutNegativeIndexes(m.cols)
+
+        if(row < 0  || row > m.rows) throw new IndexOutOfBoundsException("Slice with out of bounds row! " + row)
+        if(cols.isEmpty) new CuMatrix(0, 0, m.data, 0, 1)
+        else if(!m.isTranspose) {
+          val first = cols.head
+          if(cols.last >= m.cols) {
+            throw new IndexOutOfBoundsException(s"Col slice of $cols was bigger than matrix cols of ${m.cols}")
+          }
+          new CuMatrix(1, cols.length, m.data, m.offset + first * m.rows + row, m.majorStride * cols.step)
+        } else {
+          require(cols.step == 1, "Sorry, we can't support col ranges with step sizes other than 1 for transposed matrices")
+          canSlicePartOfCol(m.t, cols, row).t
+        }
+      }
+    }
+  }
+
+  implicit def canSlicePartOfCol[V]: CanSlice2[CuMatrix[V], Range, Int, CuMatrix[V]] = {
+    new CanSlice2[CuMatrix[V], Range, Int, CuMatrix[V]] {
+      def apply(m: CuMatrix[V], rowsWNegative: Range, colWNegative: Int) = {
+        import m.blas
+
+        val rows = rowsWNegative.getRangeWithoutNegativeIndexes(m.rows)
+        if(colWNegative < -m.cols || colWNegative >= m.cols) throw new ArrayIndexOutOfBoundsException("Row must be in bounds for slice!")
+        val col = if(colWNegative<0) colWNegative + m.cols else colWNegative
+
+        if(rows.isEmpty) new CuMatrix(0, 0, m.data)
+        else if(!m.isTranspose) {
+          if(rows.last >= m.rows) {
+            throw new IndexOutOfBoundsException(s"Row slice of $rows was bigger than matrix rows of ${m.rows}")
+          }
+          new CuMatrix(rows.length, 1, m.data, col * m.rows + m.offset + rows.head, m.majorStride)
+        } else {
+          val m2 = canSlicePartOfRow(m.t, col, rows).t
+          m2(::, 0)
+        }
+      }
+    }
+  }
+
+}

@@ -120,6 +120,31 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 //    assert(z.toDense === DenseMatrix((164.0f,5.0f,107.0f),(-5.0f,10.0f,-27.0f),(161.0f,-7.0f,138.0f)))
   }
 
+  test("Reshape") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm = convert(DenseMatrix.rand(20, 30), Float)
+    val cu = CuMatrix.zeros[Float](20, 30)
+    cu := dm
+    assert(cu.reshape(10, 60).toDense ===  dm.reshape(10, 60))
+  }
+
+  test("Slices") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(20, 30), Float)
+    val cu = CuMatrix.zeros[Float](20, 30)
+    cu := dm
+
+    assert(cu(0, ::).toDense === dm(0, ::))
+    assert(cu(0, 1 to 4).toDense === dm(0, 1 to 4), s"Full matrix: $dm")
+    assert(cu(::, 0).toDense === dm(::, 0).toDenseMatrix.t, s"${dm(::, 0)}")
+    assert(cu(1 to 4, 0).toDense === dm(1 to 4, 0).toDenseMatrix.t, s"Full matrix: $dm")
+    assert(cu.t(0, ::).toDense === dm.t(0, ::))
+    assert(cu.t(0, 1 to 4).toDense === dm.t(0, 1 to 4), s"Full matrix: $dm")
+    assert(cu.t(::, 0).toDense === dm.t(::, 0).toDenseMatrix.t, s"${dm(::, 0)}")
+    assert(cu.t(1 to 4, 0).toDense === dm.t(1 to 4, 0).toDenseMatrix.t, s"Full matrix: $dm")
+
+  }
+
 
 
 }
