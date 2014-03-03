@@ -3,38 +3,21 @@ package snap.util.cuda
 import jcuda.driver.{CUstream, CUfunction, CUcontext}
 import jcuda.driver.JCudaDriver._
 
-
-
-class CuKernel1[T1](fn: CUfunction, blockDims: Array[Int]) {
-  def apply(workSize1: Int, workSize2: Int = 1, workSize3: Int = 1)(t1: T1)(implicit context: CUcontext):Unit = {
-    CuKernel.invoke(Array(workSize1, workSize2, workSize3), blockDims, fn)(t1)
-  }
-}
-
-class CuKernel2[T1, T2](fn: CUfunction, blockDims: Array[Int]) {
-  def apply(workSize1: Int, workSize2: Int = 1, workSize3: Int = 1)(t1: T1, t2: T2)(implicit context: CUcontext):Unit = {
-    CuKernel.invoke(Array(workSize1, workSize2, workSize3), blockDims, fn)(t1, t2)
-  }
-}
-
-class CuKernel3[T1, T2, T3](fn: CUfunction, blockDims: Array[Int]) {
-  def apply(workSize1: Int, workSize2: Int = 1, workSize3: Int = 1)(t1: T1, t2: T2, t3: T3)(implicit context: CUcontext):Unit = {
-    CuKernel.invoke(Array(workSize1, workSize2, workSize3), blockDims, fn)(t1, t2, t3)
-  }
-}
-
 object CuKernel {
-  def invoke( workDims: Array[Int], blockDims: Array[Int], fn: CUfunction)(args: Any*)(implicit context: CUcontext):Unit = {
-    val params = setupKernelParameters(args:_*)
-    val padded = blockDims.padTo(3, 1)
-    val roundUps = workDims.padTo(3, 1).zip(padded).map { case (g, b) => (g + b - 1) / b}
-    cuLaunchKernel(fn,
-      roundUps(0), roundUps(1), roundUps(2),
-      padded(0), padded(1), padded(2),
-      0, new CUstream(),
-      params, null)
-    jcuda.runtime.JCuda.cudaFreeHost(params)
+  def invoke( workDims: Array[Int], blockDims: Array[Int], fn: CUfunction)(args: Any*)(implicit context: CuContext):Unit = {
+    context.withPush {
+      val params = setupKernelParameters(args:_*)
+      val padded = blockDims.padTo(3, 1)
+      val roundUps = workDims.padTo(3, 1).zip(padded).map { case (g, b) => (g + b - 1) / b}
+      println(roundUps.toIndexedSeq, padded.toIndexedSeq)
+      cuLaunchKernel(fn,
+        roundUps(0), roundUps(1), roundUps(2),
+        padded(0), padded(1), padded(2),
+        0, new CUstream(),
+        params, null)
+      jcuda.runtime.JCuda.cudaFreeHost(params)
 
+    }
   }
 
   /**

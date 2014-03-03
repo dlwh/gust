@@ -15,6 +15,7 @@ import breeze.linalg.DenseMatrix
  **/
 class CudaJitTest extends FunSuite {
 
+  /*
   test("cos test") {
     cuInit(0)
     implicit val ctx = createContext()
@@ -40,5 +41,6 @@ class CudaJitTest extends FunSuite {
     cuCtxCreate(context, 0, device)
     context
   }
+  */
 
 }

@@ -4,8 +4,9 @@ import scala.reflect.ClassTag
 import org.bridj.{PointerIO, Pointer}
 import jcuda.runtime.{cudaStream_t, JCuda}
 import jcuda.jcublas.{cublasOperation, JCublas2, cublasHandle}
-import jcuda.driver.CUstream
+import jcuda.driver.{JCudaDriver, CUcontext, CUfunction, CUstream}
 import jcuda.NativePointerObject
+import breeze.macros.arityize
 
 /**
  * TODO
@@ -89,4 +90,11 @@ package object cuda {
 
 
   private[snap] val contextLock = new Object()
+
+  @arityize(10)
+  class CuKernel[@arityize.replicate T](module: CuModule, fn: CUfunction, blockDims: Array[Int]) {
+    def apply(workSize1: Int, workSize2: Int = 1, workSize3: Int = 1)(@arityize.replicate t: T @arityize.relative(t))(implicit context: CuContext):Unit = {
+      CuKernel.invoke(Array(workSize1, workSize2, workSize3), blockDims, fn)((t: @arityize.replicate ))
+    }
+  }
 }

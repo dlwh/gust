@@ -17,6 +17,7 @@ import cuda._
 import jcuda.jcurand.{curandRngType, curandGenerator}
 import com.github.fommil.netlib.BLAS._
 import breeze.math.Ring
+import breeze.numerics.cos
 
 /**
  * TODO
@@ -219,13 +220,24 @@ class CuMatrix[V](val rows: Int,
 
 }
 
-object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSliceOps {
+object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSliceOps with CuMatrixFuns {
+
   /**
    * The standard way to create an empty matrix, size is rows * cols
    */
   def zeros[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], blas: cublasHandle): CuMatrix[V] = {
     val mat = new CuMatrix[V](rows, cols)
 
+    JCuda.cudaMemset(mat.data.toCuPointer, 0, mat.size * mat.elemSize)
+
+    mat
+  }
+
+  /**
+   * Doesn't zero the matrix.
+   */
+  def create[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], blas: cublasHandle): CuMatrix[V] = {
+    val mat = new CuMatrix[V](rows, cols)
     JCuda.cudaMemset(mat.data.toCuPointer, 0, mat.size * mat.elemSize)
 
     mat
@@ -894,6 +906,17 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
         }
       }
     }
+  }
+
+}
+
+trait CuMatrixFuns {
+
+  implicit val kernelsFloat = new CuMapKernels[CuMatrix[Float], Float]("float")
+
+
+  implicit def cosImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]): cos.Impl[CuMatrix[T], CuMatrix[T]] = {
+    broker.implFor[cos.type]("cos")
   }
 
 }

@@ -4,6 +4,9 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import breeze.linalg._
 import jcuda.runtime.JCuda
+import breeze.numerics.{abs, cos}
+import jcuda.driver.JCudaDriver
+import snap.util.cuda.CuContext
 
 /**
  * TODO
@@ -142,6 +145,21 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert(cu.t(0, 1 to 4).toDense === dm.t(0, 1 to 4), s"Full matrix: $dm")
     assert(cu.t(::, 0).toDense === dm.t(::, 0).toDenseMatrix.t, s"${dm(::, 0)}")
     assert(cu.t(1 to 4, 0).toDense === dm.t(1 to 4, 0).toDenseMatrix.t, s"Full matrix: $dm")
+
+  }
+
+  test("Basic mapping functions") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(1, 1), Float)
+    val cosdm = cos(dm)
+    val cu = CuMatrix.zeros[Float](1, 1)
+    cu := dm
+    assert(cu.toDense === dm)
+//    import CuMatrix.kernelsFloat
+    val coscu = cos(cu)
+    assert( max(abs(cosdm - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
+
+
 
   }
 
