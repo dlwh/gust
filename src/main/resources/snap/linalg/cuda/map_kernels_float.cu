@@ -476,6 +476,7 @@ __global__ void vec_ceilf (size_t n, TYPE *result, TYPE  *x)
 extern "C"
 __global__ void vec_cosf (size_t n, TYPE *result, TYPE  *x)
 {
+    return;
     int id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id < n)
     {

@@ -157,6 +157,7 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert(cu.toDense === dm)
 //    import CuMatrix.kernelsFloat
     val coscu = cos(cu)
+    JCudaDriver.cuCtxSynchronize()
     assert( max(abs(cosdm - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
 
 
