@@ -7,7 +7,6 @@ extern "C" \
 __global__ void MAKE_NAME(fun, T) (int rows, int cols,\
     T *out, int outMajorStride,\
     const T *in, int inMajorStride) {\
-    return;\
   for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < cols; col += blockDim.x * gridDim.x) {\
     for(int row = threadIdx.y + blockIdx.y * blockDim.y; row < rows;  row += blockDim.y * gridDim.y) {\
         out[col * outMajorStride + row] = fun(in[col * inMajorStride + row]);\
@@ -476,7 +475,6 @@ __global__ void vec_ceilf (size_t n, TYPE *result, TYPE  *x)
 extern "C"
 __global__ void vec_cosf (size_t n, TYPE *result, TYPE  *x)
 {
-    return;
     int id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id < n)
     {

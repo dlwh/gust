@@ -150,14 +150,13 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   test("Basic mapping functions") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(1, 1), Float)
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
     val cosdm = cos(dm)
-    val cu = CuMatrix.zeros[Float](1, 1)
+    val cu = CuMatrix.zeros[Float](30, 10)
     cu := dm
     assert(cu.toDense === dm)
 //    import CuMatrix.kernelsFloat
     val coscu = cos(cu)
-    JCudaDriver.cuCtxSynchronize()
     assert( max(abs(cosdm - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
 
 

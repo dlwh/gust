@@ -16,7 +16,7 @@ import jcuda.Pointer
 class CuModule(val module: CUmodule) {
 
   @arityize(10)
-  def getKernel[@arityize.replicate T](name: String, blockDims: Array[Int] = Array(32, 1, 1)): (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel)) = {
+  def getKernel[@arityize.replicate T](name: String, blockDims: Array[Int] = Array(32, 32, 1)): (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel)) = {
     val fn = new CUfunction
     cuModuleGetFunction(fn, module, name)
     new (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel))(this, fn, blockDims)
