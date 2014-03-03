@@ -956,7 +956,20 @@ trait CuMatrixFuns {
   implicit def mulImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpMulScalar.type]("mul")
   implicit def divImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpDiv.type]("div")
   implicit def modImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpMod.type]("mod")
-
   implicit def powImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpPow.type]("pow")
 
-}
+  implicit def addImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpAdd.type]("add")
+  implicit def subImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpSub.type]("sub")
+  implicit def mulImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpMulScalar.type]("mul")
+  implicit def mulMatrixImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpMulMatrix.type]("mul")
+  implicit def divImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpDiv.type]("div")
+  implicit def modImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpMod.type]("mod")
+  implicit def powImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpPow.type]("pow")
+
+  implicit def addImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpAdd.type]("add")
+  implicit def subImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpSub.type]("sub")
+  implicit def mulImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMulScalar.type]("mul")
+  implicit def mulMatrixImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMulMatrix.type]("mul")
+  implicit def divImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpDiv.type]("div")
+  implicit def modImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMod.type]("mod")
+  implicit def powImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpPow.type]("pow")}

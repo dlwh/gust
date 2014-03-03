@@ -9,7 +9,6 @@ object CuKernel {
       val params = setupKernelParameters(args:_*)
       val padded = blockDims.padTo(3, 1)
       val roundUps = workDims.padTo(3, 1).zip(padded).map { case (g, b) => (g + b - 1) / b}
-      println(roundUps.toIndexedSeq, padded.toIndexedSeq)
       cuLaunchKernel(fn,
         roundUps(0), roundUps(1), roundUps(2),
         padded(0), padded(1), padded(2),
