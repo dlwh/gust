@@ -3,21 +3,18 @@ package snap.linalg.cuda
 
 import breeze.linalg.operators.{OpNeg, OpMulScalar, OpMulMatrix, OpSet}
 import breeze.linalg._
-import breeze.linalg.support.{CanSlice, CanTranspose, CanSlice2}
-import breeze.util.ArrayUtil
-import breeze.storage.DefaultArrayValue
-import org.bridj.{PointerIO, Pointer}
+import breeze.linalg.support.{CanTranspose, CanSlice2}
+import org.bridj.Pointer
 import scala.reflect.ClassTag
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
-import snap.util.{CanRepresentAs, cuda}
+import snap.util.cuda
 import jcuda.runtime.{cudaMemcpyKind, cudaStream_t, JCuda}
 import jcuda.driver.CUstream
 import cuda._
 import jcuda.jcurand.{curandRngType, curandGenerator}
-import com.github.fommil.netlib.BLAS._
 import breeze.math.Ring
-import breeze.numerics.cos
+import breeze.numerics._
 
 /**
  * TODO
@@ -914,9 +911,87 @@ trait CuMatrixFuns {
 
   implicit val kernelsFloat = new CuMapKernels[CuMatrix[Float], Float]("float")
 
+  implicit def acosImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[acos.type]("acos")
+  implicit def asinImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[asin.type]("asin")
+  implicit def atanImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[atan.type]("atan")
 
-  implicit def cosImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]): cos.Impl[CuMatrix[T], CuMatrix[T]] = {
-    broker.implFor[cos.type]("cos")
-  }
+  implicit def acoshImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[acosh.type]("acosh")
+  implicit def asinhImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[asinh.type]("asinh")
+  implicit def atanhImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[atanh.type]("atanh")
+
+  implicit def cosImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[cos.type]("cos")
+  implicit def sinImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[sin.type]("sin")
+  implicit def tanImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[tan.type]("tan")
+
+  implicit def coshImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[cosh.type]("cosh")
+  implicit def sinhImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[sinh.type]("sinh")
+  implicit def tanhImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[tanh.type]("tanh")
+
+  implicit def cbrtImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[cbrt.type]("cbrt")
+  implicit def ceilImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[ceil.type]("ceil")
+//  implicit def cospiImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[cospi.type]("cospi")
+  implicit def erfcImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[erfc.type]("erfc")
+  implicit def erfcinvImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[erfcinv.type]("erfcinv")
+  implicit def erfImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[erf.type]("erf")
+  implicit def erfinvImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[erfinv.type]("erfinv")
+  implicit def expImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[exp.type]("exp")
+  implicit def expm1Impl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[expm1.type]("expm1")
+  implicit def fabsImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[abs.type]("fabs")
+  implicit def floorImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[floor.type]("floor")
+  implicit def j0Impl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[Bessel.i0.type]("j0")
+  implicit def j1Impl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[Bessel.i1.type]("j1")
+  implicit def lgammaImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[lgamma.type]("lgamma")
+  implicit def log10Impl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[log10.type]("log10")
+  implicit def log1pImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[log1p.type]("log1p")
+//  implicit def log2Impl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[log2.type]("log2")
+//  implicit def logbImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[logb.type]("logb")
+  implicit def logImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[log.type]("log")
+  implicit def sqrtImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[sqrt.type]("sqrt")
+  implicit def rintImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[rint.type]("rint")
+//  implicit def truncImpl[T](implicit broker: CuMapKernels[CuMatrix[Float], T]) =  broker.implFor[trunc.type]("trunc")
+
+  /*
+MAP_FUN_1(cbrt, TYPE)
+MAP_FUN_1(ceil, TYPE)
+MAP_FUN_1(cos, TYPE)
+MAP_FUN_1(cosh, TYPE)
+MAP_FUN_1(cospi, TYPE)
+MAP_FUN_1(erfc, TYPE)
+MAP_FUN_1(erfcinv, TYPE)
+MAP_FUN_1(erfcx, TYPE)
+MAP_FUN_1(erf, TYPE)
+MAP_FUN_1(erfinv, TYPE)
+MAP_FUN_1(exp10, TYPE)
+MAP_FUN_1(exp2, TYPE)
+MAP_FUN_1(exp, TYPE)
+MAP_FUN_1(expm1, TYPE)
+MAP_FUN_1(fabs, TYPE)
+MAP_FUN_1(floor, TYPE)
+MAP_FUN_1(j0, TYPE)
+MAP_FUN_1(j1, TYPE)
+MAP_FUN_1(lgamma, TYPE)
+MAP_FUN_1(log10, TYPE)
+MAP_FUN_1(log1p, TYPE)
+MAP_FUN_1(log2, TYPE)
+MAP_FUN_1(logb, TYPE)
+MAP_FUN_1(log, TYPE)
+MAP_FUN_1(nearbyint, TYPE)
+MAP_FUN_1(normcdf, TYPE)
+MAP_FUN_1(normcdfinv, TYPE)
+MAP_FUN_1(rcbrt, TYPE)
+MAP_FUN_1(rint, TYPE)
+MAP_FUN_1(round, TYPE)
+MAP_FUN_1(rsqrt, TYPE)
+MAP_FUN_1(sin, TYPE)
+MAP_FUN_1(sinh, TYPE)
+MAP_FUN_1(sinpi, TYPE)
+MAP_FUN_1(sqrt, TYPE)
+MAP_FUN_1(tan, TYPE)
+MAP_FUN_1(tanh, TYPE)
+MAP_FUN_1(tgamma, TYPE)
+MAP_FUN_1(trunc, TYPE)
+MAP_FUN_1(y0, TYPE)
+MAP_FUN_1(y1, TYPE)
+*/
 
 }

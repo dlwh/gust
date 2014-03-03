@@ -23,8 +23,9 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
     new UFunc.UImpl[K, CuMatrix[T], CuMatrix[T]] {
       def apply(v: CuMatrix[T]): CuMatrix[T] = {
         import v.blas
-        val res = CuMatrix.create[T](v.rows, v.cols)
-        kern(512, 20, 1)(v.rows, v.cols, res.data.toCuPointer, res.majorStride, v.data.toCuPointer, res.majorStride)
+        val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
+        val minorSize = if(v.isTranspose) v.cols else v.rows
+        kern(512, 20, 1)(minorSize, v.majorSize, res.data.toCuPointer, res.majorStride, v.data.toCuPointer, res.majorStride)
         res
       }
     }
