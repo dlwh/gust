@@ -178,4 +178,19 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
 
   }
+
+  test("Basic ops functions") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
+    val cosdm = cos(dm)
+    val cu = CuMatrix.zeros[Float](30, 10)
+    cu := dm
+    assert(cu.toDense === dm)
+//    import CuMatrix.kernelsFloat
+    val cu2 = cu + cu
+    assert( max(abs((dm * 2.0f) - cu2.toDense)) < 1E-5)
+
+
+
+  }
 }

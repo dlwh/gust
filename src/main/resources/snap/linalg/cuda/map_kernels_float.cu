@@ -1,10 +1,10 @@
 #include <stdio.h>
 
-#define MAKE_NAME(fun, T) map_ ## fun ## _ ## T
+#define MAKE_NAME(prefix, fun, T) prefix ## _ ## fun ## _ ## T
 
 #define MAP_FUN_1(fun, T) \
 extern "C" \
-__global__ void MAKE_NAME(fun, T) (int rows, int cols,\
+__global__ void MAKE_NAME(map, fun, T) (int rows, int cols,\
     T *out, int outMajorStride,\
     const T *in, int inMajorStride) {\
   for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < cols; col += blockDim.x * gridDim.x) {\
@@ -62,6 +62,33 @@ MAP_FUN_1(trunc, TYPE)
 MAP_FUN_1(y0, TYPE)
 MAP_FUN_1(y1, TYPE)
 
+
+
+#define MAP_FUN_2(fun, T) \
+extern "C" \
+__global__ void MAKE_NAME(map2, fun, T) (int rows, int cols,\
+    T *out, int outMajorStride,\
+    const T *a, int aMajorStride,\
+    const T *b, int bMajorStride) {\
+  for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < cols; col += blockDim.x * gridDim.x) {\
+    for(int row = threadIdx.y + blockIdx.y * blockDim.y; row < rows;  row += blockDim.y * gridDim.y) {\
+        out[col * outMajorStride + row] = fun(a[col * aMajorStride + row], b[col * bMajorStride + row]);\
+    }\
+  }\
+}
+
+__device__ inline TYPE add(TYPE a, TYPE b) { return a + b; }
+__device__ inline TYPE sub(TYPE a, TYPE b) { return a - b; }
+__device__ inline TYPE mul(TYPE a, TYPE b) { return a * b; }
+__device__ inline TYPE div(TYPE a, TYPE b) { return a / b; }
+__device__ inline TYPE mod(TYPE a, TYPE b) { return fmod(a, b); }
+
+MAP_FUN_2(add, TYPE)
+MAP_FUN_2(sub, TYPE)
+MAP_FUN_2(mul, TYPE)
+MAP_FUN_2(div, TYPE)
+MAP_FUN_2(mod, TYPE)
+MAP_FUN_2(pow, TYPE)
 
 // TODO: add back in set
 
