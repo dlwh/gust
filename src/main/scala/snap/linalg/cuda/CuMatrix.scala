@@ -3,7 +3,7 @@ package snap.linalg.cuda
 
 import breeze.linalg.operators._
 import breeze.linalg._
-import breeze.linalg.support.{CanTranspose, CanSlice2}
+import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
 import org.bridj.Pointer
 import scala.reflect.ClassTag
 
@@ -15,6 +15,7 @@ import cuda._
 import jcuda.jcurand.{curandRngType, curandGenerator}
 import breeze.math.Ring
 import breeze.numerics._
+import breeze.generic.UFunc
 
 /**
  * TODO
@@ -65,6 +66,7 @@ class CuMatrix[V](val rows: Int,
   def allVisitableIndicesActive = true
 
   def elemSize = data.getIO.getTargetSize
+  def offsetPointer = data.toCuPointer.withByteOffset(elemSize * offset)
 
   def writeFromDense(b: DenseMatrix[V]): Int = {
     require(b.rows == this.rows, "Matrices must have same number of rows")
@@ -972,4 +974,25 @@ trait CuMatrixFuns {
   implicit def mulMatrixImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMulMatrix.type]("mul")
   implicit def divImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpDiv.type]("div")
   implicit def modImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMod.type]("mod")
-  implicit def powImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpPow.type]("pow")}
+  implicit def powImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpPow.type]("pow")
+
+
+  implicit def handhold0[T]: CanCollapseAxis.HandHold[CuMatrix[T], Axis._0.type, CuMatrix[T]] = null
+  implicit def handhold1[T]: CanCollapseAxis.HandHold[CuMatrix[T], Axis._1.type, CuMatrix[T]] = null
+
+
+  implicit def broadcastLHSColOpFromBinOp[Func, T](implicit op: UFunc.UImpl2[Func, CuMatrix[T], CuMatrix[T], CuMatrix[T]]):UFunc.UImpl2[Func, BroadcastedColumns[CuMatrix[T], CuMatrix[T]], CuMatrix[T], CuMatrix[T]] = {
+    new UFunc.UImpl2[Func, BroadcastedColumns[CuMatrix[T], CuMatrix[T]], CuMatrix[T], CuMatrix[T]] {
+      override def apply(vb: BroadcastedColumns[CuMatrix[T], CuMatrix[T]], v2: CuMatrix[T]) = {
+        val v = vb.underlying
+        require(v2.cols == 1)
+        require(!v2.isTranspose)
+        require(v.rows == v2.rows)
+        import v.blas
+        // trick: if the major stride is 0, then we iterate over the same column over and over again
+        op(v, new CuMatrix(v.rows, v.cols, v2.data, v2.offset, 0, v2.isTranspose))
+      }
+    }
+  }
+
+}

@@ -35,7 +35,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.data.toCuPointer, res.majorStride, v.data.toCuPointer, v.majorStride)
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride)
         res
       }
     }
@@ -57,7 +57,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.data.toCuPointer, res.majorStride, v.data.toCuPointer, v.majorStride, v2.data.toCuPointer, v2.majorStride)
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2.offsetPointer, v2.majorStride)
         res
       }
     }
@@ -76,7 +76,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.data.toCuPointer, res.majorStride, v.data.toCuPointer, v.majorStride, v2)
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2)
         res
       }
     }
@@ -95,7 +95,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.data.toCuPointer, res.majorStride, v2, v.data.toCuPointer, v.majorStride)
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v2, v.offsetPointer, v.majorStride)
         res
       }
     }

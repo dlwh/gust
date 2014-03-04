@@ -189,8 +189,17 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val cu2 = cu + cu
     assert( max(abs((dm * 2.0f) - cu2.toDense)) < 1E-5)
     assert( max(abs((dm * 2.0f) - (cu * 2.0f).toDense)) < 1E-5)
+  }
 
+  test("broadcast addition") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
+    val cu = CuMatrix.zeros[Float](30, 10)
+    cu := dm
 
+    val dmadd = dm(::, *) + dm(::, 1)
+    val cuadd = cu(::, *) + cu(::, 1)
 
+    assert(cuadd.toDense === dmadd)
   }
 }
