@@ -995,4 +995,16 @@ trait CuMatrixFuns {
     }
   }
 
-}
+  implicit def broadcastRHSColOpFromBinOp[Func, T](implicit op: UFunc.UImpl2[Func, CuMatrix[T], CuMatrix[T], CuMatrix[T]]):UFunc.UImpl2[Func, CuMatrix[T], BroadcastedColumns[CuMatrix[T], CuMatrix[T]], CuMatrix[T]] = {
+    new UFunc.UImpl2[Func, CuMatrix[T], BroadcastedColumns[CuMatrix[T], CuMatrix[T]], CuMatrix[T]] {
+      override def apply(v2: CuMatrix[T], vb: BroadcastedColumns[CuMatrix[T], CuMatrix[T]]) = {
+        val v = vb.underlying
+        require(v2.cols == 1)
+        require(!v2.isTranspose)
+        require(v.rows == v2.rows)
+        import v.blas
+        // trick: if the major stride is 0, then we iterate over the same column over and over again
+        op(new CuMatrix(v.rows, v.cols, v2.data, v2.offset, 0, v2.isTranspose), v)
+      }
+    }
+  }}

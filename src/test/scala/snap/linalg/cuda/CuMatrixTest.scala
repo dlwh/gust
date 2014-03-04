@@ -201,5 +201,10 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val cuadd = cu(::, *) + cu(::, 1)
 
     assert(cuadd.toDense === dmadd)
+
+//    val dmadd2 =  dm(::, 1) + dm(::, *)
+    val cuadd2 =  cu(::, 1) + cu(::, *)
+
+    assert(cuadd2.toDense === dmadd)
   }
 }
