@@ -19,6 +19,8 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
 
   private val implCache = new ConcurrentHashMap[String, CuKernel6[Int, Int, Pointer, Int, Pointer, Int]]
   private val impl2Cache = new ConcurrentHashMap[String, CuKernel8[Int, Int, Pointer, Int, Pointer, Int, Pointer, Int]]
+  private val impl2VSCache = new ConcurrentHashMap[String, CuKernel7[Int, Int, Pointer, Int, Pointer, Int, T]]
+  private val impl2SVCache = new ConcurrentHashMap[String, CuKernel7[Int, Int, Pointer, Int, T, Pointer, Int]]
 
   def implFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, CuMatrix[T], CuMatrix[T]] = {
     var kern = implCache.get(funName)
@@ -33,7 +35,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.data.toCuPointer, res.majorStride, v.data.toCuPointer, v.majorStride)
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride)
         res
       }
     }
@@ -55,7 +57,45 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.data.toCuPointer, res.majorStride, v.data.toCuPointer, v.majorStride, v2.data.toCuPointer, v2.majorStride)
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2.offsetPointer, v2.majorStride)
+        res
+      }
+    }
+  }
+
+  def impl2For_v_s[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl2[K, CuMatrix[T], T, CuMatrix[T]] = {
+    var kern = impl2VSCache.get(funName)
+    if(kern == null) {
+      kern = module.getKernel7[Int, Int, Pointer, Int, Pointer, Int, T](s"map2_v_s_${funName}_$typeName")
+      impl2VSCache.put(funName, kern)
+    }
+
+
+    new UFunc.UImpl2[K, CuMatrix[T], T, CuMatrix[T]] {
+      def apply(v: CuMatrix[T], v2: T): CuMatrix[T] = {
+        import v.blas
+        val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
+        val minorSize = if(v.isTranspose) v.cols else v.rows
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2)
+        res
+      }
+    }
+  }
+
+  def impl2For_s_v[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl2[K, T, CuMatrix[T], CuMatrix[T]] = {
+    var kern = impl2SVCache.get(funName)
+    if(kern == null) {
+      kern = module.getKernel7[Int, Int, Pointer, Int, T, Pointer, Int](s"map2_s_v_${funName}_$typeName")
+      impl2SVCache.put(funName, kern)
+    }
+
+
+    new UFunc.UImpl2[K, T, CuMatrix[T], CuMatrix[T]] {
+      def apply(v2: T, v: CuMatrix[T]): CuMatrix[T] = {
+        import v.blas
+        val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
+        val minorSize = if(v.isTranspose) v.cols else v.rows
+        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v2, v.offsetPointer, v.majorStride)
         res
       }
     }
