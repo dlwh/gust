@@ -1,4 +1,4 @@
-snap
+Gust
 ====
 
-Snap is a set of GPU extensions for Breeze.
+Gust is a set of GPU extensions for Breeze.

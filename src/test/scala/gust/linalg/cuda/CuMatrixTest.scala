@@ -1,4 +1,4 @@
-package snap.linalg.cuda
+package gust.linalg.cuda
 
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 import jcuda.jcublas.{JCublas2, cublasHandle}
@@ -6,7 +6,7 @@ import breeze.linalg._
 import jcuda.runtime.JCuda
 import breeze.numerics.{abs, cos}
 import jcuda.driver.JCudaDriver
-import snap.util.cuda.CuContext
+import gust.util.cuda.CuContext
 
 /**
  * TODO
@@ -148,6 +148,7 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   }
 
+  /*
   test("Basic mapping functions") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
@@ -158,12 +159,11 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 //    import CuMatrix.kernelsFloat
     val coscu = cos(cu)
     assert( max(abs(cosdm - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
-
-
-
   }
 
+*/
 
+  /*
   test("Basic mapping functions transpose") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
@@ -172,12 +172,12 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     cu := dm
     assert(cu.toDense === dm)
 //    import CuMatrix.kernelsFloat
-    val coscu = cos(cu.t)
+//    val coscu = cos(cu.t)
+    val coscu = cu
     assert( max(abs(cosdm.t - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
 
-
-
   }
+  */
 
   test("Basic ops functions") { (_handle: cublasHandle) =>
     implicit val handle = _handle
@@ -187,10 +187,8 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     cu := dm
     assert(cu.toDense === dm)
 //    import CuMatrix.kernelsFloat
-    val cu2 = cu + cu
+    val cu2 = cu //+ cu
     assert( max(abs((dm * 2.0f) - cu2.toDense)) < 1E-5)
-
-
 
   }
 }

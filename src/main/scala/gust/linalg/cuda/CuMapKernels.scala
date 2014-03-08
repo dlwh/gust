@@ -1,7 +1,7 @@
-package snap.linalg.cuda
+package gust.linalg.cuda
 
 import breeze.generic.UFunc
-import snap.util.cuda._
+import gust.util.cuda._
 import jcuda.Pointer
 import scala.reflect.ClassTag
 import java.util.concurrent.ConcurrentHashMap

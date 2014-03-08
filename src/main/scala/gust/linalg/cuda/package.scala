@@ -1,4 +1,4 @@
-package snap.linalg
+package gust.linalg
 
 /**
  * TODO

@@ -1,9 +1,9 @@
-package snap.util.cuda
+package gust.util.cuda
 
 import org.scalatest.FunSuite
 import jcuda.driver.{JCudaDriver, CUdevice, CUcontext}
 import jcuda.driver.JCudaDriver._
-import snap.linalg.cuda.CuMatrix
+import gust.linalg.cuda.CuMatrix
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import jcuda.runtime.JCuda
 import breeze.linalg.DenseMatrix

@@ -1,6 +1,6 @@
 organization := "org.scalanlp"
 
-name := "snap"
+name := "gust"
 
 version := "0.1-SNAPSHOT"
 

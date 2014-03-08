@@ -1,4 +1,4 @@
-package snap.util
+package gust.util
 
 import scala.reflect.ClassTag
 import org.bridj.{PointerIO, Pointer}
@@ -89,7 +89,7 @@ package object cuda {
   }
 
 
-  private[snap] val contextLock = new Object()
+  private[gust] val contextLock = new Object()
 
   @arityize(10)
   class CuKernel[@arityize.replicate T](module: CuModule, fn: CUfunction, blockDims: Array[Int]) {

@@ -1,4 +1,4 @@
-package snap.util.cuda
+package gust.util.cuda
 
 import jcuda.driver.{CUfunction, CUmodule}
 import jcuda.driver.JCudaDriver._

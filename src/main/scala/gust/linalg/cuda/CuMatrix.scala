@@ -1,4 +1,4 @@
-package snap.linalg.cuda
+package gust.linalg.cuda
 
 
 import breeze.linalg.operators._
@@ -8,7 +8,7 @@ import org.bridj.Pointer
 import scala.reflect.ClassTag
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
-import snap.util.cuda
+import gust.util.cuda
 import jcuda.runtime.{cudaMemcpyKind, cudaStream_t, JCuda}
 import jcuda.driver.CUstream
 import cuda._
@@ -956,6 +956,8 @@ trait CuMatrixFuns {
   implicit def mulImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpMulScalar.type]("mul")
   implicit def divImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpDiv.type]("div")
   implicit def modImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpMod.type]("mod")
+  implicit def maxImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[max.type]("max")
+  implicit def minImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[min.type]("min")
 
   implicit def powImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpPow.type]("pow")
 
