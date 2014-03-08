@@ -75,7 +75,32 @@ __global__ void MAKE_NAME(map2, fun, T) (int rows, int cols,\
         out[col * outMajorStride + row] = fun(a[col * aMajorStride + row], b[col * bMajorStride + row]);\
     }\
   }\
-}
+}\
+\
+extern "C" \
+__global__ void MAKE_NAME(map2_v_s, fun, T) (int rows, int cols,\
+    T *out, int outMajorStride,\
+    const T *a, int aMajorStride,\
+    const T b) {\
+  for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < cols; col += blockDim.x * gridDim.x) {\
+    for(int row = threadIdx.y + blockIdx.y * blockDim.y; row < rows;  row += blockDim.y * gridDim.y) {\
+        out[col * outMajorStride + row] = fun(a[col * aMajorStride + row], b);\
+    }\
+  }\
+}\
+\
+extern "C" \
+__global__ void MAKE_NAME(map2_s_v, fun, T) (int rows, int cols,\
+    T *out, int outMajorStride,\
+    const T a,\
+    const T *b, int bMajorStride) {\
+  for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < cols; col += blockDim.x * gridDim.x) {\
+    for(int row = threadIdx.y + blockIdx.y * blockDim.y; row < rows;  row += blockDim.y * gridDim.y) {\
+        out[col * outMajorStride + row] = fun(a, b[col * bMajorStride + row]);\
+    }\
+  }\
+}\
+
 
 __device__ inline TYPE add(TYPE a, TYPE b) { return a + b; }
 __device__ inline TYPE sub(TYPE a, TYPE b) { return a - b; }

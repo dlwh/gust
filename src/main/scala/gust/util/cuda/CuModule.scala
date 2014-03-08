@@ -4,7 +4,7 @@ import jcuda.driver.{CUfunction, CUmodule}
 import jcuda.driver.JCudaDriver._
 import breeze.macros.arityize
 import java.io.{ByteArrayOutputStream, InputStream}
-import jcuda.Pointer
+import jcuda.{CudaException, Pointer}
 
 /**
  * Wrapper around the [[jcuda.driver.CUmodule]] apis
@@ -18,7 +18,14 @@ class CuModule(val module: CUmodule) {
   @arityize(10)
   def getKernel[@arityize.replicate T](name: String, blockDims: Array[Int] = Array(32, 32, 1)): (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel)) = {
     val fn = new CUfunction
+    try {
     cuModuleGetFunction(fn, module, name)
+    } catch {
+      case ex:CudaException if ex.getMessage == "CUDA_ERROR_NOT_FOUND" =>
+        throw new RuntimeException(s"couldn't load $name", ex)
+      case ex: CudaException =>
+        throw new RuntimeException(s"while loading $name", ex)
+    }
     new (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel))(this, fn, blockDims)
   }
 
