@@ -63,6 +63,25 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
     }
   }
 
+  def inPlaceImpl2For[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.InPlaceImpl2[K, CuMatrix[T], CuMatrix[T]] = {
+    var kern = impl2Cache.get(funName)
+    if(kern == null) {
+      kern = module.getKernel8[Int, Int, Pointer, Int, Pointer, Int, Pointer, Int](s"map2_${funName}_$typeName")
+      impl2Cache.put(funName, kern)
+    }
+
+
+    new UFunc.InPlaceImpl2[K, CuMatrix[T], CuMatrix[T]] {
+      def apply(v: CuMatrix[T], v2: CuMatrix[T]) {
+        require(v.rows == v2.rows && v.cols == v2.cols, "Dimension mismatch!")
+        if(v.isTranspose != v2.isTranspose)
+          throw new UnsupportedOperationException("Can't handle mixed transpose yet!")
+        val minorSize = if(v.isTranspose) v.cols else v.rows
+        kern(512, 20, 1)(minorSize, v.majorSize, v.offsetPointer, v.majorStride, v.offsetPointer, v.majorStride, v2.offsetPointer, v2.majorStride)
+      }
+    }
+  }
+
   def impl2For_v_s[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl2[K, CuMatrix[T], T, CuMatrix[T]] = {
     var kern = impl2VSCache.get(funName)
     if(kern == null) {

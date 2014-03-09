@@ -201,5 +201,20 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val cuadd2 =  cu(::, 1) + cu(::, *)
 
     assert(cuadd2.toDense === dmadd)
+
+  }
+
+  test("inplace addition") {  (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
+    val cu = CuMatrix.zeros[Float](30, 10)
+    cu := dm
+
+    val dmadd = dm(::, *) + dm(::, 1)
+    val cuadd = cu(::, *) + cu(::, 1)
+
+    cu += cuadd
+    dm += dmadd
+    assert(cu.toDense === dm)
   }
 }

@@ -960,8 +960,16 @@ trait CuMatrixFuns {
   implicit def modImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpMod.type]("mod")
   implicit def maxImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[max.type]("max")
   implicit def minImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[min.type]("min")
-
   implicit def powImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpPow.type]("pow")
+
+  implicit def addIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpAdd.type]("add")
+  implicit def subIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpSub.type]("sub")
+  implicit def mulIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpMulScalar.type]("mul")
+  implicit def divIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpDiv.type]("div")
+  implicit def modIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpMod.type]("mod")
+  implicit def maxIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[max.type]("max")
+  implicit def minIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[min.type]("min")
+  implicit def powIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpPow.type]("pow")
 
   implicit def addImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpAdd.type]("add")
   implicit def subImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpSub.type]("sub")
