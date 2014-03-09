@@ -158,6 +158,9 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 //    import CuMatrix.kernelsFloat
     val coscu = cos(cu)
     assert( max(abs(cosdm - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
+
+    cos.inPlace(coscu)
+    assert( max(abs(cos(cosdm) - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
   }
 
   test("Basic mapping functions transpose") { (_handle: cublasHandle) =>
@@ -171,6 +174,9 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val coscu = cos(cu.t)
 //    val coscu = cu
     assert( max(abs(cosdm.t - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
+
+    cos.inPlace(coscu.t)
+    assert( max(abs(cos(cosdm.t) - coscu.toDense)) < 1E-5, s"$cosdm ${coscu.toDense}")
 
   }
 
