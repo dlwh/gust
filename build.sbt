@@ -8,8 +8,8 @@ scalaVersion := "2.10.3"
 
 libraryDependencies ++= Seq(
   "junit" % "junit" % "4.5" % "test",
-  "org.scalanlp" %% "breeze-macros" % "0.3-SNAPSHOT" % "compile",
-  "org.scalanlp" %% "breeze" % "0.7-SNAPSHOT",
+  "org.scalanlp" %% "breeze-macros" % "0.3" % "compile",
+  "org.scalanlp" %% "breeze" % "0.7",
   "org.scalatest" %% "scalatest" % "2.0.M5b",
   "com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
   "org.scalanlp" % "jcublas2" % "0.5.5",
