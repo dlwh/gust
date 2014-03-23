@@ -162,14 +162,37 @@ __global__ void MAKE_NAME(reduce, fun, T) (int rows, int cols,\
   }\
   \
   __syncthreads();\
-  T aa = sum;\
-  for (int i = 1; i < blockDim.x; i++) {\
-    T  x = shfl_down(aa, i);\
+  for (int i = 1; i < blockDim.x; i *= 2) {\
+    T x = shfl_down(sum, i);\
     sum = fun(sum, x);\
   }\
   \
   if(laneId == 0) {\
     out[blockIdx.x * gridDim.y + blockIdx.y] = sum;\
+  }\
+}\
+\
+extern "C" \
+__global__ void MAKE_NAME(reduce_col, fun, T) (int rows, int cols,\
+    T *out,\
+    const T *in, int inMajorStride) {\
+  __shared__ T buffer[32];\
+\
+  for(int col = threadIdx.y + blockIdx.x * blockDim.y; col < cols; col += blockDim.y * gridDim.x) {\
+    T sum = identity;\
+    for(int row = threadIdx.x; row < rows; row += blockDim.x) {\
+      sum = fun(sum, in[col * inMajorStride + row]);\
+    }\
+    \
+    __syncthreads();\
+    for (int i = 1; i < blockDim.x; i *= 2) {\
+      T x = shfl_down(sum, i);\
+      sum = fun(sum, x);\
+    }\
+    \
+    if(laneId == 0) {\
+      out[col] = sum;\
+    }\
   }\
 }
 
