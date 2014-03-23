@@ -232,18 +232,28 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert((sum(cumat) - sum(rand))/sum(rand) < 1E-4)
   }
 
+  test("sum cols") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rand = convert(DenseMatrix.rand(33, 40), Float)
+    val cumat = CuMatrix.zeros[Float](33, 40)
+    cumat := rand
+    val s1 = sum(cumat(::, *)).toDense
+    val s2:DenseMatrix[Float] = sum(rand(::, *))
+    assert(max(abs(s1 - s2)) < 1E-4, s"$s1 $s2")
+  }
+
   test("max") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand = convert(DenseMatrix.rand(20, 10), Float)
-    val cumat = CuMatrix.zeros[Float](20, 10)
+    val rand = convert(DenseMatrix.rand(40, 40), Float)
+    val cumat = CuMatrix.zeros[Float](40, 40)
     cumat := rand
     assert(max(cumat) === max(rand))
   }
 
   test("min") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand = convert(DenseMatrix.rand(20, 10), Float)
-    val cumat = CuMatrix.zeros[Float](20, 10)
+    val rand = convert(DenseMatrix.rand(40, 40), Float)
+    val cumat = CuMatrix.zeros[Float](40, 40)
     cumat := rand
     assert(min(cumat) === min(rand))
   }
