@@ -21,6 +21,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
   private val impl2Cache = new ConcurrentHashMap[String, CuKernel8[Int, Int, Pointer, Int, Pointer, Int, Pointer, Int]]
   private val impl2VSCache = new ConcurrentHashMap[String, CuKernel7[Int, Int, Pointer, Int, Pointer, Int, T]]
   private val impl2SVCache = new ConcurrentHashMap[String, CuKernel7[Int, Int, Pointer, Int, T, Pointer, Int]]
+  private val reduceCache = new ConcurrentHashMap[String, CuKernel5[Int, Int, Pointer, Pointer, Int]]
 
   def implFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, CuMatrix[T], CuMatrix[T]] = {
     var kern = implCache.get(funName)
@@ -35,8 +36,32 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride)
+        kern((512, 20), (32, 1, 1))(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride)
         res
+      }
+    }
+  }
+
+  def reducerFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, CuMatrix[T], T] = {
+    var kern = reduceCache.get(funName)
+    if(kern == null) {
+      kern = module.getKernel5[Int, Int, Pointer, Pointer, Int](s"reduce_${funName}_$typeName")
+      reduceCache.put(funName, kern)
+    }
+
+    val byteSize = org.bridj.BridJ.sizeOf(implicitly[ClassTag[T]].runtimeClass)
+
+
+    new UFunc.UImpl[K, CuMatrix[T], T] {
+      def apply(v: CuMatrix[T]): T = {
+        import v.blas
+        val tmpRows = 20
+        val tmpCols = 512
+        val tmp = CuMatrix.create[T](tmpRows, tmpCols)
+        val minorSize = if(v.isTranspose) v.cols else v.rows
+        kern((tmpCols, tmpRows), (32, 1), 32 * 1 * byteSize.toInt)(minorSize, v.majorSize, tmp.offsetPointer, v.offsetPointer, v.majorStride)
+        kern(1, (32, 1))(tmpCols * tmpRows, 1, tmp.offsetPointer, tmp.offsetPointer, 1)
+        tmp(0 to 0, 0 to 0).toDense.apply(0,0)
       }
     }
   }
@@ -52,7 +77,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
     new UFunc.InPlaceImpl[K, CuMatrix[T]] {
       def apply(v: CuMatrix[T]) = {
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, v.offsetPointer, v.majorStride, v.offsetPointer, v.majorStride)
+        kern((512, 20), (32, 1))(minorSize, v.majorSize, v.offsetPointer, v.majorStride, v.offsetPointer, v.majorStride)
       }
     }
   }
@@ -73,7 +98,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2.offsetPointer, v2.majorStride)
+        kern((512, 20), (32, 1))(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2.offsetPointer, v2.majorStride)
         res
       }
     }
@@ -93,7 +118,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         if(v.isTranspose != v2.isTranspose)
           throw new UnsupportedOperationException("Can't handle mixed transpose yet!")
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, v.offsetPointer, v.majorStride, v.offsetPointer, v.majorStride, v2.offsetPointer, v2.majorStride)
+        kern((512, 20), (32, 1, 1))(minorSize, v.majorSize, v.offsetPointer, v.majorStride, v.offsetPointer, v.majorStride, v2.offsetPointer, v2.majorStride)
       }
     }
   }
@@ -111,7 +136,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2)
+        kern((512, 20), (32, 1, 1))(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2)
         res
       }
     }
@@ -130,7 +155,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         import v.blas
         val res = if(v.isTranspose) CuMatrix.create[T](v.cols, v.rows).t else  CuMatrix.create[T](v.rows, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
-        kern(512, 20, 1)(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v2, v.offsetPointer, v.majorStride)
+        kern((512, 20), (32, 1, 1))(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v2, v.offsetPointer, v.majorStride)
         res
       }
     }

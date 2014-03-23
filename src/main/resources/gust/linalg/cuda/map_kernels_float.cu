@@ -117,6 +117,67 @@ MAP_FUN_2(pow, TYPE)
 MAP_FUN_2(max, TYPE)
 MAP_FUN_2(min, TYPE)
 
+ static __inline__ __device__ double shfl_down(double var, int delta, int width=warpSize)
+{
+    printf("aaa\n");
+    int hi, lo;
+    asm volatile( "mov.b64 { %0, %1 }, %2;" : "=r"(lo), "=r"(hi) : "d"(var) );
+    hi = __shfl_down( hi, delta, width );
+    lo = __shfl_down( lo, delta, width );
+    return __hiloint2double( hi, lo );
+}
+
+static __inline__ __device__ int shfl_down(int var, int delta, int width=warpSize)
+{
+    return __shfl_down(var, delta, width);
+}
+
+static __inline__ __device__ unsigned int shfl_down(unsigned int var, int delta, int width=warpSize)
+{
+    int x = __shfl_down(*(int*)&var, delta, width);
+    return *(unsigned int*)(&x);
+}
+
+static __inline__ __device__ float shfl_down(float var, int delta, int width=warpSize)
+{
+    return __shfl_down(var, delta, width);
+}
+
+#define laneId (threadIdx.x & 0x1f)
+
+
+
+#define REDUCE_FUN(fun, T, identity) \
+extern "C" \
+__global__ void MAKE_NAME(reduce, fun, T) (int rows, int cols,\
+    T *out,\
+    const T *in, int inMajorStride) {\
+  __shared__ T buffer[32];\
+\
+  T sum = identity;\
+  for(int col = threadIdx.y + blockIdx.y * blockDim.y; col < cols; col += blockDim.y * gridDim.y) {\
+    for(int row = threadIdx.x + blockIdx.x * blockDim.x; row < rows;  row += blockDim.x * gridDim.x) {\
+        sum = fun(sum, in[col * inMajorStride + row]);\
+    }\
+  }\
+  \
+  __syncthreads();\
+  T aa = sum;\
+  for (int i = 1; i < blockDim.x; i++) {\
+    T  x = shfl_down(aa, i);\
+    sum = fun(sum, x);\
+  }\
+  \
+  if(laneId == 0) {\
+    out[blockIdx.x * gridDim.y + blockIdx.y] = sum;\
+  }\
+}
+
+REDUCE_FUN(add, TYPE, 0)         
+REDUCE_FUN(max, TYPE, -INFINITY)         
+REDUCE_FUN(min, TYPE, INFINITY)         
+
+
 // TODO: add back in set
 
 //=== Vector arithmetic ======================================================

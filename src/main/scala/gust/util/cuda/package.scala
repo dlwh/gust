@@ -92,9 +92,9 @@ package object cuda {
   private[gust] val contextLock = new Object()
 
   @arityize(10)
-  class CuKernel[@arityize.replicate T](module: CuModule, fn: CUfunction, blockDims: Array[Int]) {
-    def apply(workSize1: Int, workSize2: Int = 1, workSize3: Int = 1)(@arityize.replicate t: T @arityize.relative(t))(implicit context: CuContext):Unit = {
-      CuKernel.invoke(Array(workSize1, workSize2, workSize3), blockDims, fn)((t: @arityize.replicate ))
+  class CuKernel[@arityize.replicate T](module: CuModule, fn: CUfunction) {
+    def apply(gridDims: Dim3 = Dim3.default, blockDims: Dim3 = Dim3.default, sharedMemorySize: Int = 0)(@arityize.replicate t: T @arityize.relative(t))(implicit context: CuContext):Unit = {
+      CuKernel.invoke(fn, gridDims, blockDims, sharedMemorySize)((t: @arityize.replicate ))
     }
   }
 }

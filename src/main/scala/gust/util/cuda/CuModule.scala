@@ -16,7 +16,7 @@ import jcuda.{CudaException, Pointer}
 class CuModule(val module: CUmodule) {
 
   @arityize(10)
-  def getKernel[@arityize.replicate T](name: String, blockDims: Array[Int] = Array(32, 32, 1)): (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel)) = {
+  def getKernel[@arityize.replicate T](name: String): (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel)) = {
     val fn = new CUfunction
     try {
     cuModuleGetFunction(fn, module, name)
@@ -26,13 +26,14 @@ class CuModule(val module: CUmodule) {
       case ex: CudaException =>
         throw new RuntimeException(s"while loading $name", ex)
     }
-    new (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel))(this, fn, blockDims)
+    new (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel))(this, fn)
   }
 
 
   private var released = false
 
   override protected def finalize() {
+    super.finalize()
     release()
   }
 
