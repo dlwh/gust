@@ -148,6 +148,7 @@ static __inline__ __device__ float shfl_down(float var, int delta, int width=war
 
 
 #define REDUCE_FUN(fun, T, identity) \
+/* Each column gets 1 block of threads. TODO currently blocksize must be 1 warp*/\
 extern "C" \
 __global__ void MAKE_NAME(reduce, fun, T) (int rows, int cols,\
     T *out,\
@@ -172,6 +173,7 @@ __global__ void MAKE_NAME(reduce, fun, T) (int rows, int cols,\
   }\
 }\
 \
+/* Each column gets 1 block of threads. TODO currently blocksize must be 1 warp*/\
 extern "C" \
 __global__ void MAKE_NAME(reduce_col, fun, T) (int rows, int cols,\
     T *out,\
@@ -194,7 +196,26 @@ __global__ void MAKE_NAME(reduce_col, fun, T) (int rows, int cols,\
       out[col] = sum;\
     }\
   }\
-}
+}\
+\
+\
+/*Each row has its own thread. We should make multiple threads per row, but later. TODO */\
+extern "C" \
+__global__ void MAKE_NAME(reduce_row, fun, T) (int rows, int cols,\
+    T *out,\
+    const T *in, int inMajorStride) {\
+  __shared__ T buffer[32];\
+\
+  int numReducers = blockDim.x * gridDim.x;\
+  for(int row = threadIdx.x + blockIdx.x * blockDim.x; row < rows; row += numReducers) {\
+    T sum = identity;\
+    for(int col = 0; col < cols; col++) {\
+      sum = fun(sum, in[col * inMajorStride + row]);\
+    }\
+    \
+    out[row] = sum;\
+  }\
+}\
 
 REDUCE_FUN(add, TYPE, 0)         
 REDUCE_FUN(max, TYPE, -INFINITY)         

@@ -5,7 +5,7 @@ import gust.util.cuda._
 import jcuda.Pointer
 import scala.reflect.ClassTag
 import java.util.concurrent.ConcurrentHashMap
-import breeze.linalg.BroadcastedColumns
+import breeze.linalg.{BroadcastedRows, BroadcastedColumns}
 
 /**
  * TODO
@@ -24,6 +24,7 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
   private val impl2SVCache = new ConcurrentHashMap[String, CuKernel7[Int, Int, Pointer, Int, T, Pointer, Int]]
   private val reduceCache = new ConcurrentHashMap[String, CuKernel5[Int, Int, Pointer, Pointer, Int]]
   private val colReduceCache = new ConcurrentHashMap[String, CuKernel5[Int, Int, Pointer, Pointer, Int]]
+  private val rowReduceCache = new ConcurrentHashMap[String, CuKernel5[Int, Int, Pointer, Pointer, Int]]
 
   def implFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, CuMatrix[T], CuMatrix[T]] = {
     var kern = implCache.get(funName)
@@ -45,10 +46,10 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
   }
 
   def reducerFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, CuMatrix[T], T] = {
-    var kern = colReduceCache.get(funName)
+    var kern = reduceCache.get(funName)
     if(kern == null) {
       kern = module.getKernel5[Int, Int, Pointer, Pointer, Int](s"reduce_${funName}_$typeName")
-      colReduceCache.put(funName, kern)
+      reduceCache.put(funName, kern)
     }
 
     val byteSize = org.bridj.BridJ.sizeOf(implicitly[ClassTag[T]].runtimeClass)
@@ -69,10 +70,10 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
   }
 
   def colReducerFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, BroadcastedColumns[CuMatrix[T], CuMatrix[T]], CuMatrix[T]] = {
-    var kern = reduceCache.get(funName)
+    var kern = colReduceCache.get(funName)
     if(kern == null) {
       kern = module.getKernel5[Int, Int, Pointer, Pointer, Int](s"reduce_col_${funName}_$typeName")
-      reduceCache.put(funName, kern)
+      colReduceCache.put(funName, kern)
     }
 
     val byteSize = org.bridj.BridJ.sizeOf(implicitly[ClassTag[T]].runtimeClass)
@@ -85,6 +86,28 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
         val tmp = CuMatrix.create[T](1, v.cols)
         val minorSize = if(v.isTranspose) v.cols else v.rows
         kern((512, 20), (32, 1), 32 * 1 * byteSize.toInt)(minorSize, v.majorSize, tmp.offsetPointer, v.offsetPointer, v.majorStride)
+        tmp
+      }
+    }
+  }
+
+  def rowReducerFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, BroadcastedRows[CuMatrix[T], CuMatrix[T]], CuMatrix[T]] = {
+    var kern = rowReduceCache.get(funName)
+    if(kern == null) {
+      kern = module.getKernel5[Int, Int, Pointer, Pointer, Int](s"reduce_row_${funName}_$typeName")
+      rowReduceCache.put(funName, kern)
+    }
+
+    val byteSize = org.bridj.BridJ.sizeOf(implicitly[ClassTag[T]].runtimeClass)
+
+
+    new UFunc.UImpl[K, BroadcastedRows[CuMatrix[T], CuMatrix[T]], CuMatrix[T]] {
+      def apply(vx: BroadcastedRows[CuMatrix[T], CuMatrix[T]]) = {
+        val v = vx.underlying
+        import v.blas
+        val tmp = CuMatrix.create[T](v.rows, 1)
+        val minorSize = if(v.isTranspose) v.cols else v.rows
+        kern((512, 1), (32, 1), 32 * 1 * byteSize.toInt)(minorSize, v.majorSize, tmp.offsetPointer, v.offsetPointer, v.majorStride)
         tmp
       }
     }

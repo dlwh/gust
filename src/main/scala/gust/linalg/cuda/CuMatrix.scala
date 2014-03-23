@@ -1033,6 +1033,10 @@ trait CuMatrixFuns {
   implicit def maxColImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.colReducerFor[max.type]("max")
   implicit def minColImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.colReducerFor[min.type]("min")
 
+  implicit def sumRowImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.rowReducerFor[sum.type]("add")
+  implicit def maxRowImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.rowReducerFor[max.type]("max")
+  implicit def minRowImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.rowReducerFor[min.type]("min")
+
 
   implicit def handhold0[T]: CanCollapseAxis.HandHold[CuMatrix[T], Axis._0.type, CuMatrix[T]] = null
   implicit def handhold1[T]: CanCollapseAxis.HandHold[CuMatrix[T], Axis._1.type, CuMatrix[T]] = null
