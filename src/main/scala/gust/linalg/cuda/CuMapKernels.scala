@@ -189,6 +189,24 @@ class CuMapKernels[X, T:ClassTag](typeName: String) {
     }
   }
 
+  def inPlaceImpl2For_v_s[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.InPlaceImpl2[K, CuMatrix[T], T] = {
+    var kern = impl2VSCache.get(funName)
+    if(kern == null) {
+      kern = module.getKernel7[Int, Int, Pointer, Int, Pointer, Int, T](s"map2_v_s_${funName}_$typeName")
+      impl2VSCache.put(funName, kern)
+    }
+
+
+    new UFunc.InPlaceImpl2[K, CuMatrix[T], T] {
+      def apply(v: CuMatrix[T], v2: T) = {
+        import v.blas
+        val res = v
+        val minorSize = if(v.isTranspose) v.cols else v.rows
+        kern((512, 20), (32, 1, 1))(minorSize, v.majorSize, res.offsetPointer, res.majorStride, v.offsetPointer, v.majorStride, v2)
+      }
+    }
+  }
+
   def impl2For_s_v[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl2[K, T, CuMatrix[T], CuMatrix[T]] = {
     var kern = impl2SVCache.get(funName)
     if(kern == null) {

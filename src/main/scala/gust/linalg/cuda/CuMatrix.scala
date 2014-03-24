@@ -13,7 +13,7 @@ import jcuda.runtime.{cudaMemcpyKind, cudaStream_t, JCuda}
 import jcuda.driver.CUstream
 import cuda._
 import jcuda.jcurand.{curandRngType, curandGenerator}
-import breeze.math.Ring
+import breeze.math.{Semiring, Ring}
 import breeze.numerics._
 import breeze.generic.UFunc
 
@@ -221,6 +221,7 @@ class CuMatrix[V](val rows: Int,
 
 object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSliceOps with CuMatrixFuns {
 
+
   /**
    * The standard way to create an empty matrix, size is rows * cols
    */
@@ -228,6 +229,18 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
     val mat = new CuMatrix[V](rows, cols)
 
     JCuda.cudaMemset(mat.data.toCuPointer, 0, mat.size * mat.elemSize)
+
+    mat
+  }
+
+  /**
+   * The standard way to create an empty matrix, size is rows * cols
+   */
+  def ones[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], blas: cublasHandle, semiring: Semiring[V], canSet: OpSet.InPlaceImpl2[CuMatrix[V], V]): CuMatrix[V] = {
+    val mat = new CuMatrix[V](rows, cols)
+
+    mat := semiring.one
+
 
     mat
   }
@@ -702,7 +715,7 @@ trait CuMatrixOps { this: CuMatrix.type =>
     extends OpMulMatrix.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
     def apply(_a : CuMatrix[Double], _b : CuMatrix[Double]): CuMatrix[Double] = {
       import _a.blas
-      require(_a.cols == _b.rows, "Dimension mismatch!")
+      require(_a.cols == _b.rows, s"Dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
       val rv = CuMatrix.zeros[Double](_a.rows, _b.cols)
 
       if(_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return rv
@@ -724,7 +737,7 @@ trait CuMatrixOps { this: CuMatrix.type =>
     extends OpMulMatrix.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
     def apply(_a : CuMatrix[Float], _b : CuMatrix[Float]): CuMatrix[Float] = {
       import _a.blas
-      require(_a.cols == _b.rows, "Dimension mismatch!")
+      require(_a.cols == _b.rows, s"Dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
       val rv = CuMatrix.zeros[Float](_a.rows, _b.cols)
 
       if(_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return rv
@@ -1008,6 +1021,16 @@ trait CuMatrixFuns {
   implicit def maxIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[max.type]("max")
   implicit def minIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[min.type]("min")
   implicit def powIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpPow.type]("pow")
+
+  implicit def addIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpAdd.type]("add")
+  implicit def subIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpSub.type]("sub")
+  implicit def mulIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpMulScalar.type]("mul")
+  implicit def divIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpDiv.type]("div")
+  implicit def modIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpMod.type]("mod")
+  implicit def maxIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[max.type]("max")
+  implicit def minIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[min.type]("min")
+  implicit def powIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpPow.type]("pow")
+  implicit def setIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpSet.type]("set")
 
   implicit def addImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpAdd.type]("add")
   implicit def subImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpSub.type]("sub")

@@ -107,6 +107,7 @@ __device__ inline TYPE sub(TYPE a, TYPE b) { return a - b; }
 __device__ inline TYPE mul(TYPE a, TYPE b) { return a * b; }
 __device__ inline TYPE div(TYPE a, TYPE b) { return a / b; }
 __device__ inline TYPE mod(TYPE a, TYPE b) { return fmod(a, b); }
+__device__ inline TYPE set(TYPE a, TYPE b) { return b;}
 
 MAP_FUN_2(add, TYPE)
 MAP_FUN_2(sub, TYPE)
@@ -116,6 +117,7 @@ MAP_FUN_2(mod, TYPE)
 MAP_FUN_2(pow, TYPE)
 MAP_FUN_2(max, TYPE)
 MAP_FUN_2(min, TYPE)
+MAP_FUN_2(set, TYPE)
 
  static __inline__ __device__ double shfl_down(double var, int delta, int width=warpSize)
 {
