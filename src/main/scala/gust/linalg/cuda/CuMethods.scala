@@ -7,7 +7,7 @@ import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
 import org.bridj.Pointer
 import scala.reflect.ClassTag
 
-import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
+import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2, cublasDiagType, cublasFillMode}
 import gust.util.cuda
 import jcuda.runtime.{cudaError, cudaMemcpyKind, cudaStream_t, JCuda}
 import jcuda.driver.CUstream
@@ -30,7 +30,8 @@ object CuMethods {
 
   /** Gauss-Jordan solve of a linear system
     * as for now it's in-place and inefficient.
-    * And only forward elimination phase... */
+    *
+    * The result ends up in the d_B vector */
   def solve(d_A: CuMatrix[Double], d_B: CuMatrix[Double])(implicit handle: cublasHandle): Unit = {
     if (d_A.rows != d_B.rows) {
       println("Number of rows in A must be the same as number of rows in B")
@@ -63,7 +64,6 @@ object CuMethods {
 
     val d_R = CuMatrix.zeros[Double](N, 1)  // a vector with ratios for every iteration
 
-    // TODO: make this more "functional style"
     for (i <- 0 to (N-2)) {
 
       // moving the current elem. on the diagonal to a variable, to use it later
@@ -110,6 +110,12 @@ object CuMethods {
         d_A.data.toCuPointer.withByteOffset(d_A.linearIndex(i+1, i) * d_A.elemSize), N)
 
     }
+
+    // solve the triangular system:
+    JCublas2.cublasDtrsv(handle, cublasFillMode.CUBLAS_FILL_MODE_UPPER, cublasOperation.CUBLAS_OP_N,
+      cublasDiagType.CUBLAS_DIAG_NON_UNIT, N,
+      d_A.data.toCuPointer, d_A.majorSize,
+      d_B.data.toCuPointer, 1)
   }
 
 }
