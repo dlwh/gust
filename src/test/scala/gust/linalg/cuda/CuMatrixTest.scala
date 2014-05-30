@@ -137,12 +137,12 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val cu = CuMatrix.zeros[Float](20, 30)
     cu := dm
 
-    assert(cu(0, ::).toDense === dm(0, ::))
-    assert(cu(0, 1 to 4).toDense === dm(0, 1 to 4), s"Full matrix: $dm")
+    assert(cu(0, ::).toDense === dm(0, ::).t.toDenseMatrix)
+    assert(cu(0, 1 to 4).toDense === dm(0, 1 to 4).t.toDenseMatrix, s"Full matrix: $dm")
     assert(cu(::, 0).toDense === dm(::, 0).toDenseMatrix.t, s"${dm(::, 0)}")
     assert(cu(1 to 4, 0).toDense === dm(1 to 4, 0).toDenseMatrix.t, s"Full matrix: $dm")
-    assert(cu.t(0, ::).toDense === dm.t(0, ::))
-    assert(cu.t(0, 1 to 4).toDense === dm.t(0, 1 to 4), s"Full matrix: $dm")
+    assert(cu.t(0, ::).toDense === dm.t(0, ::).t.toDenseMatrix)
+    assert(cu.t(0, 1 to 4).toDense === dm.t(0, 1 to 4).t.toDenseMatrix, s"Full matrix: $dm")
     assert(cu.t(::, 0).toDense === dm.t(::, 0).toDenseMatrix.t, s"${dm(::, 0)}")
     assert(cu.t(1 to 4, 0).toDense === dm.t(1 to 4, 0).toDenseMatrix.t, s"Full matrix: $dm")
 
