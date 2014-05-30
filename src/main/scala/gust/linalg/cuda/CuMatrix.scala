@@ -16,6 +16,7 @@ import jcuda.jcurand.{curandRngType, curandGenerator}
 import breeze.math.{Semiring, Ring}
 import breeze.numerics._
 import breeze.generic.UFunc
+import breeze.generic.UFunc.InPlaceImpl2
 
 /**
  * TODO
@@ -27,11 +28,11 @@ class CuMatrix[V](val rows: Int,
                   val data: Pointer[V],
                   val offset: Int,
                   val majorStride: Int,
-                  val isTranspose: Boolean = false)(implicit val blas: cublasHandle) extends NumericOps[CuMatrix[V]] {
+                  val isTranspose: Boolean = false) extends NumericOps[CuMatrix[V]] {
   /** Creates a matrix with the specified data array, rows, and columns. Data must be column major */
-  def this(rows: Int, cols: Int, data: Pointer[V], offset: Int = 0)(implicit blas: cublasHandle) = this(rows, cols, data, offset, rows)
+  def this(rows: Int, cols: Int, data: Pointer[V], offset: Int = 0) = this(rows, cols, data, offset, rows)
   /** Creates a matrix with the specified data array, rows, and columns. */
-  def this(rows: Int, cols: Int)(implicit blas: cublasHandle, ct: ClassTag[V]) = this(rows, cols, cuda.allocate[V](rows * cols))
+  def this(rows: Int, cols: Int)(implicit ct: ClassTag[V]) = this(rows, cols, cuda.allocate[V](rows * cols))
 
   def size = rows * cols
 
@@ -101,7 +102,7 @@ class CuMatrix[V](val rows: Int,
   private def isGapless = (!this.isTranspose && this.majorStride == this.rows) || (this.isTranspose && this.majorStride == this.cols)
 
 
-  def writeFrom(b: CuMatrix[V])(implicit stream: CUstream = new CUstream()) = {
+  def writeFrom(b: CuMatrix[V])(implicit stream: CUstream = new CUstream(), blas: cublasHandle) = {
     require(b.rows == this.rows, "Matrices must have same number of rows")
     require(b.cols == this.cols, "Matrices must have same number of columns")
 
@@ -225,7 +226,7 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   /**
    * The standard way to create an empty matrix, size is rows * cols
    */
-  def zeros[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], blas: cublasHandle): CuMatrix[V] = {
+  def zeros[V](rows: Int, cols: Int)(implicit ct: ClassTag[V]): CuMatrix[V] = {
     val mat = new CuMatrix[V](rows, cols)
 
     JCuda.cudaMemset(mat.data.toCuPointer, 0, mat.size * mat.elemSize)
@@ -236,7 +237,7 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   /**
    * The standard way to create an empty matrix, size is rows * cols
    */
-  def ones[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], blas: cublasHandle, semiring: Semiring[V], canSet: OpSet.InPlaceImpl2[CuMatrix[V], V]): CuMatrix[V] = {
+  def ones[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], semiring: Semiring[V], canSet: OpSet.InPlaceImpl2[CuMatrix[V], V]): CuMatrix[V] = {
     val mat = new CuMatrix[V](rows, cols)
 
     mat := semiring.one
@@ -248,14 +249,14 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   /**
    * Doesn't zero the matrix.
    */
-  def create[V](rows: Int, cols: Int)(implicit ct: ClassTag[V], blas: cublasHandle): CuMatrix[V] = {
+  def create[V](rows: Int, cols: Int)(implicit ct: ClassTag[V]): CuMatrix[V] = {
     val mat = new CuMatrix[V](rows, cols)
     JCuda.cudaMemset(mat.data.toCuPointer, 0, mat.size * mat.elemSize)
 
     mat
   }
 
-  def rand(rows: Int, cols: Int)(implicit blas: cublasHandle) = {
+  def rand(rows: Int, cols: Int) = {
     import jcuda.jcurand.JCurand._
     val mat = new CuMatrix[Float](rows, cols)
     val generator = new curandGenerator()
@@ -471,7 +472,7 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   implicit def canTranspose[V]: CanTranspose[CuMatrix[V], CuMatrix[V]] = {
     new CanTranspose[CuMatrix[V], CuMatrix[V]] {
       def apply(from: CuMatrix[V]) = {
-        new CuMatrix(data = from.data, offset = from.offset, cols = from.rows, rows = from.cols, majorStride = from.majorStride, isTranspose = !from.isTranspose)(from.blas)
+        new CuMatrix(data = from.data, offset = from.offset, cols = from.rows, rows = from.cols, majorStride = from.majorStride, isTranspose = !from.isTranspose)
       }
     }
   }
@@ -569,13 +570,13 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
       v.writeFrom(v2)
     }
   }
+  */
 
   implicit def setMDM[V](implicit stream: CUstream = new CUstream()): OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] = new OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] {
     def apply(v: CuMatrix[V], v2: DenseMatrix[V]): Unit = {
       v.writeFromDense(v2)
     }
   }
-  */
 
   protected val hostOnePtr = Pointer.pointerToFloat(1)
 
@@ -633,75 +634,24 @@ trait LowPriorityNativeMatrix1 {
 
 trait LowPriorityNativeMatrix extends LowPriorityNativeMatrix1 { this: CuMatrix.type =>
 
-  class SetCuMCuMVOp[V] extends OpSet.InPlaceImpl2[CuMatrix[V], CuMatrix[V]] {
+  class SetCuMCuMVOp[V](implicit handle: cublasHandle) extends OpSet.InPlaceImpl2[CuMatrix[V], CuMatrix[V]] {
     def apply(a: CuMatrix[V], b: CuMatrix[V]) {
       a.writeFrom(b.asInstanceOf[CuMatrix[V]])
     }
   }
 
-  implicit def SetCuMDMOp[V]: OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] = new  OpSet.InPlaceImpl2[CuMatrix[V], DenseMatrix[V]] {
-    def apply(a: CuMatrix[V], b: DenseMatrix[V]) {
-      a.writeFromDense(b)
-    }
-  }
+  implicit def setCuMCuMOp[V](implicit handle: cublasHandle):OpSet.InPlaceImpl2[CuMatrix[V], CuMatrix[V]] = new SetCuMCuMVOp[V]()
 
 
 
+  /*
   implicit object setCuMCuMFloat extends SetCuMCuMVOp[Float]
   implicit object setCuMCuMLong extends SetCuMCuMVOp[Long]
   implicit object setCuMCuMInt extends SetCuMCuMVOp[Int]
   implicit object setCuMCuMDouble extends SetCuMCuMVOp[Double]
-
-  /*
-  class SetDMDVOp[@specialized(Int, Double, Float) V] extends BinaryUpdateOp[CuMatrix[V], CuMatrix[V], OpSet] {
-    def apply(a: CuMatrix[V], b: CuMatrix[V]) {
-      require(a.rows == b.length && a.cols == 1 || a.cols == b.length && a.rows == 1, "CuMatrix must have same number of rows, or same number of columns, as CuMatrix, and the other dim must be 1.")
-      val ad = a.data
-      val bd = b.data
-      var c = 0
-      var boff = b.offset
-      while(c < a.cols) {
-        var r = 0
-        while(r < a.rows) {
-          ad(a.linearIndex(r, c)) = bd(boff)
-          r += 1
-          boff += b.stride
-        }
-        c += 1
-      }
-    }
-  }
+*/
 
 
-  implicit object SetMSFloatOp extends OpSet.InPlaceImpl2[CuMatrix[Float], Float] {
-    def apply(a: CuMatrix[Float], b: Float) {
-      val zmk = ZeroMemoryKernel()(a.queue.getContext)
-      import a.queue
-      // nicely shaped matrix
-      if( (!a.isTranspose && a.majorStride == a.rows)  ||(a.isTranspose && a.majorStride == a.cols)) {
-        val ev = zmk.fillMemory(a.data, b, a.offset, a.rows * a.cols)
-        ev.waitFor()
-      } else {
-        zmk.shapedFill(a, b).waitFor()
-      }
-    }
-  }
-
-  implicit object SetMSIntOp extends OpSet.InPlaceImpl2[CuMatrix[Int], Int] {
-    def apply(a: CuMatrix[Int], b: Int) {
-      val zmk = ZeroMemoryKernel()(a.queue.getContext)
-      import a.queue
-      // nicely shaped matrix
-      if( (!a.isTranspose && a.majorStride == a.rows)  ||(a.isTranspose && a.majorStride == a.cols)) {
-        val ev = zmk.fillMemory(a.data.asCLFloatBuffer(), java.lang.Float.intBitsToFloat(b), a.offset, a.rows * a.cols)
-        ev.waitFor()
-      } else {
-        zmk.shapedFill(a.asInstanceOf[CuMatrix[Float]], java.lang.Float.intBitsToFloat(b)).waitFor()
-      }
-    }
-  }
-
-  */
 
    def transposeOp(a: CuMatrix[_]): Int = {
     if (a.isTranspose) cublasOperation.CUBLAS_OP_T else cublasOperation.CUBLAS_OP_N
@@ -711,10 +661,9 @@ trait LowPriorityNativeMatrix extends LowPriorityNativeMatrix1 { this: CuMatrix.
 }
 
 trait CuMatrixOps { this: CuMatrix.type =>
-  implicit object CuMatrixDMulCuMatrixD
-    extends OpMulMatrix.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
+  implicit def CuMatrixDMulCuMatrixD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] = new OpMulMatrix.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
     def apply(_a : CuMatrix[Double], _b : CuMatrix[Double]): CuMatrix[Double] = {
-      import _a.blas
+
       require(_a.cols == _b.rows, s"Dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
       val rv = CuMatrix.zeros[Double](_a.rows, _b.cols)
 
@@ -724,7 +673,7 @@ trait CuMatrixOps { this: CuMatrix.type =>
       val a:CuMatrix[Double] = if(_a.majorStride < math.max(if(_a.isTranspose) _a.cols else _a.rows, 1)) _a.copy else _a
       val b:CuMatrix[Double] = if(_b.majorStride < math.max(if(_b.isTranspose) _b.cols else _b.rows, 1)) _b.copy else _b
 
-      JCublas2.cublasDgemm(_a.blas, transposeOp(a), transposeOp(b),
+      JCublas2.cublasDgemm(blas, transposeOp(a), transposeOp(b),
         rv.rows, rv.cols, a.cols,
         hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
         b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
@@ -733,10 +682,9 @@ trait CuMatrixOps { this: CuMatrix.type =>
     }
   }
 
-  implicit object CuMatrixFMulCuMatrixF
-    extends OpMulMatrix.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+  implicit def CuMatrixFMulCuMatrixF(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] = new OpMulMatrix.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
     def apply(_a : CuMatrix[Float], _b : CuMatrix[Float]): CuMatrix[Float] = {
-      import _a.blas
+
       require(_a.cols == _b.rows, s"Dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
       val rv = CuMatrix.zeros[Float](_a.rows, _b.cols)
 
@@ -746,7 +694,7 @@ trait CuMatrixOps { this: CuMatrix.type =>
       val a:CuMatrix[Float] = if(_a.majorStride < math.max(if(_a.isTranspose) _a.cols else _a.rows, 1)) _a.copy else _a
       val b:CuMatrix[Float] = if(_b.majorStride < math.max(if(_b.isTranspose) _b.cols else _b.rows, 1)) _b.copy else _b
 
-      JCublas2.cublasSgemm(_a.blas, transposeOp(a), transposeOp(b),
+      JCublas2.cublasSgemm(blas, transposeOp(a), transposeOp(b),
         rv.rows, rv.cols, a.cols,
         hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
         b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
@@ -762,7 +710,7 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
   implicit def canSliceRow[V]: CanSlice2[CuMatrix[V], Int, ::.type, CuMatrix[V]] = {
     new CanSlice2[CuMatrix[V], Int, ::.type, CuMatrix[V]] {
       def apply(m: CuMatrix[V], rowWNegative: Int, ignored: ::.type) = {
-        import m.blas
+
 
         if(rowWNegative < -m.rows || rowWNegative >= m.rows) throw new ArrayIndexOutOfBoundsException("Row must be in bounds for slice!")
         val row = if(rowWNegative<0) rowWNegative+m.rows else rowWNegative
@@ -778,7 +726,7 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
   implicit def canSliceCol[V]: CanSlice2[CuMatrix[V], ::.type, Int, CuMatrix[V]] = {
     new CanSlice2[CuMatrix[V], ::.type, Int, CuMatrix[V]] {
       def apply(m: CuMatrix[V], ignored: ::.type, colWNegative: Int) = {
-        import m.blas
+
 
         if(colWNegative < -m.cols || colWNegative >= m.cols) throw new ArrayIndexOutOfBoundsException("Column must be in bounds for slice!")
         val col = if(colWNegative<0) colWNegative+m.cols else colWNegative
@@ -794,7 +742,7 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
   implicit def canSliceRows[V]: CanSlice2[CuMatrix[V], Range, ::.type, CuMatrix[V]] = {
     new CanSlice2[CuMatrix[V], Range, ::.type, CuMatrix[V]] {
       def apply(m: CuMatrix[V], rowsWNegative: Range, ignored: ::.type) = {
-        import m.blas
+
 
         val rows = rowsWNegative.getRangeWithoutNegativeIndexes(m.rows)
 
@@ -817,7 +765,7 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
   implicit def canSliceCols[V]: CanSlice2[CuMatrix[V], ::.type, Range, CuMatrix[V]] = {
     new CanSlice2[CuMatrix[V], ::.type, Range, CuMatrix[V]] {
       def apply(m: CuMatrix[V], ignored: ::.type, colsWNegative: Range) = {
-        import m.blas
+
 
         val cols = colsWNegative.getRangeWithoutNegativeIndexes(m.cols)
 
@@ -838,7 +786,7 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
   implicit def canSliceColsAndRows[V]: CanSlice2[CuMatrix[V], Range, Range, CuMatrix[V]] = {
     new CanSlice2[CuMatrix[V], Range, Range, CuMatrix[V]] {
       def apply(m: CuMatrix[V], rowsWNegative: Range, colsWNegative: Range) = {
-        import m.blas
+
 
         val rows = rowsWNegative.getRangeWithoutNegativeIndexes(m.rows)
         val cols = colsWNegative.getRangeWithoutNegativeIndexes(m.cols)
@@ -875,7 +823,7 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
   implicit def canSlicePartOfRow[V]: CanSlice2[CuMatrix[V], Int, Range, CuMatrix[V]] = {
     new CanSlice2[CuMatrix[V], Int, Range, CuMatrix[V]] {
       def apply(m: CuMatrix[V], rowWNegative: Int, colsWNegative: Range) = {
-        import m.blas
+
 
         if(rowWNegative < -m.rows || rowWNegative >= m.rows) throw new ArrayIndexOutOfBoundsException("Row must be in bounds for slice!")
         val row = if(rowWNegative<0) rowWNegative + m.rows else rowWNegative
@@ -900,7 +848,7 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
   implicit def canSlicePartOfCol[V]: CanSlice2[CuMatrix[V], Range, Int, CuMatrix[V]] = {
     new CanSlice2[CuMatrix[V], Range, Int, CuMatrix[V]] {
       def apply(m: CuMatrix[V], rowsWNegative: Range, colWNegative: Int) = {
-        import m.blas
+
 
         val rows = rowsWNegative.getRangeWithoutNegativeIndexes(m.rows)
         if(colWNegative < -m.cols || colWNegative >= m.cols) throw new ArrayIndexOutOfBoundsException("Row must be in bounds for slice!")
@@ -922,143 +870,143 @@ trait CuMatrixSliceOps { this: CuMatrix.type =>
 
 }
 
-trait CuMatrixFuns {
+trait CuMatrixFuns extends CuMatrixKernels { this: CuMatrix.type =>
 
-  implicit val kernelsFloat = new CuMapKernels[CuMatrix[Float], Float]("float")
+  implicit val kernelsFloat = new KernelBroker[Float]("float")
 
-  implicit def acosImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[acos.type]("acos")
-  implicit def asinImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[asin.type]("asin")
-  implicit def atanImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[atan.type]("atan")
+  implicit def acosImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[acos.type]("acos")
+  implicit def asinImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[asin.type]("asin")
+  implicit def atanImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[atan.type]("atan")
 
-  implicit def acoshImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[acosh.type]("acosh")
-  implicit def asinhImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[asinh.type]("asinh")
-  implicit def atanhImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[atanh.type]("atanh")
+  implicit def acoshImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[acosh.type]("acosh")
+  implicit def asinhImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[asinh.type]("asinh")
+  implicit def atanhImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[atanh.type]("atanh")
 
-  implicit def cosImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[cos.type]("cos")
-  implicit def sinImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[sin.type]("sin")
-  implicit def tanImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[tan.type]("tan")
+  implicit def cosImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[cos.type]("cos")
+  implicit def sinImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[sin.type]("sin")
+  implicit def tanImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[tan.type]("tan")
 
-  implicit def coshImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[cosh.type]("cosh")
-  implicit def sinhImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[sinh.type]("sinh")
-  implicit def tanhImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[tanh.type]("tanh")
+  implicit def coshImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[cosh.type]("cosh")
+  implicit def sinhImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[sinh.type]("sinh")
+  implicit def tanhImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[tanh.type]("tanh")
 
-  implicit def cbrtImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[cbrt.type]("cbrt")
-  implicit def ceilImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[ceil.type]("ceil")
-//  implicit def cospiImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[cospi.type]("cospi")
-  implicit def erfcImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[erfc.type]("erfc")
-  implicit def erfcinvImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[erfcinv.type]("erfcinv")
-  implicit def erfImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[erf.type]("erf")
-  implicit def erfinvImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[erfinv.type]("erfinv")
-  implicit def expImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[exp.type]("exp")
-  implicit def expm1Impl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[expm1.type]("expm1")
-  implicit def fabsImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[abs.type]("fabs")
-  implicit def floorImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[floor.type]("floor")
-  implicit def j0Impl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[Bessel.i0.type]("j0")
-  implicit def j1Impl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[Bessel.i1.type]("j1")
-  implicit def lgammaImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[lgamma.type]("lgamma")
-  implicit def log10Impl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[log10.type]("log10")
-  implicit def log1pImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[log1p.type]("log1p")
-//  implicit def log2Impl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[log2.type]("log2")
-//  implicit def logbImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[logb.type]("logb")
-  implicit def logImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[log.type]("log")
-  implicit def sqrtImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[sqrt.type]("sqrt")
-  implicit def rintImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[rint.type]("rint")
-//  implicit def truncImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.implFor[trunc.type]("trunc")
+  implicit def cbrtImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[cbrt.type]("cbrt")
+  implicit def ceilImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[ceil.type]("ceil")
+//  implicit def cospiImpl[T](implicit broker: CuMapKernels[T]) =  broker.implFor[cospi.type]("cospi")
+  implicit def erfcImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[erfc.type]("erfc")
+  implicit def erfcinvImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[erfcinv.type]("erfcinv")
+  implicit def erfImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[erf.type]("erf")
+  implicit def erfinvImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[erfinv.type]("erfinv")
+  implicit def expImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[exp.type]("exp")
+  implicit def expm1Impl[T](implicit broker: KernelBroker[T]) =  broker.implFor[expm1.type]("expm1")
+  implicit def fabsImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[abs.type]("fabs")
+  implicit def floorImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[floor.type]("floor")
+  implicit def j0Impl[T](implicit broker: KernelBroker[T]) =  broker.implFor[Bessel.i0.type]("j0")
+  implicit def j1Impl[T](implicit broker: KernelBroker[T]) =  broker.implFor[Bessel.i1.type]("j1")
+  implicit def lgammaImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[lgamma.type]("lgamma")
+  implicit def log10Impl[T](implicit broker: KernelBroker[T]) =  broker.implFor[log10.type]("log10")
+  implicit def log1pImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[log1p.type]("log1p")
+//  implicit def log2Impl[T](implicit broker: CuMapKernels[T]) =  broker.implFor[log2.type]("log2")
+//  implicit def logbImpl[T](implicit broker: CuMapKernels[T]) =  broker.implFor[logb.type]("logb")
+  implicit def logImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[log.type]("log")
+  implicit def sqrtImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[sqrt.type]("sqrt")
+  implicit def rintImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[rint.type]("rint")
+//  implicit def truncImpl[T](implicit broker: CuMapKernels[T]) =  broker.implFor[trunc.type]("trunc")
 
-  implicit def acosIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[acos.type]("acos")
-  implicit def asinIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[asin.type]("asin")
-  implicit def atanIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[atan.type]("atan")
+  implicit def acosIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[acos.type]("acos")
+  implicit def asinIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[asin.type]("asin")
+  implicit def atanIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[atan.type]("atan")
 
-  implicit def acoshIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[acosh.type]("acosh")
-  implicit def asinhIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[asinh.type]("asinh")
-  implicit def atanhIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[atanh.type]("atanh")
+  implicit def acoshIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[acosh.type]("acosh")
+  implicit def asinhIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[asinh.type]("asinh")
+  implicit def atanhIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[atanh.type]("atanh")
 
-  implicit def cosIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[cos.type]("cos")
-  implicit def sinIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[sin.type]("sin")
-  implicit def tanIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[tan.type]("tan")
+  implicit def cosIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[cos.type]("cos")
+  implicit def sinIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[sin.type]("sin")
+  implicit def tanIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[tan.type]("tan")
 
-  implicit def coshIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[cosh.type]("cosh")
-  implicit def sinhIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[sinh.type]("sinh")
-  implicit def tanhIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[tanh.type]("tanh")
+  implicit def coshIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[cosh.type]("cosh")
+  implicit def sinhIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[sinh.type]("sinh")
+  implicit def tanhIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[tanh.type]("tanh")
 
-  implicit def cbrtIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[cbrt.type]("cbrt")
-  implicit def ceilIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[ceil.type]("ceil")
-  //  implicit def cospiIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[cospi.type]("cospi")
-  implicit def erfcIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[erfc.type]("erfc")
-  implicit def erfcinvIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[erfcinv.type]("erfcinv")
-  implicit def erfIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[erf.type]("erf")
-  implicit def erfinvIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[erfinv.type]("erfinv")
-  implicit def expIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[exp.type]("exp")
-  implicit def expm1IntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[expm1.type]("expm1")
-  implicit def fabsIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[abs.type]("fabs")
-  implicit def floorIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[floor.type]("floor")
-  implicit def j0IntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[Bessel.i0.type]("j0")
-  implicit def j1IntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[Bessel.i1.type]("j1")
-  implicit def lgammaIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[lgamma.type]("lgamma")
-  implicit def log10IntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[log10.type]("log10")
-  implicit def log1pIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[log1p.type]("log1p")
-  //  implicit def log2IntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[log2.type]("log2")
-  //  implicit def logbIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[logb.type]("logb")
-  implicit def logIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[log.type]("log")
-  implicit def sqrtIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[sqrt.type]("sqrt")
-  implicit def rintIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImplFor[rint.type]("rint")
+  implicit def cbrtIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[cbrt.type]("cbrt")
+  implicit def ceilIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[ceil.type]("ceil")
+  //  implicit def cospiIntoImpl[T](implicit broker: CuMapKernels[T]) =  broker.inPlaceImplFor[cospi.type]("cospi")
+  implicit def erfcIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[erfc.type]("erfc")
+  implicit def erfcinvIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[erfcinv.type]("erfcinv")
+  implicit def erfIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[erf.type]("erf")
+  implicit def erfinvIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[erfinv.type]("erfinv")
+  implicit def expIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[exp.type]("exp")
+  implicit def expm1IntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[expm1.type]("expm1")
+  implicit def fabsIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[abs.type]("fabs")
+  implicit def floorIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[floor.type]("floor")
+  implicit def j0IntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[Bessel.i0.type]("j0")
+  implicit def j1IntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[Bessel.i1.type]("j1")
+  implicit def lgammaIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[lgamma.type]("lgamma")
+  implicit def log10IntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[log10.type]("log10")
+  implicit def log1pIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[log1p.type]("log1p")
+  //  implicit def log2IntoImpl[T](implicit broker: CuMapKernels[T]) =  broker.inPlaceImplFor[log2.type]("log2")
+  //  implicit def logbIntoImpl[T](implicit broker: CuMapKernels[T]) =  broker.inPlaceImplFor[logb.type]("logb")
+  implicit def logIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[log.type]("log")
+  implicit def sqrtIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[sqrt.type]("sqrt")
+  implicit def rintIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[rint.type]("rint")
 
 
-  implicit def addImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpAdd.type]("add")
-  implicit def subImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpSub.type]("sub")
-  implicit def mulImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpMulScalar.type]("mul")
-  implicit def divImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpDiv.type]("div")
-  implicit def modImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpMod.type]("mod")
-  implicit def maxImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[max.type]("max")
-  implicit def minImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[min.type]("min")
-  implicit def powImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For[OpPow.type]("pow")
+  implicit def addImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpAdd.type]("add")
+  implicit def subImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpSub.type]("sub")
+  implicit def mulImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpMulScalar.type]("mul")
+  implicit def divImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpDiv.type]("div")
+  implicit def modImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpMod.type]("mod")
+  implicit def maxImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[max.type]("max")
+  implicit def minImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[min.type]("min")
+  implicit def powImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpPow.type]("pow")
 
-  implicit def addIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpAdd.type]("add")
-  implicit def subIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpSub.type]("sub")
-  implicit def mulIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpMulScalar.type]("mul")
-  implicit def divIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpDiv.type]("div")
-  implicit def modIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpMod.type]("mod")
-  implicit def maxIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[max.type]("max")
-  implicit def minIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[min.type]("min")
-  implicit def powIntoImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For[OpPow.type]("pow")
+  implicit def addIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpAdd.type]("add")
+  implicit def subIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpSub.type]("sub")
+  implicit def mulIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpMulScalar.type]("mul")
+  implicit def divIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpDiv.type]("div")
+  implicit def modIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpMod.type]("mod")
+  implicit def maxIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[max.type]("max")
+  implicit def minIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[min.type]("min")
+  implicit def powIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpPow.type]("pow")
 
-  implicit def addIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpAdd.type]("add")
-  implicit def subIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpSub.type]("sub")
-  implicit def mulIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpMulScalar.type]("mul")
-  implicit def divIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpDiv.type]("div")
-  implicit def modIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpMod.type]("mod")
-  implicit def maxIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[max.type]("max")
-  implicit def minIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[min.type]("min")
-  implicit def powIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpPow.type]("pow")
-  implicit def setIntoImpl_S[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.inPlaceImpl2For_v_s[OpSet.type]("set")
+  implicit def addIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpAdd.type]("add")
+  implicit def subIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpSub.type]("sub")
+  implicit def mulIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpMulScalar.type]("mul")
+  implicit def divIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpDiv.type]("div")
+  implicit def modIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpMod.type]("mod")
+  implicit def maxIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[max.type]("max")
+  implicit def minIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[min.type]("min")
+  implicit def powIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpPow.type]("pow")
+  implicit def setIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[OpSet.type, CuMatrix[T], T] =  broker.inPlaceImpl2For_v_s[OpSet.type]("set")
 
-  implicit def addImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpAdd.type]("add")
-  implicit def subImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpSub.type]("sub")
-  implicit def mulImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpMulScalar.type]("mul")
-  implicit def mulMatrixImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpMulMatrix.type]("mul")
-  implicit def divImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpDiv.type]("div")
-  implicit def modImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpMod.type]("mod")
-  implicit def powImplVS[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_v_s[OpPow.type]("pow")
+  implicit def addImplVS[T](implicit broker: KernelBroker[T]) =  broker.impl2For_v_s[OpAdd.type]("add")
+  implicit def subImplVS[T](implicit broker: KernelBroker[T]) =  broker.impl2For_v_s[OpSub.type]("sub")
+  implicit def mulImplVS[T](implicit broker: KernelBroker[T]) =  broker.impl2For_v_s[OpMulScalar.type]("mul")
+  implicit def mulMatrixImplVS[T](implicit broker: KernelBroker[T]) =  broker.impl2For_v_s[OpMulMatrix.type]("mul")
+  implicit def divImplVS[T](implicit broker: KernelBroker[T]) =  broker.impl2For_v_s[OpDiv.type]("div")
+  implicit def modImplVS[T](implicit broker: KernelBroker[T]) =  broker.impl2For_v_s[OpMod.type]("mod")
+  implicit def powImplVS[T](implicit broker: KernelBroker[T]) =  broker.impl2For_v_s[OpPow.type]("pow")
 
-  implicit def addImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpAdd.type]("add")
-  implicit def subImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpSub.type]("sub")
-  implicit def mulImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMulScalar.type]("mul")
-  implicit def mulMatrixImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMulMatrix.type]("mul")
-  implicit def divImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpDiv.type]("div")
-  implicit def modImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpMod.type]("mod")
-  implicit def powImplSV[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.impl2For_s_v[OpPow.type]("pow")
+  implicit def addImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpAdd.type]("add")
+  implicit def subImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpSub.type]("sub")
+  implicit def mulImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpMulScalar.type]("mul")
+  implicit def mulMatrixImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpMulMatrix.type]("mul")
+  implicit def divImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpDiv.type]("div")
+  implicit def modImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpMod.type]("mod")
+  implicit def powImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpPow.type]("pow")
 
-  implicit def sumImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.reducerFor[sum.type]("add")
-  implicit def maxReduceImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.reducerFor[max.type]("max")
-  implicit def minReduceImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.reducerFor[min.type]("min")
+  implicit def sumImpl[T](implicit broker: KernelBroker[T]) =  broker.reducerFor[sum.type]("add")
+  implicit def maxReduceImpl[T](implicit broker: KernelBroker[T]) =  broker.reducerFor[max.type]("max")
+  implicit def minReduceImpl[T](implicit broker: KernelBroker[T]) =  broker.reducerFor[min.type]("min")
 
-  implicit def sumColImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.colReducerFor[sum.type]("add")
-  implicit def maxColImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.colReducerFor[max.type]("max")
-  implicit def minColImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.colReducerFor[min.type]("min")
+  implicit def sumColImpl[T](implicit broker: KernelBroker[T]) =  broker.colReducerFor[sum.type]("add")
+  implicit def maxColImpl[T](implicit broker: KernelBroker[T]) =  broker.colReducerFor[max.type]("max")
+  implicit def minColImpl[T](implicit broker: KernelBroker[T]) =  broker.colReducerFor[min.type]("min")
 
-  implicit def sumRowImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.rowReducerFor[sum.type]("add")
-  implicit def maxRowImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.rowReducerFor[max.type]("max")
-  implicit def minRowImpl[T](implicit broker: CuMapKernels[CuMatrix[T], T]) =  broker.rowReducerFor[min.type]("min")
+  implicit def sumRowImpl[T](implicit broker: KernelBroker[T]) =  broker.rowReducerFor[sum.type]("add")
+  implicit def maxRowImpl[T](implicit broker: KernelBroker[T]) =  broker.rowReducerFor[max.type]("max")
+  implicit def minRowImpl[T](implicit broker: KernelBroker[T]) =  broker.rowReducerFor[min.type]("min")
 
 
   implicit def handhold0[T]: CanCollapseAxis.HandHold[CuMatrix[T], Axis._0.type, CuMatrix[T]] = null
@@ -1072,7 +1020,7 @@ trait CuMatrixFuns {
         require(v2.cols == 1)
         require(!v2.isTranspose)
         require(v.rows == v2.rows)
-        import v.blas
+
         // trick: if the major stride is 0, then we iterate over the same column over and over again
         op(v, new CuMatrix(v.rows, v.cols, v2.data, v2.offset, 0, v2.isTranspose))
       }
@@ -1086,7 +1034,7 @@ trait CuMatrixFuns {
         require(v2.cols == 1)
         require(!v2.isTranspose)
         require(v.rows == v2.rows)
-        import v.blas
+
         // trick: if the major stride is 0, then we iterate over the same column over and over again
         op(new CuMatrix(v.rows, v.cols, v2.data, v2.offset, 0, v2.isTranspose), v)
       }

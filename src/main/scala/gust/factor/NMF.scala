@@ -3,6 +3,7 @@ package gust.factor
 import breeze.linalg._
 import gust.linalg.cuda.CuMatrix
 import breeze.numerics.abs
+import jcuda.jcublas.cublasHandle
 
 /**
  * TODO
@@ -11,9 +12,8 @@ import breeze.numerics.abs
  **/
 object NMF {
 
-  def supervised(W: CuMatrix[Float], X: CuMatrix[Float], iters: Int = 200, eps: Float = 1E-6f) = {
+  def supervised(W: CuMatrix[Float], X: CuMatrix[Float], iters: Int = 200, eps: Float = 1E-6f)(implicit blas: cublasHandle) = {
     require(W.rows == X.rows)
-    import W.blas
     val n = X.rows
     val m = X.cols
     val r = W.cols
