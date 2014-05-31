@@ -2,17 +2,19 @@ package gust.util.cuda
 
 import jcuda.driver.{CUstream, CUfunction, CUcontext}
 import jcuda.driver.JCudaDriver._
+import org.bridj.Pointer
 
 object CuKernel {
   def invoke(fn: CUfunction, gridDims: Dim3, blockDims: Dim3, sharedMemoryBytes: Int = 0)(args: Any*)(implicit context: CuContext):Unit = {
     context.withPush {
       val params = setupKernelParameters(args:_*)
+      val cudaParams = jcuda.Pointer.to(params.map(_.toCuPointer):_*)
       cuLaunchKernel(fn,
         gridDims.x, gridDims.y, gridDims.z,
         blockDims.x, blockDims.y, blockDims.z,
         sharedMemoryBytes, new CUstream(),
-        params, null)
-      jcuda.runtime.JCuda.cudaFreeHost(params)
+        cudaParams, null)
+      jcuda.runtime.JCuda.cudaFreeHost(cudaParams)
 
     }
   }
@@ -32,38 +34,37 @@ object CuKernel {
    */
   private def setupKernelParameters(args: Any*) = {
     import java.lang._
-    import jcuda.Pointer
-    val kernelParameters: Array[CuPointer] = new Array[CuPointer](args.length)
+    val kernelParameters: Array[Pointer[_]] = new Array[Pointer[_]](args.length)
     for( (arg, i) <- args.zipWithIndex) {
       arg match {
         case null =>
           throw new NullPointerException("Argument " + i + " is null")
-        case argPointer: Pointer =>
-          val pointer: Pointer = Pointer.to(argPointer)
+        case argPointer: CuPointer =>
+          val pointer = Pointer.pointerToPointer(cupointerToPointer(argPointer))
           kernelParameters(i) = pointer
         case value: Byte =>
-          val pointer: Pointer = Pointer.to(Array[scala.Byte](value))
+          val pointer = Pointer.pointerToByte(value)
           kernelParameters(i) = pointer
         case value: Short =>
-          val pointer: Pointer = Pointer.to(Array[scala.Short](value))
+          val pointer = Pointer.pointerToShort(value)
           kernelParameters(i) = pointer
         case value: Integer =>
-          val pointer: Pointer = Pointer.to(Array[scala.Int](value))
+          val pointer = Pointer.pointerToInt(value)
           kernelParameters(i) = pointer
         case value: Long =>
-          val pointer: Pointer = Pointer.to(Array[scala.Long](value))
+          val pointer = Pointer.pointerToLong(value)
           kernelParameters(i) = pointer
         case value: Float =>
-          val pointer: Pointer = Pointer.to(Array[scala.Float](value))
+          val pointer = Pointer.pointerToFloat(value)
           kernelParameters(i) = pointer
         case value: Double =>
-          val pointer: Pointer = Pointer.to(Array[scala.Double](value))
+          val pointer = Pointer.pointerToDouble(value)
           kernelParameters(i) = pointer
         case _ =>
           throw new RuntimeException("Type " + arg.getClass + " may not be passed to a function")
       }
     }
-    jcuda.Pointer.to(kernelParameters:_*)
+    kernelParameters
   }
 
 }

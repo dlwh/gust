@@ -29,7 +29,7 @@ package object cuda {
     val tpe = implicitly[ClassTag[V]].runtimeClass
     val io = PointerIO.getInstance[V](tpe)
     JCuda.cudaMallocHost(ptr, size * io.getTargetSize)
-    Pointer.pointerToAddress(nativePtr(ptr), size, io, HostFreeReleaser)
+    Pointer.pointerToAddress(nativePtr(ptr), size * io.getTargetSize, io, HostFreeReleaser)
   }
 
   def cuPointerToArray[T](array: Array[T]): jcuda.Pointer = array match {
@@ -62,11 +62,31 @@ package object cuda {
     }
   }
 
+  private object NoReleaser extends Pointer.Releaser {
+    def release(p: Pointer[_]): Unit = {
+    }
+  }
+
+
+  def cupointerToPointer[T](pointer: CuPointer, size: Int, io: PointerIO[T]):Pointer[T] = {
+    Pointer.pointerToAddress(nativePtr(pointer), size * io.getTargetSize, io, NoReleaser)
+  }
+
+
+  def cupointerToPointer[_](pointer: CuPointer):Pointer[_] = {
+    Pointer.pointerToAddress(nativePtr(pointer), NoReleaser).offset(stealByteOffset(pointer))
+  }
 
   private def nativePtr(pointer: CuPointer) = {
     val m = classOf[NativePointerObject].getDeclaredMethod("getNativePointer")
     m.setAccessible(true)
     m.invoke(pointer).asInstanceOf[java.lang.Long].longValue()
+  }
+
+  private def stealByteOffset(pointer: CuPointer) = {
+    val m = classOf[CuPointer].getDeclaredField("byteOffset")
+    m.setAccessible(true)
+    m.get(pointer).asInstanceOf[java.lang.Long].longValue()
   }
 
   private def fromNativePtr(peer: Long, offset: Long = 0) = {
