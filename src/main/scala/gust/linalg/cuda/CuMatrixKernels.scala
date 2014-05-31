@@ -13,7 +13,6 @@ import breeze.linalg.{BroadcastedRows, BroadcastedColumns}
  * @author dlwh
  **/
 trait CuMatrixKernels { this: CuMatrix.type =>
-
   class KernelBroker[T: ClassTag](typeName: String) {
 
     private val module: CuModule = {
