@@ -39,7 +39,7 @@ trait CuVectorKernels { this: CuVector.type =>
       new UFunc.UImpl[K, CuVector[T], CuVector[T]] {
         def apply(v: CuVector[T]): CuVector[T] = {
           val res = CuVector.create[T](v.length)
-          kern((512, 20), (32, 1, 1))(v.length, res.offsetPointer, res.stride, v.offsetPointer, v.stride)
+          kern((512, 1), (32, 1, 1))(v.length, res.offsetPointer, res.stride, v.offsetPointer, v.stride)
           res
         }
       }
@@ -82,7 +82,7 @@ trait CuVectorKernels { this: CuVector.type =>
         def apply(vx: BroadcastedColumns[CuVector[T], CuVector[T]]) = {
           val v = vx.underlying
           val tmp = CuVector.create[T](1, v.cols)
-          kern((512, 20), (32, 1), 32 * 1 * byteSize.toInt)(v.length, tmp.offsetPointer, v.offsetPointer, v.stride)
+          kern((512, 1), (32, 1), 32 * 1 * byteSize.toInt)(v.length, tmp.offsetPointer, v.offsetPointer, v.stride)
           tmp
         }
       }
@@ -119,7 +119,7 @@ trait CuVectorKernels { this: CuVector.type =>
 
       new UFunc.InPlaceImpl[K, CuVector[T]] {
         def apply(v: CuVector[T]) = {
-          kern((512, 20), (32, 1))(v.length, v.offsetPointer, v.stride, v.offsetPointer, v.stride)
+          kern((512, 1), (32, 1))(v.length, v.offsetPointer, v.stride, v.offsetPointer, v.stride)
         }
       }
     }
@@ -136,7 +136,7 @@ trait CuVectorKernels { this: CuVector.type =>
         def apply(v: CuVector[T], v2: CuVector[T]): CuVector[T] = {
           require(v.length == v2.length, "Dimension mismatch!")
           val res = CuVector.create[T](v.length)
-          kern((512, 20), (32, 1))(v.length, res.offsetPointer, res.stride, v.offsetPointer, v.stride, v2.offsetPointer, v2.stride)
+          kern((512, 1), (32, 1))(v.length, res.offsetPointer, res.stride, v.offsetPointer, v.stride, v2.offsetPointer, v2.stride)
           res
         }
       }
@@ -153,7 +153,7 @@ trait CuVectorKernels { this: CuVector.type =>
       new UFunc.InPlaceImpl2[K, CuVector[T], CuVector[T]] {
         def apply(v: CuVector[T], v2: CuVector[T]) {
           require(v.length == v2.length, "Dimension mismatch!")
-          kern((512, 20), (32, 1, 1))(v.length, v.offsetPointer, v.stride, v.offsetPointer, v.stride, v2.offsetPointer, v2.stride)
+          kern((512, 1), (32, 1, 1))(v.length, v.offsetPointer, v.stride, v.offsetPointer, v.stride, v2.offsetPointer, v2.stride)
         }
       }
     }
@@ -186,7 +186,7 @@ trait CuVectorKernels { this: CuVector.type =>
       new UFunc.InPlaceImpl2[K, CuVector[T], T] {
         def apply(v: CuVector[T], v2: T) = {
           val res = v
-          kern((512, 20), (32, 1, 1))(v.length, res.offsetPointer, res.stride, v.offsetPointer, v.stride, v2)
+          kern((512, 1), (32, 1, 1))(v.length, res.offsetPointer, res.stride, v.offsetPointer, v.stride, v2)
         }
       }
     }
@@ -202,7 +202,7 @@ trait CuVectorKernels { this: CuVector.type =>
       new UFunc.UImpl2[K, T, CuVector[T], CuVector[T]] {
         def apply(v2: T, v: CuVector[T]): CuVector[T] = {
           val res = CuVector.create[T](v.length)
-          kern((512, 20), (32, 1, 1))(v.length, res.offsetPointer, res.stride, v2, v.offsetPointer, v.stride)
+          kern((512, 1), (32, 1, 1))(v.length, res.offsetPointer, res.stride, v2, v.offsetPointer, v.stride)
           res
         }
       }

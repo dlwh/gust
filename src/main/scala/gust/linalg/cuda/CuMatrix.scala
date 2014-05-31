@@ -17,6 +17,7 @@ import breeze.math.{Semiring, Ring}
 import breeze.numerics._
 import breeze.generic.UFunc
 import breeze.generic.UFunc.InPlaceImpl2
+import breeze.stats.distributions.{Rand, RandBasis}
 
 /**
  * TODO
@@ -256,12 +257,13 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
     mat
   }
 
-  def rand(rows: Int, cols: Int) = {
+
+  def rand(rows: Int, cols: Int)(implicit rand: RandBasis = Rand) = {
     import jcuda.jcurand.JCurand._
     val mat = new CuMatrix[Float](rows, cols)
     val generator = new curandGenerator()
     curandCreateGenerator(generator, curandRngType.CURAND_RNG_PSEUDO_DEFAULT)
-    curandSetPseudoRandomGeneratorSeed(generator, 1234)
+    curandSetPseudoRandomGeneratorSeed(generator, rand.randInt.draw())
 
     curandGenerateUniform(generator, mat.data.toCuPointer, rows * cols)
     curandDestroyGenerator(generator)

@@ -1,3 +1,6 @@
+__device__ inline TYPE negate(TYPE a) { return -a;}
+
+MAP_FUN_1(negate, TYPE)
 MAP_FUN_1(acos, TYPE)
 MAP_FUN_1(acosh, TYPE)
 MAP_FUN_1(asin, TYPE)
@@ -45,6 +48,7 @@ MAP_FUN_1(tgamma, TYPE)
 MAP_FUN_1(trunc, TYPE)
 MAP_FUN_1(y0, TYPE)
 MAP_FUN_1(y1, TYPE)
+
 
 __device__ inline TYPE add(TYPE a, TYPE b) { return a + b; }
 __device__ inline TYPE sub(TYPE a, TYPE b) { return a - b; }

@@ -16,6 +16,7 @@ import gust.util.cuda
 import breeze.numerics._
 import breeze.generic.UFunc.{UImpl, UImpl2, InPlaceImpl2}
 import jcuda.driver.CUstream
+import breeze.stats.distributions.{RandBasis, Rand}
 
 /**
  * A gpu side dense vector
@@ -48,7 +49,8 @@ class CuVector[V](val data: Pointer[V],
   }
 
 
-  def writeFrom(b: CuVector[V])(implicit stream: CUstream = new CUstream(), blas: cublasHandle) = {
+
+  def writeFrom(b: CuVector[V])(implicit stream: CUstream = new CUstream()) = {
     require(b.length == this.length, "Matrices must have same number of length")
 
     val aPtr = offsetPointer
@@ -71,8 +73,25 @@ class CuVector[V](val data: Pointer[V],
 
     }
 
+  }
+
+  def writeFromDense(b: DenseVector[V]): Int = {
+    require(b.length == this.length, "Matrices must have same number of length")
 
 
+    val bPtr = cuda.cuPointerToArray(b.data)
+
+
+    JCuda.cudaMemcpy2D(data.toCuPointer.withByteOffset(offset * elemSize),
+      stride * elemSize,
+      bPtr.withByteOffset(offset * elemSize),
+      b.stride * elemSize,
+      1 * elemSize,
+      length,
+      cudaMemcpyKind.cudaMemcpyHostToDevice
+    )
+
+    JCuda.cudaFreeHost(bPtr)
 
   }
 
@@ -106,6 +125,12 @@ object CuVector extends CuVectorFuns {
     mat
   }
 
+  def fromDense[V<:AnyVal](mat: DenseVector[V])(implicit ct: ClassTag[V], blas: cublasHandle) = {
+    val g = new CuVector[V](mat.length)
+    g := mat
+    g
+  }
+
   /**
    * Doesn't zero the matrix.
    */
@@ -116,12 +141,12 @@ object CuVector extends CuVectorFuns {
     mat
   }
 
-  def rand(length: Int) = {
+  def rand(length: Int)(implicit rand: RandBasis = Rand) = {
     import jcuda.jcurand.JCurand._
     val mat = new CuVector[Float](length)
     val generator = new curandGenerator()
     curandCreateGenerator(generator, curandRngType.CURAND_RNG_PSEUDO_DEFAULT)
-    curandSetPseudoRandomGeneratorSeed(generator, 1234)
+    curandSetPseudoRandomGeneratorSeed(generator, rand.randInt.draw())
 
     curandGenerateUniform(generator, mat.data.toCuPointer, length)
     curandDestroyGenerator(generator)
@@ -320,11 +345,17 @@ trait CuVectorFuns extends CuVectorKernels { this: CuVector.type =>
   implicit def minRowImpl[T](implicit broker: KernelBroker[T]) =  broker.rowReducerFor[min.type]("min")
   */
 
-  class SetCuMCuMVOp[V](implicit handle: cublasHandle) extends OpSet.InPlaceImpl2[CuVector[V], CuVector[V]] {
+  class SetCuMCuMVOp[V] extends OpSet.InPlaceImpl2[CuVector[V], CuVector[V]] {
     def apply(a: CuVector[V], b: CuVector[V]) {
       a.writeFrom(b.asInstanceOf[CuVector[V]])
     }
   }
 
-  implicit def setCuMCuMOp[V](implicit handle: cublasHandle):OpSet.InPlaceImpl2[CuVector[V], CuVector[V]] = new SetCuMCuMVOp[V]()
+  implicit def setCuMCuMOp[V]:OpSet.InPlaceImpl2[CuVector[V], CuVector[V]] = new SetCuMCuMVOp[V]()
+
+  implicit def setMDM[V](implicit stream: CUstream = new CUstream()): OpSet.InPlaceImpl2[CuVector[V], DenseVector[V]] = new OpSet.InPlaceImpl2[CuVector[V], DenseVector[V]] {
+    def apply(v: CuVector[V], v2: DenseVector[V]): Unit = {
+      v.writeFromDense(v2)
+    }
+  }
 }

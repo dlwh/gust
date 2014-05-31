@@ -17,9 +17,9 @@ libraryDependencies ++= Seq(
   "org.scalanlp" % "jcurand" % "0.5.5"
 )
 
-// fork := true
+ fork := true
 
-javaOptions ++= Seq("-Xmx12g")
+javaOptions ++= Seq("-Xmx4g", "-Xrunhprof:cpu=samples,depth=12")
 
 resolvers ++= Seq(
   "Scala Tools Snapshots" at "http://scala-tools.org/repo-snapshots/",
