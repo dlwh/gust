@@ -5,7 +5,6 @@ import breeze.linalg.operators._
 import breeze.linalg._
 import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
 import org.bridj.Pointer
-import scala.reflect.ClassTag
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
 import gust.util.cuda
@@ -16,6 +15,7 @@ import jcuda.jcurand.{curandRngType, curandGenerator}
 import breeze.math.{Semiring, Ring}
 import breeze.numerics._
 import breeze.generic.UFunc
+import scala.reflect._
 
 /**
  * TODO
@@ -207,6 +207,8 @@ class CuMatrix[V](val rows: Int,
 
   def copy: CuMatrix[V] = ???
 
+  // for now only Double
+  def \(B: CuMatrix[Double]) = CuMethods.solve2(this.asInstanceOf[CuMatrix[Double]], B)
 
   /**
    * Method for slicing that is tuned for Matrices.
