@@ -10,13 +10,14 @@ libraryDependencies ++= Seq(
   "junit" % "junit" % "4.5" % "test",
   "org.scalanlp" %% "breeze-macros" % "0.3" % "compile",
   "org.scalanlp" %% "breeze" % "0.8.1",
-  "org.scalatest" %% "scalatest" % "2.0.M5b",
+  "org.scalatest" %% "scalatest" % "2.1.3" % "test",
   "com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
+  "org.scalacheck" %% "scalacheck" % "1.11.3" % "test",
   "org.scalanlp" % "jcublas2" % "0.5.5",
   "org.scalanlp" % "jcurand" % "0.5.5"
 )
 
-fork := true
+// fork := true
 
 javaOptions ++= Seq("-Xmx12g")
 
