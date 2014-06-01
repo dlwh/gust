@@ -208,7 +208,7 @@ class CuMatrix[V](val rows: Int,
   def copy: CuMatrix[V] = ???
 
   // for now only Double
-  def \(B: CuMatrix[Double]) = CuMethods.solve2(this.asInstanceOf[CuMatrix[Double]], B)
+  //def \(B: CuMatrix[Double]) = CuMethods.solve2(this.asInstanceOf[CuMatrix[Double]], B)
 
   /**
    * Method for slicing that is tuned for Matrices.
@@ -276,7 +276,6 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
     g := mat
     g
   }
-
 
   /*
 
@@ -754,6 +753,23 @@ trait CuMatrixOps { this: CuMatrix.type =>
         b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
         hostZero, rv.data.toCuPointer, rv.rows)
       rv
+    }
+  }
+
+
+  implicit object canSolveCuMatrixDouble extends OpSolveMatrixBy.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
+
+    def apply(_a: CuMatrix[Double], _b: CuMatrix[Double]) = {
+      import _a.blas
+      CuMethods.solveDouble(_a, _b)
+    }
+  }
+
+  implicit object canSolveCuMatrixFloat extends OpSolveMatrixBy.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+
+    def apply(_a: CuMatrix[Float], _b: CuMatrix[Float]) = {
+      import _a.blas
+      CuMethods.solveFloat(_a, _b)
     }
   }
 }

@@ -268,5 +268,15 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert(min(cumat) === min(rand))
   }
 
-
+//  test("Gaussian solve") { (_handle: cublasHandle) =>
+//    implicit val handle = _handle
+//    val a: DenseMatrix[Double] = DenseMatrix((1.0, 2.0, 3.0), (4.0, 5.0, 6.0), (7.0, 8.0, 9.0))
+//    val b: DenseMatrix[Double] = DenseMatrix((1.0), (2.0), (3.0))
+//    val A: CuMatrix[Double] = CuMatrix.fromDense(a)
+//    val B: CuMatrix[Double] = CuMatrix.fromDense(b)
+//
+//    val Result = CuMethods.solveDouble(A, B)
+//    assert(Result != null)
+//
+//  }
 }
