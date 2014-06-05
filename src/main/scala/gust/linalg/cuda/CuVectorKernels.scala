@@ -45,11 +45,10 @@ trait CuVectorKernels { this: CuVector.type =>
       }
     }
 
-    /*
     def reducerFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, CuVector[T], T] = {
       var kern = reduceCache.get(funName)
       if(kern == null) {
-        kern = module.getKernel5[Int, Int, Pointer, Pointer, Int](s"reduce_${funName}_$typeName")
+        kern = module.getKernel4[Int, Pointer, Pointer, Int](s"reduce_${funName}_$typeName")
         reduceCache.put(funName, kern)
       }
 
@@ -58,56 +57,27 @@ trait CuVectorKernels { this: CuVector.type =>
 
       new UFunc.UImpl[K, CuVector[T], T] {
         def apply(v: CuVector[T]): T = {
-          val tmpRows = 20
-          val tmpCols = 512
-          val tmp = CuVector.create[T](tmpRows, tmpCols)
-          kern((tmpCols, tmpRows), (32, 1), 32 * 1 * byteSize.toInt)(v.length, tmp.offsetPointer, v.offsetPointer, v.stride)
-          kern(1, (32, 1))(tmpCols * tmpRows, 1, tmp.offsetPointer, tmp.offsetPointer, 1)
-          tmp(0 to 0, 0 to 0).toDense.apply(0,0)
+          if(v.length > 1024) {
+            // TODO TUNE
+            val tmpCols = 512
+            val tmp = CuVector.create[T](tmpCols)
+            kern(tmpCols, (32, 1), 32 * 1 * byteSize.toInt)(v.length, tmp.offsetPointer, v.offsetPointer, v.stride)
+            kern(1, (32, 1))(tmp.length, tmp.offsetPointer, tmp.offsetPointer, 1)
+            val res = tmp(0 to 0).toDense.apply(0)
+            tmp.data.release()
+            res
+          } else {
+            val tmp = CuVector.create[T](1)
+            kern(1, (32, 1))(v.length, tmp.offsetPointer, v.offsetPointer, v.stride)
+            val res = tmp(0 to 0).toDense.apply(0)
+            tmp.data.release()
+            res
+          }
         }
       }
     }
 
-    def colReducerFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, BroadcastedColumns[CuVector[T], CuVector[T]], CuVector[T]] = {
-      var kern = colReduceCache.get(funName)
-      if(kern == null) {
-        kern = module.getKernel5[Int, Int, Pointer, Pointer, Int](s"reduce_col_${funName}_$typeName")
-        colReduceCache.put(funName, kern)
-      }
 
-      val byteSize = org.bridj.BridJ.sizeOf(implicitly[ClassTag[T]].runtimeClass)
-
-
-      new UFunc.UImpl[K, BroadcastedColumns[CuVector[T], CuVector[T]], CuVector[T]] {
-        def apply(vx: BroadcastedColumns[CuVector[T], CuVector[T]]) = {
-          val v = vx.underlying
-          val tmp = CuVector.create[T](1, v.cols)
-          kern((512, 1), (32, 1), 32 * 1 * byteSize.toInt)(v.length, tmp.offsetPointer, v.offsetPointer, v.stride)
-          tmp
-        }
-      }
-    }
-
-    def rowReducerFor[K<:UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext):UFunc.UImpl[K, BroadcastedRows[CuVector[T], CuVector[T]], CuVector[T]] = {
-      var kern = rowReduceCache.get(funName)
-      if(kern == null) {
-        kern = module.getKernel5[Int, Int, Pointer, Pointer, Int](s"reduce_row_${funName}_$typeName")
-        rowReduceCache.put(funName, kern)
-      }
-
-      val byteSize = org.bridj.BridJ.sizeOf(implicitly[ClassTag[T]].runtimeClass)
-
-
-      new UFunc.UImpl[K, BroadcastedRows[CuVector[T], CuVector[T]], CuVector[T]] {
-        def apply(vx: BroadcastedRows[CuVector[T], CuVector[T]]) = {
-          val v = vx.underlying
-          val tmp = CuVector.create[T](v.rows, 1)
-          kern((512, 1), (32, 1), 32 * 1 * byteSize.toInt)(v.length, tmp.offsetPointer, v.offsetPointer, v.stride)
-          tmp
-        }
-      }
-    }
-    */
 
     def inPlaceImplFor[K <: UFunc](funName: String)(implicit context: CuContext = CuContext.ensureContext): UFunc.InPlaceImpl[K, CuVector[T]] = {
       var kern = implCache.get(funName)

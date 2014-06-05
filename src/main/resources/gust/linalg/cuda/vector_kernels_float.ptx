@@ -8,8 +8,8 @@
 .target sm_30
 .address_size 64
 
-	.file	1 "/Users/dlwh/src/gust/src/main/resources/gust/linalg/cuda/vector_kernels_float.cu", 1401490815, 2990
-	.file	2 "/Users/dlwh/src/gust/src/main/resources/gust/linalg/cuda/function_decls.cuh", 1401488098, 1803
+	.file	1 "/Users/dlwh/src/gust/src/main/resources/gust/linalg/cuda/vector_kernels_float.cu", 1401944104, 2965
+	.file	2 "/Users/dlwh/src/gust/src/main/resources/gust/linalg/cuda/function_decls.cuh", 1401505007, 1803
 	.file	3 "/Developer/NVIDIA/CUDA-5.5/bin//../include/math_functions.h", 1378419394, 390673
 	.file	4 "/Developer/NVIDIA/CUDA-5.5/bin//../include/device_functions.h", 1378419394, 185228
 	.file	5 "/Developer/NVIDIA/CUDA-5.5/bin//../include/sm_30_intrinsics.h", 1378419394, 6616
@@ -11404,7 +11404,7 @@ BB74_3:
 {
 	.reg .pred 	%p<6>;
 	.reg .f32 	%f<13>;
-	.reg .s32 	%r<30>;
+	.reg .s32 	%r<25>;
 	.reg .s64 	%rd<9>;
 
 
@@ -11415,12 +11415,12 @@ BB74_3:
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
 	.loc 2 70 1
-	mov.u32 	%r1, %ntid.y;
-	mov.u32 	%r2, %ctaid.y;
-	mov.u32 	%r13, %tid.y;
-	mad.lo.s32 	%r28, %r1, %r2, %r13;
+	mov.u32 	%r1, %ntid.x;
+	mov.u32 	%r2, %ctaid.x;
+	mov.u32 	%r3, %tid.x;
+	mad.lo.s32 	%r23, %r1, %r2, %r3;
 	.loc 2 70 1
-	setp.lt.s32	%p1, %r28, %r11;
+	setp.lt.s32	%p1, %r23, %r11;
 	@%p1 bra 	BB75_2;
 
 	mov.f32 	%f12, 0f00000000;
@@ -11428,65 +11428,60 @@ BB74_3:
 
 BB75_2:
 	.loc 2 70 24
-	mov.u32 	%r14, %nctaid.y;
-	mul.lo.s32 	%r4, %r14, %r1;
+	mov.u32 	%r13, %nctaid.x;
+	mul.lo.s32 	%r5, %r13, %r1;
 	mov.f32 	%f12, 0f00000000;
 
 BB75_3:
 	.loc 2 70 1
-	mul.lo.s32 	%r15, %r28, %r12;
-	mul.wide.s32 	%rd5, %r15, 4;
+	mul.lo.s32 	%r14, %r23, %r12;
+	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
 	ld.global.f32 	%f9, [%rd6];
 	add.f32 	%f12, %f12, %f9;
 	.loc 2 70 24
-	add.s32 	%r28, %r4, %r28;
+	add.s32 	%r23, %r5, %r23;
 	.loc 2 70 1
-	setp.lt.s32	%p2, %r28, %r11;
+	setp.lt.s32	%p2, %r23, %r11;
 	@%p2 bra 	BB75_3;
 
 BB75_4:
 	.loc 2 70 1
 	bar.sync 	0;
 	.loc 2 70 1
-	mov.u32 	%r7, %ntid.x;
-	setp.lt.u32	%p3, %r7, 2;
+	setp.lt.u32	%p3, %r1, 2;
 	@%p3 bra 	BB75_7;
 
 	.loc 2 70 1
-	mov.u32 	%r17, WARP_SZ;
-	mov.u32 	%r18, 32;
+	mov.u32 	%r16, WARP_SZ;
+	mov.u32 	%r17, 32;
 	.loc 5 140 1
-	sub.s32 	%r19, %r18, %r17;
-	shl.b32 	%r20, %r19, 8;
-	or.b32  	%r8, %r20, 31;
-	mov.u32 	%r29, 1;
+	sub.s32 	%r18, %r17, %r16;
+	shl.b32 	%r19, %r18, 8;
+	or.b32  	%r8, %r19, 31;
+	mov.u32 	%r24, 1;
 
 BB75_6:
 	.loc 5 141 1
 	// inline asm
-	shfl.down.b32 %f10, %f12, %r29, %r8;
+	shfl.down.b32 %f10, %f12, %r24, %r8;
 	// inline asm
 	.loc 2 70 1
 	add.f32 	%f12, %f12, %f10;
 	.loc 2 70 40
-	shl.b32 	%r29, %r29, 1;
+	shl.b32 	%r24, %r24, 1;
 	.loc 2 70 1
-	setp.lt.u32	%p4, %r29, %r7;
+	setp.lt.u32	%p4, %r24, %r1;
 	@%p4 bra 	BB75_6;
 
 BB75_7:
 	.loc 2 70 1
-	mov.u32 	%r23, %tid.x;
-	and.b32  	%r24, %r23, 31;
-	setp.ne.s32	%p5, %r24, 0;
+	and.b32  	%r22, %r3, 31;
+	setp.ne.s32	%p5, %r22, 0;
 	@%p5 bra 	BB75_9;
 
 	.loc 2 70 1
-	mov.u32 	%r25, %ctaid.x;
-	mov.u32 	%r26, %nctaid.y;
-	mad.lo.s32 	%r27, %r26, %r25, %r2;
-	mul.wide.u32 	%rd7, %r27, 4;
+	mul.wide.u32 	%rd7, %r2, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	st.global.f32 	[%rd8], %f12;
 
@@ -11504,7 +11499,7 @@ BB75_9:
 {
 	.reg .pred 	%p<6>;
 	.reg .f32 	%f<13>;
-	.reg .s32 	%r<30>;
+	.reg .s32 	%r<25>;
 	.reg .s64 	%rd<9>;
 
 
@@ -11515,12 +11510,12 @@ BB75_9:
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
 	.loc 2 71 1
-	mov.u32 	%r1, %ntid.y;
-	mov.u32 	%r2, %ctaid.y;
-	mov.u32 	%r13, %tid.y;
-	mad.lo.s32 	%r28, %r1, %r2, %r13;
+	mov.u32 	%r1, %ntid.x;
+	mov.u32 	%r2, %ctaid.x;
+	mov.u32 	%r3, %tid.x;
+	mad.lo.s32 	%r23, %r1, %r2, %r3;
 	.loc 2 71 1
-	setp.lt.s32	%p1, %r28, %r11;
+	setp.lt.s32	%p1, %r23, %r11;
 	@%p1 bra 	BB76_2;
 
 	mov.f32 	%f12, 0fFF800000;
@@ -11528,66 +11523,61 @@ BB75_9:
 
 BB76_2:
 	.loc 2 71 24
-	mov.u32 	%r14, %nctaid.y;
-	mul.lo.s32 	%r4, %r14, %r1;
+	mov.u32 	%r13, %nctaid.x;
+	mul.lo.s32 	%r5, %r13, %r1;
 	mov.f32 	%f12, 0fFF800000;
 
 BB76_3:
 	.loc 2 71 1
-	mul.lo.s32 	%r15, %r28, %r12;
-	mul.wide.s32 	%rd5, %r15, 4;
+	mul.lo.s32 	%r14, %r23, %r12;
+	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
 	ld.global.f32 	%f9, [%rd6];
 	.loc 4 2770 10
 	max.f32 	%f12, %f12, %f9;
 	.loc 2 71 24
-	add.s32 	%r28, %r4, %r28;
+	add.s32 	%r23, %r5, %r23;
 	.loc 2 71 1
-	setp.lt.s32	%p2, %r28, %r11;
+	setp.lt.s32	%p2, %r23, %r11;
 	@%p2 bra 	BB76_3;
 
 BB76_4:
 	.loc 2 71 1
 	bar.sync 	0;
 	.loc 2 71 1
-	mov.u32 	%r7, %ntid.x;
-	setp.lt.u32	%p3, %r7, 2;
+	setp.lt.u32	%p3, %r1, 2;
 	@%p3 bra 	BB76_7;
 
 	.loc 2 71 1
-	mov.u32 	%r17, WARP_SZ;
-	mov.u32 	%r18, 32;
+	mov.u32 	%r16, WARP_SZ;
+	mov.u32 	%r17, 32;
 	.loc 5 140 1
-	sub.s32 	%r19, %r18, %r17;
-	shl.b32 	%r20, %r19, 8;
-	or.b32  	%r8, %r20, 31;
-	mov.u32 	%r29, 1;
+	sub.s32 	%r18, %r17, %r16;
+	shl.b32 	%r19, %r18, 8;
+	or.b32  	%r8, %r19, 31;
+	mov.u32 	%r24, 1;
 
 BB76_6:
 	.loc 5 141 1
 	// inline asm
-	shfl.down.b32 %f10, %f12, %r29, %r8;
+	shfl.down.b32 %f10, %f12, %r24, %r8;
 	// inline asm
 	.loc 4 2770 10
 	max.f32 	%f12, %f12, %f10;
 	.loc 2 71 40
-	shl.b32 	%r29, %r29, 1;
+	shl.b32 	%r24, %r24, 1;
 	.loc 2 71 1
-	setp.lt.u32	%p4, %r29, %r7;
+	setp.lt.u32	%p4, %r24, %r1;
 	@%p4 bra 	BB76_6;
 
 BB76_7:
 	.loc 2 71 1
-	mov.u32 	%r23, %tid.x;
-	and.b32  	%r24, %r23, 31;
-	setp.ne.s32	%p5, %r24, 0;
+	and.b32  	%r22, %r3, 31;
+	setp.ne.s32	%p5, %r22, 0;
 	@%p5 bra 	BB76_9;
 
 	.loc 2 71 1
-	mov.u32 	%r25, %ctaid.x;
-	mov.u32 	%r26, %nctaid.y;
-	mad.lo.s32 	%r27, %r26, %r25, %r2;
-	mul.wide.u32 	%rd7, %r27, 4;
+	mul.wide.u32 	%rd7, %r2, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	st.global.f32 	[%rd8], %f12;
 
@@ -11605,7 +11595,7 @@ BB76_9:
 {
 	.reg .pred 	%p<6>;
 	.reg .f32 	%f<13>;
-	.reg .s32 	%r<30>;
+	.reg .s32 	%r<25>;
 	.reg .s64 	%rd<9>;
 
 
@@ -11616,12 +11606,12 @@ BB76_9:
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
 	.loc 2 72 1
-	mov.u32 	%r1, %ntid.y;
-	mov.u32 	%r2, %ctaid.y;
-	mov.u32 	%r13, %tid.y;
-	mad.lo.s32 	%r28, %r1, %r2, %r13;
+	mov.u32 	%r1, %ntid.x;
+	mov.u32 	%r2, %ctaid.x;
+	mov.u32 	%r3, %tid.x;
+	mad.lo.s32 	%r23, %r1, %r2, %r3;
 	.loc 2 72 1
-	setp.lt.s32	%p1, %r28, %r11;
+	setp.lt.s32	%p1, %r23, %r11;
 	@%p1 bra 	BB77_2;
 
 	mov.f32 	%f12, 0f7F800000;
@@ -11629,66 +11619,61 @@ BB76_9:
 
 BB77_2:
 	.loc 2 72 24
-	mov.u32 	%r14, %nctaid.y;
-	mul.lo.s32 	%r4, %r14, %r1;
+	mov.u32 	%r13, %nctaid.x;
+	mul.lo.s32 	%r5, %r13, %r1;
 	mov.f32 	%f12, 0f7F800000;
 
 BB77_3:
 	.loc 2 72 1
-	mul.lo.s32 	%r15, %r28, %r12;
-	mul.wide.s32 	%rd5, %r15, 4;
+	mul.lo.s32 	%r14, %r23, %r12;
+	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
 	ld.global.f32 	%f9, [%rd6];
 	.loc 4 2765 10
 	min.f32 	%f12, %f12, %f9;
 	.loc 2 72 24
-	add.s32 	%r28, %r4, %r28;
+	add.s32 	%r23, %r5, %r23;
 	.loc 2 72 1
-	setp.lt.s32	%p2, %r28, %r11;
+	setp.lt.s32	%p2, %r23, %r11;
 	@%p2 bra 	BB77_3;
 
 BB77_4:
 	.loc 2 72 1
 	bar.sync 	0;
 	.loc 2 72 1
-	mov.u32 	%r7, %ntid.x;
-	setp.lt.u32	%p3, %r7, 2;
+	setp.lt.u32	%p3, %r1, 2;
 	@%p3 bra 	BB77_7;
 
 	.loc 2 72 1
-	mov.u32 	%r17, WARP_SZ;
-	mov.u32 	%r18, 32;
+	mov.u32 	%r16, WARP_SZ;
+	mov.u32 	%r17, 32;
 	.loc 5 140 1
-	sub.s32 	%r19, %r18, %r17;
-	shl.b32 	%r20, %r19, 8;
-	or.b32  	%r8, %r20, 31;
-	mov.u32 	%r29, 1;
+	sub.s32 	%r18, %r17, %r16;
+	shl.b32 	%r19, %r18, 8;
+	or.b32  	%r8, %r19, 31;
+	mov.u32 	%r24, 1;
 
 BB77_6:
 	.loc 5 141 1
 	// inline asm
-	shfl.down.b32 %f10, %f12, %r29, %r8;
+	shfl.down.b32 %f10, %f12, %r24, %r8;
 	// inline asm
 	.loc 4 2765 10
 	min.f32 	%f12, %f12, %f10;
 	.loc 2 72 40
-	shl.b32 	%r29, %r29, 1;
+	shl.b32 	%r24, %r24, 1;
 	.loc 2 72 1
-	setp.lt.u32	%p4, %r29, %r7;
+	setp.lt.u32	%p4, %r24, %r1;
 	@%p4 bra 	BB77_6;
 
 BB77_7:
 	.loc 2 72 1
-	mov.u32 	%r23, %tid.x;
-	and.b32  	%r24, %r23, 31;
-	setp.ne.s32	%p5, %r24, 0;
+	and.b32  	%r22, %r3, 31;
+	setp.ne.s32	%p5, %r22, 0;
 	@%p5 bra 	BB77_9;
 
 	.loc 2 72 1
-	mov.u32 	%r25, %ctaid.x;
-	mov.u32 	%r26, %nctaid.y;
-	mad.lo.s32 	%r27, %r26, %r25, %r2;
-	mul.wide.u32 	%rd7, %r27, 4;
+	mul.wide.u32 	%rd7, %r2, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	st.global.f32 	[%rd8], %f12;
 

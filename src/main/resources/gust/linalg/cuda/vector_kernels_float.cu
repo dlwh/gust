@@ -86,7 +86,7 @@ __global__ void MAKE_NAME(reduce, fun, T) (int length,\
   __shared__ T buffer[32];\
 \
   T sum = identity;\
-  for(int col = threadIdx.y + blockIdx.y * blockDim.y; col < length; col += blockDim.y * gridDim.y) {\
+  for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < length; col += blockDim.x * gridDim.x) {\
     sum = fun(sum, in[col * inStride]);\
   }\
   \
@@ -97,7 +97,7 @@ __global__ void MAKE_NAME(reduce, fun, T) (int length,\
   }\
   \
   if(laneId == 0) {\
-    out[blockIdx.x * gridDim.y + blockIdx.y] = sum;\
+    out[blockIdx.x] = sum;\
   }\
 }
 

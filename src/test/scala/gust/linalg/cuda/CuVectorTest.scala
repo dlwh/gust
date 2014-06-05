@@ -7,7 +7,7 @@ import breeze.math.MutableVectorSpace
 import org.scalatest.prop.Checkers
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import org.scalacheck._
-import breeze.linalg.{DenseVector, convert}
+import breeze.linalg._
 
 /**
  * TODO
@@ -24,6 +24,22 @@ class CuVectorTest extends FunSuite {
     assert((a.dot(a) - ad.dot(ad)).abs < 1E-4)
 
     JCublas2.cublasDestroy(handle)
+  }
+
+  test("max") {
+    val rand = convert(DenseVector.rand(40), Float)
+    val cumat = CuVector.zeros[Float](40)
+    cumat := rand
+    assert(max(cumat) === max(rand))
+  }
+
+  test("softmax") {
+    val rand = convert(DenseVector.rand(40), Float)
+    val cumat = CuVector.zeros[Float](40)
+    cumat := rand
+    val cumax = softmax(cumat)
+    val dmax = softmax(convert(rand, Double))
+    assert(math.abs(cumax - dmax) < 1e-4)
   }
 
 }

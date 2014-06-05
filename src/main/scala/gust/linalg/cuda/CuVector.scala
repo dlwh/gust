@@ -7,7 +7,7 @@ import gust.util.cuda._
 import breeze.generic.UFunc
 import spire.algebra.VectorSpace
 import breeze.math.{Semiring, MutableInnerProductSpace, MutableCoordinateSpace, CoordinateSpace}
-import breeze.linalg.support.{CanCopy, CanCreateZerosLike}
+import breeze.linalg.support.{CanSlice, CanSlice2, CanCopy, CanCreateZerosLike}
 import breeze.linalg.operators._
 import scala.reflect.ClassTag
 import jcuda.runtime.{cudaStream_t, cudaMemcpyKind, JCuda}
@@ -93,6 +93,19 @@ class CuVector[V](val data: Pointer[V],
 
     JCuda.cudaFreeHost(bPtr)
 
+  }
+
+
+  /**
+   * Method for slicing that is tuned for Matrices.
+   * @return
+   */
+  def apply[Slice1, Result](slice1: Slice1)(implicit canSlice: CanSlice[CuVector[V], Slice1, Result]) = {
+    canSlice(this, slice1)
+  }
+
+  def release() = {
+    data.release()
   }
 
 
@@ -201,6 +214,23 @@ object CuVector extends CuVectorFuns {
   implicit def vspaceFloat(implicit handle: cublasHandle) = {
     MutableInnerProductSpace.make[CuVector[Float], Float]
   }
+
+  // slicing
+  implicit def canSlice[V]: CanSlice[CuVector[V], Range, CuVector[V]] = __canSlice.asInstanceOf[CanSlice[CuVector[V], Range, CuVector[V]]]
+
+  private val __canSlice: CanSlice[CuVector[Any], Range, CuVector[Any]]  = {
+    new CanSlice[CuVector[Any], Range, CuVector[Any]] {
+      def apply(v: CuVector[Any], re: Range): CuVector[Any] = {
+
+        val r = re.getRangeWithoutNegativeIndexes( v.length )
+
+        require(r.isEmpty || r.last < v.length)
+        require(r.isEmpty || r.start >= 0)
+        new CuVector(v.data, offset = v.offset + v.stride * r.start, stride = v.stride * r.step, length = r.length)
+      }
+    }
+  }
+
 
 
 }
@@ -331,11 +361,11 @@ trait CuVectorFuns extends CuVectorKernels { this: CuVector.type =>
   implicit def modImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpMod.type]("mod")
   implicit def powImplSV[T](implicit broker: KernelBroker[T]) =  broker.impl2For_s_v[OpPow.type]("pow")
 
-  /*
   implicit def sumImpl[T](implicit broker: KernelBroker[T]) =  broker.reducerFor[sum.type]("add")
   implicit def maxReduceImpl[T](implicit broker: KernelBroker[T]) =  broker.reducerFor[max.type]("max")
   implicit def minReduceImpl[T](implicit broker: KernelBroker[T]) =  broker.reducerFor[min.type]("min")
 
+  /*
   implicit def sumColImpl[T](implicit broker: KernelBroker[T]) =  broker.colReducerFor[sum.type]("add")
   implicit def maxColImpl[T](implicit broker: KernelBroker[T]) =  broker.colReducerFor[max.type]("max")
   implicit def minColImpl[T](implicit broker: KernelBroker[T]) =  broker.colReducerFor[min.type]("min")
@@ -356,6 +386,17 @@ trait CuVectorFuns extends CuVectorKernels { this: CuVector.type =>
   implicit def setMDM[V](implicit stream: CUstream = new CUstream()): OpSet.InPlaceImpl2[CuVector[V], DenseVector[V]] = new OpSet.InPlaceImpl2[CuVector[V], DenseVector[V]] {
     def apply(v: CuVector[V], v2: DenseVector[V]): Unit = {
       v.writeFromDense(v2)
+    }
+  }
+
+  implicit object softmaxImplFloat extends softmax.Impl[CuVector[Float], Float] {
+    override def apply(v: CuVector[Float]): Float = {
+      val m: Float = max(v)
+      val temp = v - m
+      exp.inPlace(temp)
+      val res = log(sum(temp)) + m
+      temp.data.release()
+      res
     }
   }
 }
