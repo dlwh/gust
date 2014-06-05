@@ -1041,4 +1041,50 @@ trait CuMatrixFuns extends CuMatrixKernels { this: CuMatrix.type =>
         op(new CuMatrix(v.rows, v.cols, v2.data, v2.offset, 0, v2.isTranspose), v)
       }
     }
-  }}
+  }
+
+
+  implicit object softmaxImplFloat extends softmax.Impl[CuMatrix[Float], Float] {
+    override def apply(v: CuMatrix[Float]): Float = {
+      val m: Float = max(v)
+      val temp = v - m
+      exp.inPlace(temp)
+      val res = log(sum(temp)) + m
+      temp.data.release()
+      res
+    }
+  }
+
+  // softmax(m(*, ::)) ==> softmaxes each row, given a single column
+  implicit object softmaxRowsImplFloat extends softmax.Impl[BroadcastedRows[CuMatrix[Float], CuMatrix[Float]], CuMatrix[Float]] {
+    override def apply(v: BroadcastedRows[CuMatrix[Float], CuMatrix[Float]]): CuMatrix[Float] = {
+      val m = max(v)
+      val temp = v.underlying(::, *) - m
+      exp.inPlace(temp)
+      val temp2 = sum(temp(*, ::))
+      log.inPlace(temp2)
+      temp2 += m
+      temp.data.release()
+      temp2
+    }
+  }
+
+
+
+  // softmax(m(::, *)) ==> softmaxes each row, given a single column
+  /*
+  implicit object softmaxColumnsImplFloat extends softmax.Impl[BroadcastedColumns[CuMatrix[Float], CuMatrix[Float]], CuMatrix[Float]] {
+    override def apply(v: BroadcastedColumns[CuMatrix[Float], CuMatrix[Float]]): CuMatrix[Float] = {
+      val m = max(v)
+      val temp = v.underlying(*, ::) - m
+      exp.inPlace(temp)
+      val temp2 = sum(temp(::, *))
+      log.inPlace(temp2)
+      temp2 += m
+      temp.data.release()
+      temp2
+    }
+  }
+  */
+
+}

@@ -280,5 +280,28 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert(min(cumat) === min(rand))
   }
 
+  test("softmax") { (_handle: cublasHandle) =>
+    val rand = convert(DenseMatrix.rand(40, 30), Float)
+    val cumat = CuMatrix.zeros[Float](40, 30)
+    cumat := rand
+    val cumax = softmax(cumat)
+    val dmax = softmax(convert(rand, Double))
+    assert(math.abs(cumax - dmax) < 1e-4)
+  }
+
+  test("softmax rows") { (_handle: cublasHandle) =>
+    val rand = DenseMatrix.rand(40, 30)
+    val cumat = CuMatrix.zeros[Float](40, 30)
+    cumat := convert(rand, Float)
+    val cumax = softmax(cumat(*, ::))
+    val dmax = softmax(rand(*, ::))
+
+    val dcumax = cumax.toDense.mapValues(_.toDouble).apply(::, 0)
+
+
+    assert(max(abs(dcumax - dmax)) < 1E-4)
+
+  }
+
 
 }

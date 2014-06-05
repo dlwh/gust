@@ -399,4 +399,6 @@ trait CuVectorFuns extends CuVectorKernels { this: CuVector.type =>
       res
     }
   }
+
+
 }
