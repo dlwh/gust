@@ -22,8 +22,87 @@ class CuMethods {
 }
 
 object CuMethods {
-  // it will basically a collection of static methods.
-  // perhaps they could be incorporated into CuMatrix?
+
+
+  /**
+   * First attempt: LU factorization, based on algorithm from noctua-blog.com
+   * One important thing is that the matrix doesn't have to be square.
+   * This is algorithm uses pivoting.
+   *
+   * Probably the best algorithm here is the one by Volkov and Demmel
+   * but this (with the block approach, which is coming up next) is a good starting point.
+   *
+   * The returned matrix contains both L and U -- diagonal of U is implicit, as in this
+   * variant it's all ones.
+   */
+  def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = {
+    val d_A = CuMatrix.create[Float](A.rows, A.cols)
+    // creating a copy of the matrix
+    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
+      A.data.toCuPointer,
+      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
+
+
+    val M = A.rows
+    val N = A.cols
+    val minDim = if (M < N) M else N
+    val ADataPointer = d_A.data.toCuPointer
+    val es = d_A.elemSize
+    val intRes = Array(0)
+    val intResPtr = jcuda.Pointer.to(intRes)
+    val A_ii = Array(0.0f)
+    val AiiPtr = jcuda.Pointer.to(A_ii)
+    val alpha = Array(0.0f)
+    //val one = Array(1.0f)
+    //val onePtr = jcuda.Pointer.to(one)
+    val minusOne = Array(-1.0f)
+    val minusOnePtr = jcuda.Pointer.to(minusOne)
+
+    val P = Array.ofDim[Int](M)
+
+    cfor(0)(_ < minDim - 1, _ + 1) { i => {
+      JCublas2.cublasIsamax(handle, M - i, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+        1, intResPtr)
+
+      val pivotRow = i - 1 + intRes(0)
+      val ip1 = i + 1
+      P(i) = pivotRow
+      if (pivotRow != i) {
+        JCublas2.cublasSswap(handle, N, ADataPointer.withByteOffset(d_A.linearIndex(pivotRow, 0) * es),
+          M, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), M)
+      }
+
+      JCuda.cudaMemcpy2D(AiiPtr, d_A.majorStride * d_A.elemSize,
+        ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+        d_A.majorStride * es, d_A.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+      //      curesult =  JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+      //                               1, AiiPtr, 1)
+
+      if (Math.abs(A_ii(0)) < 1e-20) {
+        println("Matrix is singular")
+        return A
+      }
+
+      if (ip1 < M) {
+        alpha(0) = 1.0f / A_ii(0)
+        JCublas2.cublasSscal(handle, M - ip1, jcuda.Pointer.to(alpha),
+          ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1)
+      }
+
+      if (ip1 < minDim) {
+        JCublas2.cublasSger(handle, M - ip1, N - ip1, minusOnePtr,
+          ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1,
+          ADataPointer.withByteOffset(d_A.linearIndex(i, ip1) * es), M,
+          ADataPointer.withByteOffset(d_A.linearIndex(ip1, ip1) * es), M)
+
+      }
+    }
+    }
+
+    d_A
+  }
+
+
 
   /** Gauss-Jordan solve of a linear system
     * It is actually quite good for small systems (<= 256**2)
