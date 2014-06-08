@@ -218,6 +218,8 @@ class CuMatrix[V](val rows: Int,
     canSlice(repr, slice1, slice2)
   }
 
+  // to make life easier when debugging
+  override def toString = this.toDense.toString + "\nPointer: " + data.toString
 
 }
 

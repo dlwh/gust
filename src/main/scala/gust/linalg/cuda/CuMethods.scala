@@ -3,12 +3,22 @@ package gust.linalg.cuda
 //import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
 
 
-import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2, cublasDiagType, cublasFillMode}
+import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2, cublasDiagType, cublasFillMode, cublasSideMode}
 import gust.util.cuda
 import jcuda.runtime.{cudaError, cudaMemcpyKind, cudaStream_t, JCuda}
 import cuda._
+import breeze.linalg.operators._
+import breeze.linalg._
+import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
+import org.bridj.Pointer
 
-//import jcuda.jcurand.{curandRngType, curandGenerator}
+import jcuda.driver.CUstream
+import jcuda.jcurand.{curandRngType, curandGenerator}
+import breeze.math.{Semiring, Ring}
+import breeze.numerics._
+import breeze.generic.UFunc
+import scala.reflect._
+
 
 import spire.syntax.cfor._
 
@@ -32,100 +42,111 @@ object CuMethods {
    * Probably the best algorithm here is the one by Volkov and Demmel
    * but this (with the block approach, which is coming up next) is a good starting point.
    *
-   * The returned matrix contains both L and U -- diagonal of U is implicit, as in this
+   * The returned matrix contains both L and U -- diagonal of L is implicit, as in this
    * variant it's all ones.
    */
-  def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = {
+  def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
+
+    if (A.rows != A.cols) {
+      println("A has to be a square matrix.")
+      return (A, CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))) // got to return something, perhaps
+                                                                     // an eye is better than null
+    }
+
     val d_A = CuMatrix.create[Float](A.rows, A.cols)
-    // creating a copy of the matrix
-    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
-      A.data.toCuPointer,
-      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
+    d_A := A
 
+    val P = CuMatrix.create[Int](d_A.rows, 1)
+    val info = CuMatrix.create[Int](1, 1)
 
-    val M = A.rows
-    val N = A.cols
-    val minDim = if (M < N) M else N
-    val ADataPointer = d_A.data.toCuPointer
-    val es = d_A.elemSize
-    val intRes = Array(0)
-    val intResPtr = jcuda.Pointer.to(intRes)
-    val A_ii = Array(0.0f)
-    val AiiPtr = jcuda.Pointer.to(A_ii)
-    val alpha = Array(0.0f)
-    //val one = Array(1.0f)
-    //val onePtr = jcuda.Pointer.to(one)
-    val minusOne = Array(-1.0f)
-    val minusOnePtr = jcuda.Pointer.to(minusOne)
+    val A_ptr = jcuda.Pointer.to(d_A.offsetPointer)
+    val d_Aptr = new jcuda.Pointer()
 
-    val P = Array.ofDim[Int](M)
+    JCuda.cudaMalloc(d_Aptr, jcuda.Sizeof.POINTER)
+    JCuda.cudaMemcpy(d_Aptr, A_ptr, 1 * jcuda.Sizeof.POINTER, cudaMemcpyKind.cudaMemcpyHostToDevice)
 
-    cfor(0)(_ < minDim - 1, _ + 1) { i => {
-      JCublas2.cublasIsamax(handle, M - i, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
-        1, intResPtr)
+    JCublas2.cublasSgetrfBatched(handle, d_A.rows, d_Aptr, d_A.majorSize,
+                                 P.offsetPointer, info.offsetPointer, 1)
 
-      val pivotRow = i - 1 + intRes(0)
-      val ip1 = i + 1
-      P(i) = pivotRow
-      if (pivotRow != i) {
-        JCublas2.cublasSswap(handle, N, ADataPointer.withByteOffset(d_A.linearIndex(pivotRow, 0) * es),
-          M, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), M)
+    // transforming permutation vector into permutation matrix
+    val h_P = P.toDense
+    // this could be done with a trick: cublasSetVector with incy = PM.majorSize + 1,
+    // but I can't get CuMatrix.ones to work right now
+    val PM = CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))
+
+    // and now swap the rows in the eye:
+    cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
+      if (h_P(i, 0) != i + 1) {   // the returned vector uses 1-based indexing
+        JCublas2.cublasSswap(handle, PM.cols,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(i, 0) * PM.elemSize), PM.majorSize,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(h_P(i, 0) - 1, 0) * PM.elemSize), PM.majorSize)
       }
+    }}
 
-      JCuda.cudaMemcpy2D(AiiPtr, d_A.majorStride * d_A.elemSize,
-        ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
-        d_A.majorStride * es, d_A.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
-      //      curesult =  JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
-      //                               1, AiiPtr, 1)
-
-      if (Math.abs(A_ii(0)) < 1e-20) {
-        println("Matrix is singular")
-        return A
-      }
-
-      if (ip1 < M) {
-        alpha(0) = 1.0f / A_ii(0)
-        JCublas2.cublasSscal(handle, M - ip1, jcuda.Pointer.to(alpha),
-          ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1)
-      }
-
-      if (ip1 < minDim) {
-        JCublas2.cublasSger(handle, M - ip1, N - ip1, minusOnePtr,
-          ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1,
-          ADataPointer.withByteOffset(d_A.linearIndex(i, ip1) * es), M,
-          ADataPointer.withByteOffset(d_A.linearIndex(ip1, ip1) * es), M)
-
-      }
-    }
-    }
-
-    d_A
+    (d_A, PM)
   }
 
+  def LUDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
+
+    if (A.rows != A.cols) {
+      println("A has to be a square matrix.")
+      return (A, CuMatrix.fromDense(DenseMatrix.eye[Double](A.rows)))
+    }
+
+    val d_A = CuMatrix.create[Double](A.rows, A.cols)
+    d_A := A
+
+    val P = CuMatrix.create[Int](d_A.rows, 1)
+    val info = CuMatrix.create[Int](1, 1)
+
+    val A_ptr = jcuda.Pointer.to(d_A.offsetPointer)
+    val d_Aptr = new jcuda.Pointer()
+
+    JCuda.cudaMalloc(d_Aptr, jcuda.Sizeof.POINTER)
+    JCuda.cudaMemcpy(d_Aptr, A_ptr, 1 * jcuda.Sizeof.POINTER, cudaMemcpyKind.cudaMemcpyHostToDevice)
+
+    JCublas2.cublasDgetrfBatched(handle, d_A.rows, d_Aptr, d_A.majorSize,
+      P.offsetPointer, info.offsetPointer, 1)
+
+    val h_P = P.toDense
+    val PM = CuMatrix.fromDense(DenseMatrix.eye[Double](A.rows))
+
+    cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
+      if (h_P(i, 0) != i + 1) {   // the returned vector uses 1-based indexing
+        JCublas2.cublasDswap(handle, PM.cols,
+                             PM.offsetPointer.withByteOffset(PM.linearIndex(i, 0) * PM.elemSize), PM.majorSize,
+                             PM.offsetPointer.withByteOffset(PM.linearIndex(h_P(i, 0) - 1, 0) * PM.elemSize), PM.majorSize)
+      }
+    }}
+
+    (d_A, PM)
+  }
 
 
   /** Gauss-Jordan solve of a linear system
     * It is actually quite good for small systems (<= 256**2)
-    *
+    *s
     * The result ends up in the d_B vector */
-  def solveSlow(d_A: CuMatrix[Double], d_B: CuMatrix[Double])(implicit handle: cublasHandle): Unit = {
-    if (d_A.rows != d_B.rows) {
+  def solveSlow(A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = {
+    if (A.rows != B.rows) {
       println("Number of rows in A must be the same as number of rows in B")
-      return
+      return B
     }
 
-    if (d_B.cols != 1) {
+    if (B.cols != 1) {
       println("B has to be a column vector")
-      return
+      return B
     }
 
-    if (d_A.rows != d_A.cols) {
+    if (A.rows != A.cols) {
       println("A has to be a square matrix")
-      return
+      return B
     }
 
-    //val d_A = A.copy
-    //val d_B = B.copy
+    val d_A = CuMatrix.create[Double](A.rows, A.cols)
+    val d_B = CuMatrix.create[Double](B.rows, B.cols)
+    d_A := A
+    d_B := B
     val N = d_A.rows
     // val e_s = A.elemSize   // elems in A and B are the same size
 
@@ -152,7 +173,7 @@ object CuMethods {
         println("A_ii: " + A_ii(0) + ", i: " + i)
         // this could be solved by pivoting...
         println("Division by (nearly) zero.")
-        return
+        return B
       }
 
       // copies the whole row "under" the element d_A(i, i) to d_R
@@ -192,6 +213,8 @@ object CuMethods {
       cublasDiagType.CUBLAS_DIAG_NON_UNIT, N,
       d_A.data.toCuPointer, d_A.majorSize,
       d_B.data.toCuPointer, 1)
+
+    d_B
   }
 
 
@@ -222,14 +245,16 @@ object CuMethods {
 
     // copy the matrices:
     val d_A = CuMatrix.create[Double](A.rows, A.cols)
-    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
-      A.data.toCuPointer,
-      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
+    d_A := A
+//    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
+//      A.data.toCuPointer,
+//      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
 
     val d_B = CuMatrix.create[Double](B.rows, B.cols)
-    JCuda.cudaMemcpy2D(d_B.data.toCuPointer, B.elemSize,
-      B.data.toCuPointer,
-      B.elemSize, B.elemSize, B.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
+    d_B := B
+//    JCuda.cudaMemcpy2D(d_B.data.toCuPointer, B.elemSize,
+//      B.data.toCuPointer,
+//      B.elemSize, B.elemSize, B.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
 
     val N = d_A.rows
     val matrixBlockSize = 256
@@ -248,9 +273,9 @@ object CuMethods {
     val minusOnePtr = jcuda.Pointer.to(minusOne)
 
     val d_R = CuMatrix.zeros[Double](N, matrixBlockSize)
-    val AMemPointer = d_A.data.toCuPointer
-    val BMemPointer = d_B.data.toCuPointer
-    val RMemPointer = d_R.data.toCuPointer
+    val AMemPointer = d_A.offsetPointer
+    val BMemPointer = d_B.offsetPointer
+    val RMemPointer = d_R.offsetPointer
     val es = d_A.elemSize
 
     val vectAii = Array.ofDim[Double](N)
@@ -490,14 +515,16 @@ object CuMethods {
 
     // copy the matrices:
     val d_A = CuMatrix.create[Float](A.rows, A.cols)
-    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
-      A.data.toCuPointer,
-      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
+    d_A := A
+//    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
+//      A.data.toCuPointer,
+//      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
 
     val d_B = CuMatrix.create[Float](B.rows, B.cols)
-    JCuda.cudaMemcpy2D(d_B.data.toCuPointer, B.elemSize,
-      B.data.toCuPointer,
-      B.elemSize, B.elemSize, B.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
+    d_B := B
+//    JCuda.cudaMemcpy2D(d_B.data.toCuPointer, B.elemSize,
+//      B.data.toCuPointer,
+//      B.elemSize, B.elemSize, B.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
 
     val N = d_A.rows
     val matrixBlockSize = 256
@@ -516,9 +543,9 @@ object CuMethods {
     val minusOnePtr = jcuda.Pointer.to(minusOne)
 
     val d_R = CuMatrix.zeros[Float](N, matrixBlockSize)
-    val AMemPointer = d_A.data.toCuPointer
-    val BMemPointer = d_B.data.toCuPointer
-    val RMemPointer = d_R.data.toCuPointer
+    val AMemPointer = d_A.offsetPointer
+    val BMemPointer = d_B.offsetPointer
+    val RMemPointer = d_R.offsetPointer
     val es = d_A.elemSize
 
     val vectAii = Array.ofDim[Float](N)
