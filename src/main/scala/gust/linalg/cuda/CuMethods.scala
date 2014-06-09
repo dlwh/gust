@@ -24,8 +24,6 @@ import spire.syntax.cfor._
 
 /**
  * Created by piotrek on 21.05.2014.
- *
- * The algorithms are a Scala-port of the CUDA C version from OrangeOwlSolutions
  */
 class CuMethods {
 
@@ -35,17 +33,287 @@ object CuMethods {
 
 
   /**
-   * First attempt: LU factorization, based on algorithm from noctua-blog.com
+   * LU factorization, based on algorithm from noctua-blog.com
    * One important thing is that the matrix doesn't have to be square.
-   * This is algorithm uses pivoting.
+   * This is algorithm uses pivoting and block-approach.
    *
-   * Probably the best algorithm here is the one by Volkov and Demmel
-   * but this (with the block approach, which is coming up next) is a good starting point.
+   * This is actually almost the same as Volkov's LU with the difference of the
+   * decomposition of the block on the diagonal being performed GPU-side (which is fine, since we
+   * don't use the super-fast mkl that he uses).
    *
    * The returned matrix contains both L and U -- diagonal of L is implicit, as in this
    * variant it's all ones.
    */
-  def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
+  def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], Array[Int]) = {
+    val P: Array[Int] = (0 until A.rows).toArray
+    val d_A = CuMatrix.create[Float](A.rows, A.cols)
+    d_A := A
+    val blockSize = 2
+    val es = d_A.elemSize
+    val lda = A.rows
+
+    val one = Array(1.0f)
+    val onePtr = jcuda.Pointer.to(one)
+    val minusOne = Array(-1.0f)
+    val minusOnePtr = jcuda.Pointer.to(minusOne)
+
+    // this one should be in place to inject the results into the big matrix
+    // passing the pointer instead of the whole matrix allows us to
+    // do C-style pointer manipulation
+    def LUSingleBlockFloat(M: Int, N:Int, ADataPointer: CuPointer, pOffset: Int): Unit = {
+      //      val d_A = CuMatrix.create[Float](A.rows, A.cols)
+      //      // creating a copy of the matrix
+      //      //    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
+      //      //      A.data.toCuPointer,
+      //      //      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
+      //      d_A := A
+
+      //      val M = A.rows
+      //      val N = A.cols
+      val minDim = if (M < N) M else N
+      //val ADataPointer = d_A.offsetPointer
+      val intRes = Array(0)
+      val intResPtr = jcuda.Pointer.to(intRes)
+      val A_ii = Array(0.0f)
+      val AiiPtr = jcuda.Pointer.to(A_ii)
+      val alpha = Array(0.0f)
+
+      cfor(0)(_ < minDim, _ + 1) { i => {
+        JCublas2.cublasIsamax(handle, M - i, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+          1, intResPtr)
+
+        val pivotRow = i + intRes(0) - 1  // -1 because of cublas' 1-based indexing
+        val ip1 = i + 1
+        P(i + pOffset) = pivotRow + pOffset
+
+        if (pivotRow != i) {
+          // The pivoting can be made simpler by using A.cols here I think
+          JCublas2.cublasSswap(handle, N, ADataPointer.withByteOffset(d_A.linearIndex(pivotRow, 0) * es),
+            lda, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), lda)
+        }
+
+        JCuda.cudaMemcpy2D(AiiPtr, d_A.majorStride * d_A.elemSize,
+          ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+          d_A.majorStride * es, d_A.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+        // this one works as well:
+        //      curesult =  JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+        //                               1, AiiPtr, 1)
+
+        if (Math.abs(A_ii(0)) < 1e-20) {
+          println("Matrix is singular")
+          return
+        }
+
+        if (ip1 < M) {
+          alpha(0) = 1.0f / A_ii(0)
+          JCublas2.cublasSscal(handle, M - ip1, jcuda.Pointer.to(alpha),
+            ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1)
+        }
+
+        if (ip1 < minDim) {
+          JCublas2.cublasSger(handle, M - ip1, N - ip1, minusOnePtr,
+            ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1,
+            ADataPointer.withByteOffset(d_A.linearIndex(i, ip1) * es), lda,
+            ADataPointer.withByteOffset(d_A.linearIndex(ip1, ip1) * es), lda)
+
+        }
+      }
+      }
+
+      //d_A
+    }
+
+    def LUBlockedFloat(d_A: CuMatrix[Float]): Unit = {
+      val M = d_A.rows
+      val N = d_A.cols
+      val minSize = if (M < N) M else N
+      val ADataPointer = d_A.offsetPointer
+
+      if (blockSize >= minSize) {
+        LUSingleBlockFloat(M, N, ADataPointer, 0)
+        return
+      }
+
+      cfor(0)(_ < minSize, _ + blockSize) { i => {
+        val realBlockSize = if (minSize - i < blockSize) minSize - i else blockSize
+        LUSingleBlockFloat(M - i, realBlockSize, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es), i)
+
+        val mm = if (M < i+realBlockSize) M else i + realBlockSize
+
+        cfor(i)(_ < mm - 1, _ + 1) { p => {
+          // P(p) = P(p) + i // ???
+          if (P(p) != p) {
+            JCublas2.cublasSswap(handle, i, ADataPointer.withByteOffset(d_A.linearIndex(p, 0) * es),
+                                 lda, ADataPointer.withByteOffset(d_A.linearIndex(P(p), 0) * es), lda)
+
+            JCublas2.cublasSswap(handle, N-i-realBlockSize, ADataPointer.withByteOffset(d_A.linearIndex(p, i+realBlockSize) * es), lda,
+                                 ADataPointer.withByteOffset(d_A.linearIndex(P(p), i + realBlockSize) * es), lda)
+          }
+
+        }}
+
+        JCublas2.cublasStrsm(handle, cublasSideMode.CUBLAS_SIDE_LEFT, cublasFillMode.CUBLAS_FILL_MODE_LOWER,
+          cublasOperation.CUBLAS_OP_N, cublasDiagType.CUBLAS_DIAG_UNIT,
+          realBlockSize, N - i - realBlockSize, onePtr,
+          ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es), lda,
+          ADataPointer.withByteOffset(d_A.linearIndex(i, i+realBlockSize) * es), lda)
+
+
+        if(i + realBlockSize < M) {
+          JCublas2.cublasSgemm(handle, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N,
+            M - i - realBlockSize, N - i - realBlockSize, realBlockSize, minusOnePtr,
+            ADataPointer.withByteOffset(d_A.linearIndex(i+realBlockSize, i) * es), lda,
+            ADataPointer.withByteOffset(d_A.linearIndex(i, i+realBlockSize) * es), lda,
+            onePtr,
+            ADataPointer.withByteOffset(d_A.linearIndex(i+realBlockSize, i+realBlockSize) * es), lda)
+        }
+      }
+      }
+    }
+
+    LUBlockedFloat(d_A)
+    //LUSingleBlockFloat(d_A.rows, d_A.cols, d_A.offsetPointer, 0)
+    // The type of pivoting matrix should be CuMatrix[Int] but since
+    // gust supports only Double*Double or Float*Float let's go with this one
+    // TODO : make this eye row permutations like the LUDoubleCublas
+    //val h_pivot = DenseMatrix.zeros[Float](A.rows, A.cols)
+    //cfor(0)(_ < A.rows, _ + 1) { i => h_pivot(i, P(i)) = 1.0f }
+
+    (d_A, P)
+  }
+
+
+  def LUDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], Array[Int]) = {
+    val P: Array[Int] = (0 until A.rows).toArray
+    val d_A = CuMatrix.create[Double](A.rows, A.cols)
+    d_A := A
+    val blockSize = 2   // Volkov uses 64 here, this is for testing
+    val es = d_A.elemSize
+    val lda = A.rows
+
+    val one = Array(1.0)
+    val onePtr = jcuda.Pointer.to(one)
+    val minusOne = Array(-1.0)
+    val minusOnePtr = jcuda.Pointer.to(minusOne)
+
+
+    def LUSingleBlockDouble(M: Int, N:Int, ADataPointer: CuPointer, pOffset: Int): Unit = {
+
+      val minDim = if (M < N) M else N
+      val intRes = Array(0)
+      val intResPtr = jcuda.Pointer.to(intRes)
+      val A_ii = Array(0.0)
+      val AiiPtr = jcuda.Pointer.to(A_ii)
+      val alpha = Array(0.0)
+
+      cfor(0)(_ < minDim, _ + 1) { i => {
+        JCublas2.cublasIdamax(handle, M - i, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+          1, intResPtr)
+
+        val pivotRow = i + intRes(0) - 1  // -1 because of cublas' 1-based indexing
+        val ip1 = i + 1
+        P(i + pOffset) = pivotRow + pOffset
+
+        if (pivotRow != i) {
+          JCublas2.cublasDswap(handle, N, ADataPointer.withByteOffset(d_A.linearIndex(pivotRow, 0) * es),
+            lda, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), lda)
+        }
+
+        JCuda.cudaMemcpy2D(AiiPtr, d_A.majorStride * d_A.elemSize,
+          ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+          d_A.majorStride * es, d_A.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+        // this one works as well:
+        //      curesult =  JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+        //                               1, AiiPtr, 1)
+
+        if (Math.abs(A_ii(0)) < 1e-20) {
+          println("Matrix is singular")
+          return
+        }
+
+        if (ip1 < M) {
+          alpha(0) = 1.0f / A_ii(0)
+          JCublas2.cublasDscal(handle, M - ip1, jcuda.Pointer.to(alpha),
+            ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1)
+        }
+
+        if (ip1 < minDim) {
+          JCublas2.cublasDger(handle, M - ip1, N - ip1, minusOnePtr,
+            ADataPointer.withByteOffset(d_A.linearIndex(ip1, i) * es), 1,
+            ADataPointer.withByteOffset(d_A.linearIndex(i, ip1) * es), lda,
+            ADataPointer.withByteOffset(d_A.linearIndex(ip1, ip1) * es), lda)
+
+        }
+      }
+      }
+
+      //d_A
+    }
+
+    def LUBlockedDouble(d_A: CuMatrix[Double]): Unit = {
+      val M = d_A.rows
+      val N = d_A.cols
+      val minSize = if (M < N) M else N
+      val ADataPointer = d_A.offsetPointer
+
+      if (blockSize >= minSize) {
+        LUSingleBlockDouble(M, N, ADataPointer, 0)
+        return
+      }
+
+      cfor(0)(_ < minSize, _ + blockSize) { i => {
+        val realBlockSize = if (minSize - i < blockSize) minSize - i else blockSize
+        LUSingleBlockDouble(M - i, realBlockSize, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es), i)
+
+        val mm = if (M < i+realBlockSize) M else i + realBlockSize
+
+        cfor(i)(_ < mm - 1, _ + 1) { p => {
+          // P(p) = P(p) + i // ???
+          if (P(p) != p) {
+            JCublas2.cublasDswap(handle, i, ADataPointer.withByteOffset(d_A.linearIndex(p, 0) * es),
+              lda, ADataPointer.withByteOffset(d_A.linearIndex(P(p), 0) * es), lda)
+
+            JCublas2.cublasDswap(handle, N-i-realBlockSize, ADataPointer.withByteOffset(d_A.linearIndex(p, i+realBlockSize) * es), lda,
+              ADataPointer.withByteOffset(d_A.linearIndex(P(p), i + realBlockSize) * es), lda)
+          }
+
+        }}
+
+        JCublas2.cublasDtrsm(handle, cublasSideMode.CUBLAS_SIDE_LEFT, cublasFillMode.CUBLAS_FILL_MODE_LOWER,
+          cublasOperation.CUBLAS_OP_N, cublasDiagType.CUBLAS_DIAG_UNIT,
+          realBlockSize, N - i - realBlockSize, onePtr,
+          ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es), lda,
+          ADataPointer.withByteOffset(d_A.linearIndex(i, i+realBlockSize) * es), lda)
+
+
+        if(i + realBlockSize < M) {
+          JCublas2.cublasDgemm(handle, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N,
+            M - i - realBlockSize, N - i - realBlockSize, realBlockSize, minusOnePtr,
+            ADataPointer.withByteOffset(d_A.linearIndex(i+realBlockSize, i) * es), lda,
+            ADataPointer.withByteOffset(d_A.linearIndex(i, i+realBlockSize) * es), lda,
+            onePtr,
+            ADataPointer.withByteOffset(d_A.linearIndex(i+realBlockSize, i+realBlockSize) * es), lda)
+        }
+      }
+      }
+    }
+
+    LUBlockedDouble(d_A)
+
+    // TODO : pivoting matrix
+
+    (d_A, P)
+  }
+
+
+  /**
+   * LU decomposition using the cublas(S|D)getrfBatched -- not very fast
+   * and works only for square matrices
+   * @param A
+   * @param handle
+   * @return
+   */
+  def LUFloatCublas(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
 
     if (A.rows != A.cols) {
       println("A has to be a square matrix.")
@@ -74,7 +342,6 @@ object CuMethods {
     // but I can't get CuMatrix.ones to work right now
     val PM = CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))
 
-    // and now swap the rows in the eye:
     cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
       if (h_P(i, 0) != i + 1) {   // the returned vector uses 1-based indexing
         JCublas2.cublasSswap(handle, PM.cols,
@@ -86,7 +353,7 @@ object CuMethods {
     (d_A, PM)
   }
 
-  def LUDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
+  def LUDoubleCublas(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
 
     if (A.rows != A.cols) {
       println("A has to be a square matrix.")
@@ -123,9 +390,10 @@ object CuMethods {
   }
 
 
-  /** Gauss-Jordan solve of a linear system
+  /** The algorithms below are a Scala-port of the CUDA C version from OrangeOwlSolutions
+    * Gauss-Jordan solve of a linear system
     * It is actually quite good for small systems (<= 256**2)
-    *s
+    *
     * The result ends up in the d_B vector */
   def solveSlow(A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = {
     if (A.rows != B.rows) {
