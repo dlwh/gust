@@ -44,11 +44,11 @@ object CuMethods {
    * The returned matrix contains both L and U -- diagonal of L is implicit, as in this
    * variant it's all ones.
    */
-  def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], Array[Int]) = {
+  def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
     val P: Array[Int] = (0 until A.rows).toArray
     val d_A = CuMatrix.create[Float](A.rows, A.cols)
     d_A := A
-    val blockSize = 2
+    val blockSize = 64
     val es = d_A.elemSize
     val lda = A.rows
 
@@ -87,7 +87,7 @@ object CuMethods {
         P(i + pOffset) = pivotRow + pOffset
 
         if (pivotRow != i) {
-          // The pivoting can be made simpler by using A.cols here I think
+          // If you put N instead of A.cols, you have to uncomment the lines in LUBlocked
           JCublas2.cublasSswap(handle, N, ADataPointer.withByteOffset(d_A.linearIndex(pivotRow, 0) * es),
             lda, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), lda)
         }
@@ -138,6 +138,7 @@ object CuMethods {
         val realBlockSize = if (minSize - i < blockSize) minSize - i else blockSize
         LUSingleBlockFloat(M - i, realBlockSize, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es), i)
 
+        // uncomment these lines if necessary
         val mm = if (M < i+realBlockSize) M else i + realBlockSize
 
         cfor(i)(_ < mm - 1, _ + 1) { p => {
@@ -172,22 +173,33 @@ object CuMethods {
     }
 
     LUBlockedFloat(d_A)
-    //LUSingleBlockFloat(d_A.rows, d_A.cols, d_A.offsetPointer, 0)
-    // The type of pivoting matrix should be CuMatrix[Int] but since
-    // gust supports only Double*Double or Float*Float let's go with this one
-    // TODO : make this eye row permutations like the LUDoubleCublas
-    //val h_pivot = DenseMatrix.zeros[Float](A.rows, A.cols)
-    //cfor(0)(_ < A.rows, _ + 1) { i => h_pivot(i, P(i)) = 1.0f }
+    // the pivoting matrix is Float (and not Int), because right now gust doesn't support
+    // matrix multiplication other than Float*Float or Double*Double.
+    // Of course, the swapping of rows is quite bad performance-wise but returning the
+    // matrix and not a vector is a good thing, I guess
 
-    (d_A, P)
+    // transforming permutation vector into permutation matrix
+    // this could be done with a trick: cublasSetVector with incy = PM.majorStride + 1,
+    // but I can't get CuMatrix.ones to work right now
+    val PM = CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))
+
+    cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
+      if (P(i) != i) {
+        JCublas2.cublasSswap(handle, PM.cols,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(i, 0) * PM.elemSize), PM.majorSize,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(P(i), 0) * PM.elemSize), PM.majorSize)
+      }
+    }}
+
+    (d_A, PM)
   }
 
 
-  def LUDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], Array[Int]) = {
+  def LUDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
     val P: Array[Int] = (0 until A.rows).toArray
     val d_A = CuMatrix.create[Double](A.rows, A.cols)
     d_A := A
-    val blockSize = 2   // Volkov uses 64 here, this is for testing
+    val blockSize = 64
     val es = d_A.elemSize
     val lda = A.rows
 
@@ -215,6 +227,7 @@ object CuMethods {
         P(i + pOffset) = pivotRow + pOffset
 
         if (pivotRow != i) {
+          // A.cols <-> N + uncomment in LUBlocked
           JCublas2.cublasDswap(handle, N, ADataPointer.withByteOffset(d_A.linearIndex(pivotRow, 0) * es),
             lda, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), lda)
         }
@@ -300,9 +313,17 @@ object CuMethods {
 
     LUBlockedDouble(d_A)
 
-    // TODO : pivoting matrix
+    val PM = CuMatrix.fromDense(DenseMatrix.eye[Double](A.rows))
 
-    (d_A, P)
+    cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
+      if (P(i) != i) {
+        JCublas2.cublasSswap(handle, PM.cols,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(i, 0) * PM.elemSize), PM.majorSize,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(P(i), 0) * PM.elemSize), PM.majorSize)
+      }
+    }}
+
+    (d_A, PM)
   }
 
 
@@ -338,8 +359,6 @@ object CuMethods {
 
     // transforming permutation vector into permutation matrix
     val h_P = P.toDense
-    // this could be done with a trick: cublasSetVector with incy = PM.majorSize + 1,
-    // but I can't get CuMatrix.ones to work right now
     val PM = CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))
 
     cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
