@@ -581,13 +581,18 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   */
 
   protected val hostOnePtr = Pointer.pointerToFloat(1)
-
   protected val hostOne = hostOnePtr.toCuPointer
 
-
   protected val hostZeroPtr = Pointer.pointerToFloat(0)
-
   protected val hostZero = hostZeroPtr.toCuPointer
+
+  // Things go wrong if cublasDgemm is passed a float value (don't know why)
+  protected val hostOnePtrDouble = Pointer.pointerToDouble(1.0)
+  protected val hostOneDouble = hostOnePtrDouble.toCuPointer
+
+  protected val hostZeroPtrDouble = Pointer.pointerToDouble(0.0)
+  protected val hostZeroDouble = hostOnePtrDouble.toCuPointer
+
 }
 
 trait LowPriorityNativeMatrix1 {
@@ -729,9 +734,9 @@ trait CuMatrixOps { this: CuMatrix.type =>
 
       JCublas2.cublasDgemm(_a.blas, transposeOp(a), transposeOp(b),
         rv.rows, rv.cols, a.cols,
-        hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
+        hostOneDouble, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
         b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
-        hostZero, rv.data.toCuPointer, rv.rows)
+        hostZeroDouble, rv.data.toCuPointer, rv.rows)
       rv
     }
   }
