@@ -61,6 +61,14 @@ object CuMethods {
     printTau
   }
 
+  /**
+   * This code is more or less V. Volkov's code rewritten using Scala and JCuda.
+   * It has to be extended to support non-square matrices, though.
+   *
+   * @param A
+   * @param handle
+   * @return
+   */
   def QR(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], DenseVector[Float]) = {
     // pointers to scalars (for sgemm):
     val oneArr = Array(1.0f)
@@ -94,15 +102,17 @@ object CuMethods {
     val info = new intW(0)
     val lwork = cpu_work.length
 
-    // prep for launching the kernel:
-    JCudaDriver.setExceptionsEnabled(true)
-    JCudaDriver.cuInit(0)
-    val device = new CUdevice()
-    JCudaDriver.cuDeviceGet(device, 0)
-    val context = new CUcontext()
+    //val device = new CUdevice()
+    //JCudaDriver.cuInit(0)
+    //JCudaDriver.cuDeviceGet(device, 0)
+    //val context = new CUcontext()
     //JCudaDriver.cuCtxGetCurrent(context)
-    JCudaDriver.cuCtxCreate(context, 0, device)
+    //JCudaDriver.cuCtxCreate(context, 0, device)
+    // prep for launching the kernel:
 
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
     val module = new CUmodule()
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLU.ptx")
 
