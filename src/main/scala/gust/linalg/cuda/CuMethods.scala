@@ -1,6 +1,6 @@
 package gust.linalg.cuda
 
-//import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
+import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
 
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2, cublasDiagType, cublasFillMode, cublasSideMode}
@@ -12,15 +12,18 @@ import breeze.linalg._
 import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
 import org.bridj.Pointer
 
-import jcuda.driver.CUstream
+import jcuda.driver._
 import jcuda.jcurand.{curandRngType, curandGenerator}
 import breeze.math.{Semiring, Ring}
 import breeze.numerics._
 import breeze.generic.UFunc
 import scala.reflect._
 
-
+import com.github.fommil.netlib.LAPACK.{getInstance=>lapack}
+import com.github.fommil.netlib.ARPACK
+import org.netlib.util.intW
 import spire.syntax.cfor._
+import CuWrapperMethods._
 
 /**
  * Created by piotrek on 21.05.2014.
@@ -30,6 +33,244 @@ class CuMethods {
 }
 
 object CuMethods {
+
+//  val hostOne = Pointer.pointerToFloat(1.0f).toCuPointer
+//  val hostMinusOne = Pointer.pointerToFloat(-1.0f).toCuPointer
+//  val hostZero = Pointer.pointerToFloat(0.0f).toCuPointer
+
+
+  def lapackTest {
+
+    val A = DenseMatrix((12.0f, -51.0f, 4.0f), (6.0f, 167.0f, -68.0f), (-4.0f, 24.0f, -41.0f))
+    val T = DenseMatrix.zeros[Float](3, 3)
+    val work = Array.ofDim[Float](18)
+    val tau = Array.ofDim[Float](3)
+    val info = new intW(0)
+    lapack.sgeqrf(3, 3, A.data, 0, A.majorStride, tau, 0, work, 0, 18, info)
+
+    lapack.slarft("F", "C", 3, 3, A.data, 0, A.majorStride, tau, 0, T.data, 0, T.majorStride)
+
+    def printTau {
+      println("tau")
+      for (i <- 0 until tau.length) { print(tau(i) + "  ") }
+      println
+    }
+
+    println("A\n" + A)
+    println("T\n" + T)
+    printTau
+  }
+
+  def QR(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], DenseVector[Float]) = {
+    // pointers to scalars (for sgemm):
+    val oneArr = Array(1.0f)
+    val hostOne = jcuda.Pointer.to(oneArr)
+    val zeroArr = Array(0.0f)
+    val hostZero = jcuda.Pointer.to(zeroArr)
+    val minusOneArr = Array(-1.0f)
+    val hostMinusOne = jcuda.Pointer.to(minusOneArr)
+
+
+    val nb = 64     // block size
+    val ldaArr = Array(A.majorStride)
+    val lda = jcuda.Pointer.to(ldaArr)
+    val n = A.cols  // size of matrix
+
+    // gpu matrices:
+    val gpu_matrix = CuMatrix.create[Float](n, n); gpu_matrix := A
+    val gpu_TV = CuMatrix.create[Float](nb, n)
+    val gpu_TVA = CuMatrix.create[Float](nb, n)
+    //val gpu_T = gpu_TVA
+    // might as well not use gpu_T at all
+
+    // cpu matrices:
+    val cpu_matrix = A.toDense
+    val cpu_tau = DenseVector.zeros[Float](n)
+    val cpu_work = Array.ofDim[Float](n * n * nb)
+    val cpu_T = DenseMatrix.zeros[Float](nb, nb)
+
+    var h, w = 0
+    val es = gpu_matrix.elemSize
+    val info = new intW(0)
+    val lwork = cpu_work.length
+
+    // prep for launching the kernel:
+    JCudaDriver.setExceptionsEnabled(true)
+    JCudaDriver.cuInit(0)
+    val device = new CUdevice()
+    JCudaDriver.cuDeviceGet(device, 0)
+    val context = new CUcontext()
+    //JCudaDriver.cuCtxGetCurrent(context)
+    JCudaDriver.cuCtxCreate(context, 0, device)
+
+    val module = new CUmodule()
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLU.ptx")
+
+    val enfLU = new CUfunction()
+    // I have to use the mangled name here but there has to be something wrong,
+    // there's "extern C" in the kernel code so it shouldn't mangle the name (TODO fix)
+    JCudaDriver.cuModuleGetFunction(enfLU, module, "_Z9enforceLUPfi")
+
+    // we don't need to upload anything onto the GPU -- it's already there
+    cfor(0)(_ < n, _ + nb) { i => {
+      h = n - i
+      w = if (h < nb) h else nb
+
+      if (i > 0) {
+
+        SgemmNN(nb, w, h+nb, hostOne, gpu_TV, 0, 0, gpu_matrix, i-nb, i, hostZero,
+                gpu_TVA, 0, 0)
+
+        SgemmNN(h+nb, w, nb, hostMinusOne, gpu_matrix, i-nb, i-nb, gpu_TVA, 0, 0, hostOne,
+                gpu_matrix, i-nb, i)
+
+        downloadFloat(n, w, cpu_matrix, 0, i, gpu_matrix, 0, i)
+
+        SgemmNN(nb, h-nb, h+nb, hostOne, gpu_TV, 0, 0, gpu_matrix, i-nb, i+nb, hostZero,
+                gpu_TVA, 0, 0)
+
+        SgemmNN(h+nb, h-nb, nb, hostMinusOne, gpu_matrix, i-nb, i-nb, gpu_TVA, 0, 0, hostOne,
+                gpu_matrix, i-nb, i+nb)
+
+      }
+
+      // factorization on CPU
+      // additional params after matrices are offsets (like i in float *A;  A+i)
+      lapack.sgeqrf(h, w, cpu_matrix.data, cpu_matrix.linearIndex(i, i), cpu_matrix.majorStride,
+                    cpu_tau.data, i, cpu_work, 0, lwork, info)
+
+
+      if (h > nb) {
+        lapack.slarft("F", "C", h, w, cpu_matrix.data, cpu_matrix.linearIndex(i, i), cpu_matrix.majorStride,
+                      cpu_tau.data, i, cpu_T.data, 0, cpu_T.majorStride)
+
+        // transpose:
+        cfor(0)(_ < nb, _ + 1) { j => {
+          cfor(0)(_ < j, _ + 1) { k => {
+            cpu_T(j, k) = cpu_T(k, j)
+            cpu_T(k, j) = 0.0f
+          }}
+        }}
+
+
+        // upload to GPU:
+        // gpu_T --> gpu_TVA
+        uploadFloat(nb, nb, gpu_TVA, 0, 0, cpu_T, 0, 0)
+        uploadFloat(h, nb, gpu_matrix, i, i, cpu_matrix, i, i)
+
+        // enforceLU
+        // basically --> zero out everything above the main diagonal and put 1's on the diagonal
+        // kernel launch:
+        val params = jcuda.Pointer.to(
+          jcuda.Pointer.to(gpu_matrix.offsetPointer.withByteOffset(gpu_matrix.linearIndex(i, i) * es)),
+          lda
+        )
+
+        JCudaDriver.cuLaunchKernel(enfLU, nb, 1, 1, nb, 1, 1, 0, null, params, null)
+        JCudaDriver.cuCtxSynchronize()
+
+        SgemmNT(nb, h, nb, hostOne, gpu_TVA, 0, 0, gpu_matrix, i, i, hostZero, gpu_TV, 0, 0)
+      }
+    }}
+
+//    println("Results: ")
+//    //println("GPU T: \n" + gpu_T)
+//    println("GPU TV: \n" + gpu_TV)
+//    println("GPU TVA: \n" + gpu_TVA)
+//    println("CPU MATRIX: \n" + cpu_matrix)
+//    println("CPU T: \n" + cpu_T)
+//    println("CPU TAU: \n" + cpu_tau)
+
+    (CuMatrix.fromDense(cpu_matrix), cpu_tau)
+  }
+
+  /**
+   * Performs a householder trasnsform (in-place)
+   * @param A
+   * @param t if true, the vector v will be extracted from a row of A, instead of a column (t == false)
+   * @param v
+   * @param beta
+   * @param C matrix for the intermediate result of v*v' --> passed as a parameter to avoid unnecessary allocations
+   */
+  def householderDouble(A: CuMatrix[Double], t: Boolean, v: CuMatrix[Double], beta: Double, C: CuMatrix[Double])(implicit handle: cublasHandle) {
+    if (v.cols != 1) {
+      println("v not a vector")
+      return
+    }
+
+    if (C.rows != C.cols) {
+      println("C not a square matrix")
+      return
+    }
+
+    if (C.rows != v.rows) {
+      println("C has to be of dim. v.rows x v.rows")
+      return
+    }
+
+    val b = Array(beta)
+    val one = Array(1.0)
+    val zero = Array(0.0)
+    val minusOne = Array(-1.0)
+    var curesult = 0
+
+    // C = beta * v * v'
+    curesult = JCublas2.cublasDgemm(handle, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T,
+      C.rows, C.cols, v.cols,
+      jcuda.Pointer.to(b), v.data.toCuPointer.withByteOffset(v.offset * v.elemSize), v.majorStride,
+      v.data.toCuPointer.withByteOffset(v.offset * v.elemSize), v.majorStride,
+      jcuda.Pointer.to(zero), C.data.toCuPointer, C.rows)
+
+    println("[DEBUG] First dgemm: " + curesult)
+
+    // A = A + (-1.0) * C * A
+    curesult = JCublas2.cublasDgemm(handle, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N,
+                         C.rows, A.cols, A.rows, jcuda.Pointer.to(minusOne),
+                         C.offsetPointer, C.majorStride,
+                         A.offsetPointer, A.majorStride,
+                         jcuda.Pointer.to(one),
+                         A.offsetPointer, A.majorStride)
+
+    println("[DEBUG] Second dgemm: " + curesult)
+  }
+
+
+    /**
+     * Generates parameters for the householder transform based on the vector x
+     * i.e. H = (I - beta*v*v') --> it computes beta and v
+     *
+     * I'm not sure whether to do it on the GPU or on CPU
+     */
+  def householderGenerateDouble(x: CuMatrix[Double])(implicit handle: cublasHandle): (Double, Double, CuMatrix[Double]) = {
+      val alpha = Array(0.0)
+
+      val v: CuMatrix[Double] = CuMatrix.create[Double](x.rows, x.cols)
+      v := x
+
+      val xnorm = Array(0.0)		// norm of x
+      JCublas2.cublasDnrm2(handle, x.rows, x.offsetPointer, 1, jcuda.Pointer.to(xnorm))
+
+      // get x(0)
+      val x0 = Array(0.0)
+      JCuda.cudaMemcpy(jcuda.Pointer.to(x0), x.offsetPointer, x.elemSize,
+                       cudaMemcpyKind.cudaMemcpyDeviceToHost)
+
+      alpha(0) = xnorm(0) * (if (x0(0) >= 0.0) 1.0 else -1.0)
+
+      // get v(0):
+      val v0 = Array(x0(0))
+      val beta = if (Math.abs(alpha(0)) < 1e-20) 0.0
+                 else 1.0 / (Math.abs(alpha(0)) * (Math.abs(alpha(0)) + Math.abs(v0(0))))
+
+      v0(0) += alpha(0)
+
+      // now copy back the v0:
+      JCuda.cudaMemcpy(v.offsetPointer, jcuda.Pointer.to(v0), v.elemSize,
+                       cudaMemcpyKind.cudaMemcpyHostToDevice)
+
+      (-alpha(0), beta, v)
+    }
+
 
 
   /**
@@ -1044,4 +1285,5 @@ object CuMethods {
     // the solution vector is in d_B
     d_B
   }
+
 }
