@@ -3,6 +3,8 @@ package gust.linalg.cuda
 import jcuda.jcublas.{cublasOperation, JCublas2, cublasHandle}
 import breeze.linalg.DenseMatrix
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
+import jcuda.driver.{CUfunction, CUmodule, JCudaDriver}
+import gust.util.cuda.{CuContext, CuDevice}
 
 
 /**
@@ -10,6 +12,84 @@ import jcuda.runtime.{cudaMemcpyKind, JCuda}
  *
  */
 object CuWrapperMethods {
+  /*
+   * wrapped calls to kernels for zeroing out some parts of matrices.
+   */
+  def zeroOutFloat(A: CuMatrix[Float], fillMode: Char, includeDiagonal: Boolean = false) {
+    val nb = 32     // most cards can go as high as 1024 (32**2) threads per block
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
+
+    val zero_out = new CUfunction()
+    // once again -- magnled names, I'll have try to figure something out
+    val funcName = if (fillMode == 'U') "_Z6zerosUPfiii" else "_Z6zerosLPfiii"
+    JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
+
+    // kernel parameters:
+    val ldaArr = Array(A.majorStride)
+    val lda = jcuda.Pointer.to(ldaArr)
+    val elemsArr = Array(A.rows * A.cols)
+    val elems = jcuda.Pointer.to(elemsArr)
+    val inclArr = Array(if (includeDiagonal) 1 else 0)
+    val incl = jcuda.Pointer.to(inclArr)
+
+    val params = jcuda.Pointer.to(
+      jcuda.Pointer.to(A.offsetPointer),
+      lda, elems, incl
+    )
+
+    val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
+                   A.cols / nb + (if (A.cols % nb == 0) 0 else 1),
+                   1)
+    val blockDim = (nb, nb, 1)
+
+    JCudaDriver.cuLaunchKernel(zero_out, gridDim._1, gridDim._2, gridDim._3,
+                                         blockDim._1, blockDim._2, blockDim._3,
+                                         0, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+  }
+
+  def zeroOutDouble(A: CuMatrix[Double], fillMode: Char, includeDiagonal: Boolean = false) {
+    val nb = 32
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUDouble.ptx")
+
+    val zero_out = new CUfunction()
+    val funcName = if (fillMode == 'U') "_Z6zerosUPdiii" else "_Z6zerosLPdiii"
+    JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
+
+    // kernel parameters:
+    val ldaArr = Array(A.majorStride)
+    val lda = jcuda.Pointer.to(ldaArr)
+    val elemsArr = Array(A.rows * A.cols)
+    val elems = jcuda.Pointer.to(elemsArr)
+    val inclArr = Array(if (includeDiagonal) 1 else 0)
+    val incl = jcuda.Pointer.to(inclArr)
+
+    val params = jcuda.Pointer.to(
+      jcuda.Pointer.to(A.offsetPointer),
+      lda, elems, incl
+    )
+
+    val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
+      A.cols / nb + (if (A.cols % nb == 0) 0 else 1), 1)
+    val blockDim = (nb, nb, 1)
+
+    JCudaDriver.cuLaunchKernel(zero_out,
+      gridDim._1, gridDim._2, gridDim._3,
+      blockDim._1, blockDim._2, blockDim._3,
+      0, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+  }
+
   /*
    * wrapped calls to gemm, don't require passing lda's and elemSizes around
    */
