@@ -16,9 +16,13 @@ extern "C" {
 
 static __global__ void zerosU(double *matrix, int lda, int elems, int incl)
 {
+    int dim_x = lda;
+    int dim_y = elems / lda;
+
     int i = blockIdx.x + threadIdx.x;
     int j = blockIdx.y + threadIdx.y;
-    if (i + j*lda >= elems) return;
+
+    if (i >= dim_x || j >= dim_y) return;
 
     if (i < j)
         matrix[i + j*lda] = 0;
@@ -33,9 +37,13 @@ extern "C" {
 
 static __global__ void zerosL(double *matrix, int lda, int elems, int incl)
 {
+    int dim_x = lda;
+    int dim_y = elems / lda;
+
     int i = blockIdx.x + threadIdx.x;
     int j = blockIdx.y + threadIdx.y;
-    if (i + j*lda >= elems) return;
+
+    if (i >= dim_x || j >= dim_y) return;
 
     if( i > j )
         matrix[i + j*lda] = 0;
