@@ -39,26 +39,97 @@ object CuMethods {
 //  val hostZero = Pointer.pointerToFloat(0.0f).toCuPointer
 
 
-  def lapackTest {
+  def QRFactorsFloat(A: CuMatrix[Float], tau: DenseVector[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
+    val n = A.rows
+    val es = A.elemSize.toInt
 
-    val A = DenseMatrix((12.0f, -51.0f, 4.0f), (6.0f, 167.0f, -68.0f), (-4.0f, 24.0f, -41.0f))
-    val T = DenseMatrix.zeros[Float](3, 3)
-    val work = Array.ofDim[Float](18)
-    val tau = Array.ofDim[Float](3)
-    val info = new intW(0)
-    lapack.sgeqrf(3, 3, A.data, 0, A.majorStride, tau, 0, work, 0, 18, info)
+    val d_R = CuMatrix.create[Float](A.rows, A.cols)          // triangular factor
+    val d_A = CuMatrix.create[Float](A.rows, A.cols)          // copy of A
+    val d_Q = CuMatrix.fromDense(DenseMatrix.eye[Float](n))   // orthogonal factor
+    val d_H = CuMatrix.create[Float](n, n)                    // placeholder for reflectors
+    val d_diag = CuMatrix.ones[Float](n, 1)                   // we'll use it to set/update the diagonal
+    d_R := A
+    d_A := A
 
-    lapack.slarft("F", "C", 3, 3, A.data, 0, A.majorStride, tau, 0, T.data, 0, T.majorStride)
+    //val d_tau = CuMatrix.create[Float](A.rows, 1) // vector
+    //JCublas2.cublasSetVector(n, es, jcuda.Pointer.to(tau.data), 1,
+    //                         d_tau.offsetPointer, 1)
 
-    def printTau {
-      println("tau")
-      for (i <- 0 until tau.length) { print(tau(i) + "  ") }
-      println
-    }
+    val tauArr = Array(0.0f)
+    val tauPtr = jcuda.Pointer.to(tauArr)
+    val zeroArr = Array(0.0f)
+    val zero = jcuda.Pointer.to(zeroArr)
+    val oneArr = Array(1.0f)
+    val one = jcuda.Pointer.to(oneArr)
+    val minusOneArr = Array(1.0f)
+    val minusOne = jcuda.Pointer.to(minusOneArr)
 
-    println("A\n" + A)
-    println("T\n" + T)
-    printTau
+    // zero out everything below the diagonal in d_R
+    // and everything above (including) diagonal in d_A
+    // TODO: kernels to copy the triangles
+    zeroOutFloat(d_R, 'L')
+    zeroOutFloat(d_A, 'U', true)
+
+    // set the diagonal in d_A to ones:
+    JCublas2.cublasScopy(handle, n, d_diag.offsetPointer, 1, d_A.offsetPointer, d_A.majorStride+1)
+
+    cfor(0)(_ < tau.length, _ + 1) { i => {
+      tauArr(0) = -tau(i)
+
+      // d_H = -tau(i) * d_A(:, i) * d_A(:, i)'
+      SgemmNT(n, n, 1, tauPtr, d_A, 0, i, d_A, 0, i, zero, d_H, 0, 0)
+
+      // d_H = d_H + I
+      JCublas2.cublasSaxpy(handle, n, minusOne, d_diag.offsetPointer, 1, d_H.offsetPointer, d_H.majorStride+1)
+
+      // d_Q *= d_H
+      SgemmNN(n, n, n, one, d_Q, 0, 0, d_H, 0, 0, zero, d_Q, 0, 0)
+    }}
+
+    (d_Q, d_R)
+  }
+
+  def QRFactorsDouble(A: CuMatrix[Double], tau: DenseVector[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
+    val n = A.rows
+    val es = A.elemSize.toInt
+
+    val d_R = CuMatrix.create[Double](A.rows, A.cols)               // triangular factor
+    val d_A = CuMatrix.create[Double](A.rows, A.cols)               // copy of A
+    val d_Q = CuMatrix.fromDense(DenseMatrix.eye[Double](n))        // orthogonal factor
+    val d_H = CuMatrix.create[Double](n, n)                         // placeholder for reflectors
+    val d_diag = CuMatrix.fromDense(DenseMatrix.ones[Double](n, 1)) // we'll use it to set/update the diagonal (ones?)
+    d_R := A
+    d_A := A
+
+    val tauArr = Array(0.0)
+    val tauPtr = jcuda.Pointer.to(tauArr)
+    val zeroArr = Array(0.0)
+    val zero = jcuda.Pointer.to(zeroArr)
+    val oneArr = Array(1.0)
+    val one = jcuda.Pointer.to(oneArr)
+    val minusOneArr = Array(1.0)
+    val minusOne = jcuda.Pointer.to(minusOneArr)
+
+    // TODO: kernels to copy the triangles
+    zeroOutDouble(d_R, 'L')
+    zeroOutDouble(d_A, 'U', true)
+
+    JCublas2.cublasDcopy(handle, n, d_diag.offsetPointer, 1, d_A.offsetPointer, d_A.majorStride+1)
+
+    cfor(0)(_ < tau.length, _ + 1) { i => {
+      tauArr(0) = -tau(i)
+
+      // d_H = -tau(i) * d_A(:, i) * d_A(:, i)'
+      DgemmNT(n, n, 1, tauPtr, d_A, 0, i, d_A, 0, i, zero, d_H, 0, 0)
+
+      // d_H = d_H + I
+      JCublas2.cublasDaxpy(handle, n, minusOne, d_diag.offsetPointer, 1, d_H.offsetPointer, d_H.majorStride+1)
+
+      // d_Q *= d_H
+      DgemmNN(n, n, n, one, d_Q, 0, 0, d_H, 0, 0, zero, d_Q, 0, 0)
+    }}
+
+    (d_Q, d_R)
   }
 
   /**
