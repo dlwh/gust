@@ -22,24 +22,29 @@ object CuWrapperMethods {
     implicit val dev = CuDevice(0)
     val ctx = CuContext.ensureContext
     val module = new CUmodule()
+    val zero_out = new CUfunction()
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
 
-    val zero_out = new CUfunction()
     // once again -- magnled names, I'll have try to figure something out
-    val funcName = if (fillMode == 'U') "_Z6zerosUPfiii" else "_Z6zerosLPfiii"
+    val funcName = if (fillMode == 'U') "_Z6zerosUiiPfii" else "_Z6zerosLiiPfii"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
     // kernel parameters:
     val ldaArr = Array(A.majorStride)
     val lda = jcuda.Pointer.to(ldaArr)
-    val elemsArr = Array(A.rows * A.cols)
-    val elems = jcuda.Pointer.to(elemsArr)
+    //val elemsArr = Array(A.rows * A.cols)
+    //val elems = jcuda.Pointer.to(elemsArr)
+    val mArr = Array(A.rows)
+    val m = jcuda.Pointer.to(mArr)
+    val nArr = Array(A.cols)
+    val n = jcuda.Pointer.to(nArr)
     val inclArr = Array(if (includeDiagonal) 1 else 0)
     val incl = jcuda.Pointer.to(inclArr)
 
     val params = jcuda.Pointer.to(
+      m, n,
       jcuda.Pointer.to(A.offsetPointer),
-      lda, elems, incl
+      lda, incl
     )
 
     val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
@@ -63,20 +68,25 @@ object CuWrapperMethods {
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUDouble.ptx")
 
     val zero_out = new CUfunction()
-    val funcName = if (fillMode == 'U') "_Z6zerosUPdiii" else "_Z6zerosLPdiii"
+    val funcName = if (fillMode == 'U') "_Z6zerosUiiPdii" else "_Z6zerosLiiPdii"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
     // kernel parameters:
     val ldaArr = Array(A.majorStride)
     val lda = jcuda.Pointer.to(ldaArr)
-    val elemsArr = Array(A.rows * A.cols)
-    val elems = jcuda.Pointer.to(elemsArr)
+    //val elemsArr = Array(A.rows * A.cols)
+    //val elems = jcuda.Pointer.to(elemsArr)
+    val mArr = Array(A.rows)
+    val m = jcuda.Pointer.to(mArr)
+    val nArr = Array(A.cols)
+    val n = jcuda.Pointer.to(nArr)
     val inclArr = Array(if (includeDiagonal) 1 else 0)
     val incl = jcuda.Pointer.to(inclArr)
 
     val params = jcuda.Pointer.to(
+      m, n,
       jcuda.Pointer.to(A.offsetPointer),
-      lda, elems, incl
+      lda, incl
     )
 
     val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
@@ -87,6 +97,7 @@ object CuWrapperMethods {
       gridDim._1, gridDim._2, gridDim._3,
       blockDim._1, blockDim._2, blockDim._3,
       0, null, params, null)
+
     JCudaDriver.cuCtxSynchronize()
   }
 
