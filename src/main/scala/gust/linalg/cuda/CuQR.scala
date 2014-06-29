@@ -138,15 +138,14 @@ object CuQR {
     val hostMinusOne = jcuda.Pointer.to(minusOneArr)
 
 
-    val nb = if (A.cols < 64) A.cols else 64
+    val nb = if (A.cols < 2) A.cols else 2
     val ldaArr = Array(A.majorStride)
     val lda = jcuda.Pointer.to(ldaArr)
     val m = A.rows
     val n = A.cols
 
     // gpu matrices:
-    val gpu_matrix = CuMatrix.create[Float](m, n);
-    gpu_matrix := A
+    val gpu_matrix = CuMatrix.create[Float](m, n); gpu_matrix := A
     val gpu_TV = CuMatrix.create[Float](nb, m)
     val gpu_TVA = CuMatrix.create[Float](nb, m)
 
@@ -176,7 +175,7 @@ object CuQR {
     // not really sure about the 'm' here
     cfor(0)(_ < n, _ + nb) { i => {
       h = m - i
-      w = if (h < nb) h else nb
+      w = if (n - i < nb) n - i else nb
 
       if (i > 0) {
 
@@ -267,8 +266,7 @@ object CuQR {
     val n = A.cols
 
     // gpu matrices:
-    val gpu_matrix = CuMatrix.create[Double](m, n);
-    gpu_matrix := A
+    val gpu_matrix = CuMatrix.create[Double](m, n); gpu_matrix := A
     val gpu_TV = CuMatrix.create[Double](nb, m)
     val gpu_TVA = CuMatrix.create[Double](nb, m)
 
@@ -295,10 +293,9 @@ object CuQR {
     JCudaDriver.cuModuleGetFunction(enfLU, module, "_Z9enforceLUPdi")
 
     // we don't need to upload anything onto the GPU -- it's already there
-    // not really sure about the 'm' here
     cfor(0)(_ < n, _ + nb) { i => {
       h = m - i
-      w = if (h < nb) h else nb
+      w = if (n - i < nb) n - i else nb
 
       if (i > 0) {
 
