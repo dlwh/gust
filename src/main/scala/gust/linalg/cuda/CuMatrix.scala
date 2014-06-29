@@ -768,7 +768,12 @@ trait CuMatrixOps { this: CuMatrix.type =>
 
     def apply(_a: CuMatrix[Double], _b: CuMatrix[Double]) = {
       import _a.blas
-      CuMethods.solveDouble(_a, _b)
+      require(_a.rows >= _a.cols, "No of rows of the matrix has to be >= than no of cols")
+
+      if (_a.rows == _a.cols)
+        CuMethods.solveDouble(_a, _b)
+      else
+        CuMethods.QRSolveDouble(_a, _b)
     }
   }
 
@@ -776,7 +781,12 @@ trait CuMatrixOps { this: CuMatrix.type =>
 
     def apply(_a: CuMatrix[Float], _b: CuMatrix[Float]) = {
       import _a.blas
-      CuMethods.solveFloat(_a, _b)
+      require(_a.rows >= _a.cols, "No of rows of the matrix has to be >= than no of cols")
+
+      if (_a.rows == _a.cols)
+        CuMethods.solveFloat(_a, _b)
+      else
+        CuMethods.QRSolveFloat(_a, _b)
     }
   }
 }
