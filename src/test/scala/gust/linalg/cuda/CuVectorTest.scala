@@ -8,6 +8,7 @@ import org.scalatest.prop.Checkers
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import org.scalacheck._
 import breeze.linalg._
+import breeze.optimize.{DiffFunction, LBFGS}
 
 /**
  * TODO
@@ -40,6 +41,28 @@ class CuVectorTest extends FunSuite {
     val cumax = softmax(cumat)
     val dmax = softmax(convert(rand, Double))
     assert(math.abs(cumax - dmax) < 1e-4)
+  }
+
+  test("lbfgs") {
+    implicit val handle = new cublasHandle
+    JCublas2.cublasCreate(handle)
+    try {
+      val lbfgs = new LBFGS[CuVector[Float]]()
+      val df = new DiffFunction[CuVector[Float]] {
+        override def calculate(x: CuVector[Float]): (Double, CuVector[Float]) = {
+          val xm3 = x - 3.0f
+          val value = (xm3 dot xm3).toDouble / 2.0
+
+
+          value -> xm3
+        }
+      }
+
+      val res = lbfgs.minimize(df, CuVector.rand(100))
+      assert(norm(res.toDense.mapValues(_.toDouble) - DenseVector.fill(res.length)(3.0), Double.PositiveInfinity) <= 1E-4, res.toDense)
+    } finally {
+      JCublas2.cublasDestroy(handle)
+    }
   }
 
 }

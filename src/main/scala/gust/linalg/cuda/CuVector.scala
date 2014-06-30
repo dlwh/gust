@@ -111,7 +111,7 @@ class CuVector[V](val data: Pointer[V],
 
 }
 
-object CuVector extends CuVectorFuns {
+object CuVector extends CuVectorFuns with CuVectorLowPrio {
 
 
 
@@ -211,7 +211,7 @@ object CuVector extends CuVectorFuns {
 
 
 
-  implicit def vspaceFloat(implicit handle: cublasHandle) = {
+  implicit def vspaceFloat(implicit handle: cublasHandle): MutableInnerProductSpace[CuVector[Float], Float] = {
     MutableInnerProductSpace.make[CuVector[Float], Float]
   }
 
@@ -401,4 +401,45 @@ trait CuVectorFuns extends CuVectorKernels { this: CuVector.type =>
   }
 
 
+}
+
+trait CuVectorLowPrio { this: CuVector.type =>
+  /** lbfgs wants a MIPS[T, Double], so this implicit allows us to fake it. */
+  implicit def vspaceFloatPretendsToBeDouble(implicit handle: cublasHandle): MutableInnerProductSpace[CuVector[Float], Double] = {
+
+    implicit object mulVSDouble extends OpMulScalar.Impl2[CuVector[Float], Double, CuVector[Float]] {
+      override def apply(v: CuVector[Float], v2: Double): CuVector[Float] = v :* v2.toFloat
+    }
+
+
+    implicit object divVSDouble extends OpDiv.Impl2[CuVector[Float], Double, CuVector[Float]] {
+      override def apply(v: CuVector[Float], v2: Double): CuVector[Float] = v :/ v2.toFloat
+    }
+
+
+    implicit object mulInner extends OpMulInner.Impl2[CuVector[Float], CuVector[Float], Double] {
+      override def apply(v: CuVector[Float], v2: CuVector[Float]): Double = CuVector.canDotFloat(handle)(v, v2).toDouble
+    }
+
+
+    implicit object mulIntoVSDouble extends OpMulScalar.InPlaceImpl2[CuVector[Float], Double] {
+      override def apply(v: CuVector[Float], v2: Double) = v :*= v2.toFloat
+    }
+
+
+    implicit object divIntoVSDouble extends OpDiv.InPlaceImpl2[CuVector[Float], Double] {
+      override def apply(v: CuVector[Float], v2: Double) = v :/= v2.toFloat
+    }
+
+    implicit object scaleAddVS extends scaleAdd.InPlaceImpl3[CuVector[Float], Double, CuVector[Float]] {
+        override def apply(v: CuVector[Float], v2: Double, v3: CuVector[Float]): Unit = {
+          scaleAdd.inPlace(v, v2.toFloat, v3)
+        }
+    }
+
+    MutableInnerProductSpace.make[CuVector[Float], Double]
+
+
+
+  }
 }
