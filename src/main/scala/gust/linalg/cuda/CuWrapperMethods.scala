@@ -12,6 +12,118 @@ import gust.util.cuda.{CuContext, CuDevice}
  *
  */
 object CuWrapperMethods {
+
+  /*
+   * Kernels for element-wise operations: product and sum
+   * They may be moved to CuMatrix later
+   */
+  def elemWiseProdFloat(A: CuMatrix[Float], B: CuMatrix[Float]): CuMatrix[Float] = elemWiseFloat('p', A, B)
+
+  def elemWiseProdDouble(A: CuMatrix[Double], B: CuMatrix[Double]): CuMatrix[Double] = elemWiseDouble('p', A, B)
+
+  def elemWiseSumFloat(A: CuMatrix[Float], B: CuMatrix[Float]): CuMatrix[Float] = elemWiseFloat('s', A, B)
+
+  def elemWiseSumDouble(A: CuMatrix[Double], B: CuMatrix[Double]): CuMatrix[Double] = elemWiseDouble('s', A, B)
+
+
+  private def elemWiseFloat(operation: Char, A: CuMatrix[Float], B: CuMatrix[Float]): CuMatrix[Float] = {
+    if (A.rows != B.rows || A.cols != B.cols) {
+      println("Matrices have to be of the same dimensions")
+      return null
+    }
+
+    implicit val handle: cublasHandle = A.blas
+    val C = CuMatrix.create[Float](A.rows, A.cols)
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    val function = new CUfunction()
+    val func_name = if (operation == 'p') "hadamard" else "matrix_sum"
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/elemWiseFloat.ptx")
+    JCudaDriver.cuModuleGetFunction(function, module, func_name)
+
+    // kernel parameters:
+    val ldaArr = Array(A.majorStride, B.majorStride, C.majorStride)
+    val lda = jcuda.Pointer.to(ldaArr)
+    val ldb = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT)
+    val ldc = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT * 2)
+    val dimsArr = Array(A.rows, A.cols)
+    val m = jcuda.Pointer.to(dimsArr)
+    val n = jcuda.Pointer.to(dimsArr).withByteOffset(jcuda.Sizeof.INT)
+
+    val params = jcuda.Pointer.to(
+      m, n,
+      jcuda.Pointer.to(A.offsetPointer), lda,
+      jcuda.Pointer.to(B.offsetPointer), ldb,
+      jcuda.Pointer.to(C.offsetPointer), ldc
+    )
+
+    val nb = 32
+    val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
+      A.cols / nb + (if (A.cols % nb == 0) 0 else 1),
+      1)
+    val blockDim = (nb, nb, 1)
+
+    JCudaDriver.cuLaunchKernel(function, gridDim._1, gridDim._2, gridDim._3,
+      blockDim._1, blockDim._2, blockDim._3,
+      0, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+
+    C
+  }
+
+  private def elemWiseDouble(operation: Char, A: CuMatrix[Double], B: CuMatrix[Double]): CuMatrix[Double] = {
+    if (A.rows != B.rows || A.cols != B.cols) {
+      println("Matrices have to be of the same dimensions")
+      return null
+    }
+
+    implicit val handle: cublasHandle = A.blas
+    val C = CuMatrix.create[Double](A.rows, A.cols)
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    val function = new CUfunction()
+    val func_name = if (operation == 'p') "hadamard" else "matrix_sum"
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/elemWiseDouble.ptx")
+    JCudaDriver.cuModuleGetFunction(function, module, func_name)
+
+    // kernel parameters:
+    val ldaArr = Array(A.majorStride, B.majorStride, C.majorStride)
+    val lda = jcuda.Pointer.to(ldaArr)
+    val ldb = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT)
+    val ldc = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT * 2)
+    val dimsArr = Array(A.rows, A.cols)
+    val m = jcuda.Pointer.to(dimsArr)
+    val n = jcuda.Pointer.to(dimsArr).withByteOffset(jcuda.Sizeof.INT)
+
+    val params = jcuda.Pointer.to(
+      m, n,
+      jcuda.Pointer.to(A.offsetPointer), lda,
+      jcuda.Pointer.to(B.offsetPointer), ldb,
+      jcuda.Pointer.to(C.offsetPointer), ldc
+    )
+
+    val nb = 32
+    val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
+      A.cols / nb + (if (A.cols % nb == 0) 0 else 1),
+      1)
+    val blockDim = (nb, nb, 1)
+
+    JCudaDriver.cuLaunchKernel(function, gridDim._1, gridDim._2, gridDim._3,
+      blockDim._1, blockDim._2, blockDim._3,
+      0, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+
+    C
+  }
+
+
+
   /*
    * wrapped calls to kernels for zeroing out some parts of matrices.
    */

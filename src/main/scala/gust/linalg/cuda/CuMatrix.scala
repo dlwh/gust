@@ -16,6 +16,7 @@ import breeze.math.{Semiring, Ring}
 import breeze.numerics._
 import breeze.generic.UFunc
 import scala.reflect._
+import scala.reflect.runtime.universe._
 
 /**
  * TODO
@@ -220,6 +221,27 @@ class CuMatrix[V](val rows: Int,
 
   // to make life easier when debugging
   override def toString = this.toDense.toString + "\nPointer: " + data.toString
+
+  /**
+   * A Frobenius norm of a matrix
+   */
+  def norm(implicit c: ClassTag[V]): Double = {
+    c.toString() match {    // it doesn't feel like the right way to use the class tag but it works for now...
+      case "Float" => {
+        val normArr = Array(0.0f)
+        JCublas2.cublasSnrm2(blas, size, offsetPointer, 1, jcuda.Pointer.to(normArr))
+
+        normArr(0)
+      }
+      case "Double" => {
+        val normArr = Array(0.0)
+        JCublas2.cublasDnrm2(blas, size, offsetPointer, 1, jcuda.Pointer.to(normArr))
+
+        normArr(0)
+      }
+      case _ => 0.0
+    }
+  }
 
 }
 
