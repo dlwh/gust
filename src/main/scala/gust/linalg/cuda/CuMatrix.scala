@@ -581,8 +581,10 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   }
 
   protected val hostOnePtr = Pointer.pointerToFloat(1)
+  protected val hostNegativeOnePtr = Pointer.pointerToFloat(-1)
 
   protected val hostOne = hostOnePtr.toCuPointer
+  protected val hostNegativeOne = hostNegativeOnePtr.toCuPointer
 
 
   protected val hostZeroPtr = Pointer.pointerToFloat(0)
@@ -662,7 +664,7 @@ trait LowPriorityNativeMatrix extends LowPriorityNativeMatrix1 { this: CuMatrix.
 
 }
 
-trait CuMatrixOps { this: CuMatrix.type =>
+trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
   implicit def CuMatrixDMulCuMatrixD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] = new OpMulMatrix.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
     def apply(_a : CuMatrix[Double], _b : CuMatrix[Double]): CuMatrix[Double] = {
 
@@ -702,6 +704,93 @@ trait CuMatrixOps { this: CuMatrix.type =>
         b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
         hostZero, rv.data.toCuPointer, rv.rows)
       rv
+    }
+  }
+
+  implicit def CuMatrixFAddCuMatrixF(implicit blas: cublasHandle): OpAdd.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] = new OpAdd.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+    def apply(a : CuMatrix[Float], b : CuMatrix[Float]): CuMatrix[Float] = {
+      if(a.majorStride < math.max(if(a.isTranspose) a.cols else a.rows, 1)
+        || b.majorStride < math.max(if(b.isTranspose) b.cols else b.rows, 1))  {
+        addImpl[Float].apply(a, b)
+      } else {
+
+        require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+        require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+        val rv = CuMatrix.zeros[Float](a.rows, b.cols)
+
+        if(a.rows == 0 || b.rows == 0 || a.cols == 0 || b.cols == 0) return rv
+
+        // if we have a weird stride (mostly stride 0), switch to custom implementation
+
+        JCublas2.cublasSgeam(blas, transposeOp(a), transposeOp(b),
+          rv.rows, rv.cols,
+          hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
+          hostOne,
+          b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
+          rv.data.toCuPointer, rv.rows)
+        rv
+      }
+    }
+  }
+
+  implicit def CuMatrixFSubCuMatrixF(implicit blas: cublasHandle): OpSub.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] = new OpSub.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+    def apply(a : CuMatrix[Float], b : CuMatrix[Float]): CuMatrix[Float] = {
+      if(a.majorStride < math.max(if(a.isTranspose) a.cols else a.rows, 1)
+        || b.majorStride < math.max(if(b.isTranspose) b.cols else b.rows, 1))  {
+        subImpl[Float].apply(a, b)
+      } else {
+
+
+        require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+        require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+        val rv = CuMatrix.zeros[Float](a.rows, b.cols)
+
+        JCublas2.cublasSgeam(blas, transposeOp(a), transposeOp(b),
+          rv.rows, rv.cols,
+          hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
+          hostNegativeOne,
+          b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
+          rv.data.toCuPointer, rv.rows)
+        rv
+      }
+    }
+  }
+
+  implicit def CuMatrixFAddCuMatrixFInPlace(implicit blas: cublasHandle): OpAdd.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] = new OpAdd.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] {
+    def apply(_a : CuMatrix[Float], _b : CuMatrix[Float]):Unit = {
+      if(_a.isTranspose) apply(_a.t, _b.t)
+      else {
+        require(_a.rows == _b.rows, s"Row dimension mismatch for addition: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
+        require(_a.cols == _b.cols, s"Column dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
+        require(!_a.isTranspose)
+        if (_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return
+
+        JCublas2.cublasSgeam(blas, cublasOperation.CUBLAS_OP_N, transposeOp(_b),
+          _a.rows, _a.cols,
+          hostOne, _a.data.toCuPointer.withByteOffset(_a.offset * _a.elemSize), _a.majorStride,
+          hostOne,
+          _b.data.toCuPointer.withByteOffset(_b.offset * _b.elemSize), _b.majorStride,
+          _a.data.toCuPointer, _a.rows)
+      }
+    }
+  }
+
+  implicit def CuMatrixFSubCuMatrixFInPlace(implicit blas: cublasHandle): OpSub.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] = new OpSub.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] {
+    def apply(_a : CuMatrix[Float], _b : CuMatrix[Float]):Unit = {
+      if(_a.isTranspose) apply(_a.t, _b.t)
+      else {
+        require(_a.rows == _b.rows, s"Row dimension mismatch for addition: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
+        require(_a.cols == _b.cols, s"Column dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
+        require(!_a.isTranspose)
+        if (_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return
+
+        JCublas2.cublasSgeam(blas, cublasOperation.CUBLAS_OP_N, transposeOp(_b),
+          _a.rows, _a.cols,
+          hostOne, _a.data.toCuPointer.withByteOffset(_a.offset * _a.elemSize), _a.majorStride,
+          hostNegativeOne,
+          _b.data.toCuPointer.withByteOffset(_b.offset * _b.elemSize), _b.majorStride,
+          _a.data.toCuPointer, _a.rows)
+      }
     }
   }
 }
@@ -972,7 +1061,7 @@ trait CuMatrixFuns extends CuMatrixKernels { this: CuMatrix.type =>
   implicit def minIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[min.type]("min")
   implicit def powIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpPow.type]("pow")
 
-  implicit def addIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpAdd.type]("add")
+  implicit def addIntoImpl_S[T](implicit broker: KernelBroker[T]) = broker.inPlaceImpl2For_v_s[OpAdd.type]("add")
   implicit def subIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpSub.type]("sub")
   implicit def mulIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpMulScalar.type]("mul")
   implicit def divIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpDiv.type]("div")
