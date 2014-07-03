@@ -14,6 +14,7 @@ __global__ void MAKE_NAME(map, fun, T) (int rows, int cols,\
   }\
 }
 
+#define MAP_BLOCK_SIZE 32 
 
 
 #define MAP_FUN_2(fun, T) \
@@ -52,7 +53,59 @@ __global__ void MAKE_NAME(map2_s_v, fun, T) (int rows, int cols,\
     }\
   }\
 }\
+extern "C" \
+__global__ void MAKE_NAME(map2_transpose, fun, T) (int rows, int cols,\
+    T *out, int outMajorStride,\
+    const T *a, int aMajorStride,\
+    const T *b, int bMajorStride) {\
+\
+    int numGroupsX = blockDim.x * gridDim.x;\
+  int numGroupsY = blockDim.y * gridDim.y;\
+  int firstBlockX = blockDim.x * blockIdx.x;\
+  int firstBlockY = blockDim.y * blockIdx.y;\
+  __shared__ T tile[MAP_BLOCK_SIZE][MAP_BLOCK_SIZE+1];\
+  \
+   /*x is row in a, col in b*/\
+   /*y is col in a, row in b*/\
+  \
+  for (int yb = firstBlockY; yb < cols; yb += numGroupsY) {\
+    for (int xb = firstBlockX; xb < rows; xb += numGroupsX) {\
+       int ylim = min(cols, yb + MAP_BLOCK_SIZE);\
+      int xlim = min(rows, xb + MAP_BLOCK_SIZE);\
+      \
+      \
+      /* use threadid.y for x here so that the y loop is on the first blockDim, which
+       means coalesced reads*/\
+      for (int x = threadIdx.y + xb; x < xlim; x += blockDim.y) {\
+        for(int y = threadIdx.x + yb; y < ylim; y += blockDim.x) {\
+          tile[x-xb][y-yb] = b[x*bMajorStride + y];\
+        }\
+      }\
+      \
+    __syncthreads();\
+      for(int y = threadIdx.y + yb; y < ylim; y += blockDim.y) {\
+        for (int x = threadIdx.x + xb; x < xlim; x += blockDim.x) {\
+          out[x + y*outMajorStride] = fun(a[x + y * aMajorStride], tile[x-xb][y-yb]);\
+        }\
+      }\
+    __syncthreads();\
+    }\
+  }\
+}
+    
 
+/*
+  for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < cols; col += blockDim.x * gridDim.x) {\
+    for (int j = 0; j < ; j += BLOCK_ROWS)
+     block[(threadIdx.y+j)*TILE_DIM + threadIdx.x] = idata[(y+j)*width + x];
+
+    for(int row = threadIdx.y + blockIdx.y * blockDim.y; row < rows;  row += blockDim.y * gridDim.y) {\
+        out[col * outMajorStride + row] = fun(a[col * aMajorStride + row], b[col * bMajorStride + row]);\
+    }\
+  }\
+}\
+\
+*/
 
 
 
@@ -91,7 +144,7 @@ extern "C" \
 __global__ void MAKE_NAME(reduce, fun, T) (int rows, int cols,\
     T *out,\
     const T *in, int inMajorStride) {\
-  __shared__ T buffer[32];\
+  /*__shared__ T buffer[32];\*/\
 \
   T sum = identity;\
   for(int col = threadIdx.y + blockIdx.y * blockDim.y; col < cols; col += blockDim.y * gridDim.y) {\
@@ -116,7 +169,7 @@ extern "C" \
 __global__ void MAKE_NAME(reduce_col, fun, T) (int rows, int cols,\
     T *out,\
     const T *in, int inMajorStride) {\
-  __shared__ T buffer[32];\
+  /*__shared__ T buffer[32];\*/\
 \
   for(int col = threadIdx.y + blockIdx.x * blockDim.y; col < cols; col += blockDim.y * gridDim.x) {\
     T sum = identity;\
@@ -142,7 +195,7 @@ extern "C" \
 __global__ void MAKE_NAME(reduce_row, fun, T) (int rows, int cols,\
     T *out,\
     const T *in, int inMajorStride) {\
-  __shared__ T buffer[32];\
+ /* __shared__ T buffer[32];*/\
 \
   int numReducers = blockDim.x * gridDim.x;\
   for(int row = threadIdx.x + blockIdx.x * blockDim.x; row < rows; row += numReducers) {\

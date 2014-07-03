@@ -206,6 +206,20 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   }
 
+  test("transpose elemwise mul"){ (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rows = 300
+    val cols = 100
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(rows, cols), Float)
+    val dm2 : DenseMatrix[Float] = convert(DenseMatrix.rand(cols, rows), Float)
+    val cu = CuMatrix.zeros[Float](rows, cols)
+    val cu2 = CuMatrix.zeros[Float](cols, rows)
+    cu := dm
+    cu2 := dm2
+    assert((dm :* dm2.t) === (cu :* cu2.t).toDense)
+  }
+
+
   test("broadcast addition") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(3, 3), Float)

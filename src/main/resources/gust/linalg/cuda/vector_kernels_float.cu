@@ -83,7 +83,6 @@ extern "C" \
 __global__ void MAKE_NAME(reduce, fun, T) (int length,\
     T *out,\
     const T *in, int inStride) {\
-  __shared__ T buffer[32];\
 \
   T sum = identity;\
   for(int col = threadIdx.x + blockIdx.x * blockDim.x; col < length; col += blockDim.x * gridDim.x) {\
