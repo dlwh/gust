@@ -793,9 +793,9 @@ trait CuMatrixOps { this: CuMatrix.type =>
       require(_a.rows >= _a.cols, "No of rows of the matrix has to be >= than no of cols")
 
       if (_a.rows == _a.cols)
-        CuMethods.solveDouble(_a, _b)
+        CuSolve.solveDouble(_a, _b)
       else
-        CuMethods.QRSolveDouble(_a, _b)
+        CuSolve.QRSolveDouble(_a, _b)
     }
   }
 
@@ -806,9 +806,9 @@ trait CuMatrixOps { this: CuMatrix.type =>
       require(_a.rows >= _a.cols, "No of rows of the matrix has to be >= than no of cols")
 
       if (_a.rows == _a.cols)
-        CuMethods.solveFloat(_a, _b)
+        CuSolve.solveFloat(_a, _b)
       else
-        CuMethods.QRSolveFloat(_a, _b)
+        CuSolve.QRSolveFloat(_a, _b)
     }
   }
 }

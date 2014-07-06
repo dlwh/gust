@@ -28,13 +28,68 @@ import CuWrapperMethods._
 /**
  * Created by piotrek on 21.05.2014.
  */
-object CuLU {
+object CuLU extends UFunc {
 
 //  val hostOne = Pointer.pointerToFloat(1.0f).toCuPointer
 //  val hostMinusOne = Pointer.pointerToFloat(-1.0f).toCuPointer
 //  val hostZero = Pointer.pointerToFloat(0.0f).toCuPointer
 
+  /**
+   * LU factorization with pivoting: the returned matrices are (P, L, U) // in this order
+   */
+  implicit object implDouble extends Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
+    def apply(A: CuMatrix[Double]) = {
+      implicit val handle = A.blas
+      val (d_LU, d_P) = LUDouble(A)
+      val (d_L, d_U) = LUFactorsDouble(d_LU)
+      (d_P, d_L, d_U)
+    }
+  }
 
+  implicit object implFloat extends Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] {
+    def apply(A: CuMatrix[Float]) = {
+      implicit val handle = A.blas
+      val (d_LU, d_P) = LUFloat(A)
+      val (d_L, d_U) = LUFactorsFloat(d_LU)
+      (d_P, d_L, d_U)
+    }
+  }
+
+
+  /**
+   * Constructs full L and U factors from one matrix returned by our methods
+   */
+  def LUFactorsDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
+    val d_L = CuMatrix.create[Double](A.rows, A.cols); d_L := A
+    val d_U = CuMatrix.create[Double](A.rows, A.cols); d_U := A
+
+    // zero out appropriate parts of matrices
+    CuWrapperMethods.zeroOutDouble(d_L, 'U')
+    CuWrapperMethods.zeroOutDouble(d_U, 'L')
+
+    // set the diagonal in d_L to ones
+    val diag_len = if (A.rows < A.cols) A.rows else A.cols
+    val d_diag = DenseMatrix.ones[Double](diag_len, 1)
+    JCublas2.cublasSetVector(diag_len, d_L.elemSize.toInt, jcuda.Pointer.to(d_diag.data), 1, d_L.offsetPointer, d_L.majorStride + 1)
+
+    (d_L, d_U)
+  }
+
+  def LUFactorsFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
+    val d_L = CuMatrix.create[Float](A.rows, A.cols); d_L := A
+    val d_U = CuMatrix.create[Float](A.rows, A.cols); d_U := A
+
+    // zero out appropriate parts of matrices
+    CuWrapperMethods.zeroOutFloat(d_L, 'U')
+    CuWrapperMethods.zeroOutFloat(d_U, 'L')
+
+    // set the diagonal in d_L to ones
+    val diag_len = if (A.rows < A.cols) A.rows else A.cols
+    val d_diag = DenseMatrix.ones[Float](diag_len, 1)
+    JCublas2.cublasSetVector(diag_len, d_L.elemSize.toInt, jcuda.Pointer.to(d_diag.data), 1, d_L.offsetPointer, d_L.majorStride + 1)
+
+    (d_L, d_U)
+  }
 
   /**
    * LU factorization, based on algorithm from noctua-blog.com

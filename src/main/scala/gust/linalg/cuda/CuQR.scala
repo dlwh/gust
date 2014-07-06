@@ -1,5 +1,6 @@
 package gust.linalg.cuda
 
+import breeze.generic.UFunc
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.netlib.util.intW
@@ -12,7 +13,24 @@ import com.github.fommil.netlib.LAPACK.{getInstance => lapack}
 /**
  * Created by piotrek on 28.06.2014.
  */
-object CuQR {
+object CuQR extends UFunc {
+
+  implicit object implDoubleFullFact extends Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double])] {
+    def apply(A: CuMatrix[Double]) = {
+      implicit val handle = A.blas
+      val (d_A, tau) = QRDoubleMN(A)
+      QRFactorsDouble(d_A, tau)
+    }
+  }
+
+  implicit object implFloatFullFact extends Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float])] {
+    def apply(A: CuMatrix[Float]) = {
+      implicit val handle = A.blas
+      val (d_A, tau) = QRFloatMN(A)
+      QRFactorsFloat(d_A, tau)
+    }
+  }
+
 
   def QRFactorsFloat(A: CuMatrix[Float], tau: DenseVector[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
     if (A.rows < A.cols) {
