@@ -4,14 +4,11 @@ import org.scalameter.api._
 
 import jcuda.jcublas.{cublasHandle, JCublas2}
 import gust.util.cuda
-import breeze.linalg.{DenseVector, DenseMatrix}
+import breeze.linalg.{DenseVector, DenseMatrix, LU, qr}
 
 /**
  * Created by piotrek on 31.05.2014.
  */
-//class CuMethodsTest {
-//
-//}
 
 object CuMethodsTest
   extends PerformanceTest.Quickbenchmark {
@@ -61,21 +58,13 @@ object CuMethodsTest
   performance of "CuMethods" in {
     measure method "LUFloat" in {
       using(d_MsFloat) in {
-        d_M => { CuMethods.LUFloat(d_M) }
+        d_M => { CuLU.LUFloat(d_M) }
       }
     }
 
     measure method "LUDouble" in {
       using(d_MsDouble) in {
-        d_M => { CuMethods.LUDouble(d_M) }
-      }
-    }
-
-    measure method "solveDouble" in {
-      using(d_SetsDouble) in {
-        set => {
-          set._1 \ set._2
-        }
+        d_M => { CuLU.LUDouble(d_M) }
       }
     }
 
@@ -87,18 +76,42 @@ object CuMethodsTest
       }
     }
 
+    measure method "solveDouble" in {
+      using(d_SetsDouble) in {
+        set => {
+          set._1 \ set._2
+        }
+      }
+    }
+
+    measure method "QRFloat" in {
+      using(d_MsFloat) in {
+        d_M => {
+          CuQR.QRFloatMN(d_M)
+        }
+      }
+    }
+
+    measure method "QRDouble" in {
+      using(d_MsDouble) in {
+        d_M => {
+          CuQR.QRDoubleMN(d_M)
+        }
+      }
+    }
+
   }
 
   performance of "Breeze.linalg" in {
     measure method "LUFloat" in {
       using(h_MsFloat) in {
-        h_M => { breeze.linalg.LU(h_M) }
+        h_M => { LU(h_M) }
       }
     }
 
     measure method "LUDouble" in {
       using(h_MsDouble) in {
-        h_M => { breeze.linalg.LU(h_M) }
+        h_M => { LU(h_M) }
       }
     }
 
@@ -115,6 +128,19 @@ object CuMethodsTest
         set => {
           set._1 \ set._2
         }
+      }
+    }
+
+    // hmm, breeze doesn't have a Float implementation of QR it seems
+//    measure method "QRFloat" in {
+//      using(h_MsFloat) in {
+//        h_M => { qr(h_M) }
+//      }
+//    }
+
+    measure method "QRDouble" in {
+      using(h_MsDouble) in {
+        h_M => { qr(h_M) }
       }
     }
   }

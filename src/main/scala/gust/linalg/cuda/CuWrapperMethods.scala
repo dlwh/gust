@@ -16,6 +16,7 @@ object CuWrapperMethods {
   /*
    * Kernels for element-wise operations: product and sum
    * They may be moved to CuMatrix later
+   * Hmm, there's a cublas function for the addition...
    */
   def elemWiseProdFloat(A: CuMatrix[Float], B: CuMatrix[Float]): CuMatrix[Float] = elemWiseFloat('p', A, B)
 
@@ -312,4 +313,80 @@ object CuWrapperMethods {
       src.majorStride * src.elemSize, m * src.elemSize, n, cudaMemcpyKind.cudaMemcpyDeviceToHost)
   }
 
+
+  /*
+   * Functions for calculating the residuals:
+   * calculates |A - BC| where BC are Q and R in case of QR factorization or L and U
+   * in case of LU factorization.
+   * If the pivot matrix is not null, we actually calculate |PA - BC|.
+   *
+   * It can also calculate the residual in case of the solve method, since we treat vectors as matrices
+   */
+  def residualFloat(A: CuMatrix[Float], B: CuMatrix[Float], C: CuMatrix[Float], P: CuMatrix[Float] = null): Double = {
+    if (B.rows != C.cols) {
+      println("Dimensions have to match (B.rows must equal C.cols)")
+      return 0.0
+    }
+
+    if (B.cols != C.rows) {
+      println("Dimensions have to match (B.cols must equal C.rows)")
+      return 0.0
+    }
+
+    if (A.rows != C.rows) {
+      println("Dimensions have to match (A.rows must equal C.rows)")
+      return 0.0
+    }
+
+    if (P != null && (A.rows != P.rows || A.cols != P.cols)) {
+      println("Wrong pivoting matrix")
+      return 0.0
+    }
+
+    implicit val handle = A.blas
+
+    val d_A = CuMatrix.create[Float](A.rows, A.cols)
+
+    val minusOneArr = Array(-1.0f)
+    val oneArr = Array(1.0f)
+    val zeroArr = Array(0.0f)
+
+    if (P != null)
+      // d_A = P*A
+      SgemmNN(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
+    else
+      d_A := A
+
+    // A = A - B*C
+    SgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+
+    d_A.norm
+  }
+
+  def residualDouble(A: CuMatrix[Double], B: CuMatrix[Double], C: CuMatrix[Double]): Double = {
+    if (B.rows != C.cols) {
+      println("Dimensions have to match (B.rows must equal C.cols)")
+      return 0.0
+    }
+
+    if (B.cols != C.rows) {
+      println("Dimensions have to match (B.cols must equal C.rows)")
+      return 0.0
+    }
+
+    if (A.rows != C.rows) {
+      println("Dimensions have to match (A.rows must equal C.rows)")
+      return 0.0
+    }
+
+    implicit val handle = A.blas
+
+    val d_A = CuMatrix.create[Double](A.rows, A.cols); d_A := A
+    val minusOneArr = Array(-1.0)
+    val oneArr = Array(1.0)
+    // A = A - B*C
+    DgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+
+    d_A.norm
+  }
 }
