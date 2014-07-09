@@ -214,6 +214,49 @@ object CuWrapperMethods {
     JCudaDriver.cuCtxSynchronize()
   }
 
+  def zeroOutFloatOffset(A: CuMatrix[Float], Aroff: Int, Acoff: Int, fillMode: Char, includeDiagonal: Boolean = false) {
+    val nb = 32     // most cards can go as high as 1024 (32**2) threads per block
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    val zero_out = new CUfunction()
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
+
+    // once again -- magnled names, I'll have try to figure something out
+    val funcName = if (fillMode == 'U') "_Z6zerosUiiPfii" else "_Z6zerosLiiPfii"
+    JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
+
+    // kernel parameters:
+    val ldaArr = Array(A.majorStride)
+    val lda = jcuda.Pointer.to(ldaArr)
+    //val elemsArr = Array(A.rows * A.cols)
+    //val elems = jcuda.Pointer.to(elemsArr)
+    val mArr = Array(A.rows - Aroff)
+    val m = jcuda.Pointer.to(mArr)
+    val nArr = Array(A.cols - Acoff)
+    val n = jcuda.Pointer.to(nArr)
+    val inclArr = Array(if (includeDiagonal) 1 else 0)
+    val incl = jcuda.Pointer.to(inclArr)
+
+    val params = jcuda.Pointer.to(
+      m, n,
+      jcuda.Pointer.to(A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize)),
+      lda, incl
+    )
+
+    val gridDim = ((A.rows - Aroff) / nb + (if ((A.rows - Aroff) % nb == 0) 0 else 1),
+      (A.cols - Acoff) / nb + (if ((A.cols - Acoff) % nb == 0) 0 else 1),
+      1)
+    val blockDim = (nb, nb, 1)
+
+    JCudaDriver.cuLaunchKernel(zero_out, gridDim._1, gridDim._2, gridDim._3,
+      blockDim._1, blockDim._2, blockDim._3,
+      0, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+  }
+
   /*
    * wrapped calls to gemm, don't require passing lda's and elemSizes around
    */
@@ -266,6 +309,62 @@ object CuWrapperMethods {
               C: CuMatrix[Double], Croff: Int, Ccoff: Int)(implicit handle: cublasHandle) {
 
     JCublas2.cublasDgemm(handle, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T,
+      m, n, k, alpha,
+      A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      B.offsetPointer.withByteOffset(B.linearIndex(Broff, Bcoff) * B.elemSize), B.majorStride,
+      beta,
+      C.offsetPointer.withByteOffset(C.linearIndex(Croff, Ccoff) * C.elemSize), C.majorStride)
+  }
+
+  def SgemmTN(m: Int, n: Int, k: Int, alpha: jcuda.Pointer,
+              A: CuMatrix[Float], Aroff: Int, Acoff: Int,
+              B: CuMatrix[Float], Broff: Int, Bcoff: Int,
+              beta: jcuda.Pointer,
+              C: CuMatrix[Float], Croff: Int, Ccoff: Int)(implicit handle: cublasHandle) {
+
+    JCublas2.cublasSgemm(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N,
+      m, n, k, alpha,
+      A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      B.offsetPointer.withByteOffset(B.linearIndex(Broff, Bcoff) * B.elemSize), B.majorStride,
+      beta,
+      C.offsetPointer.withByteOffset(C.linearIndex(Croff, Ccoff) * C.elemSize), C.majorStride)
+  }
+
+  def DgemmTN(m: Int, n: Int, k: Int, alpha: jcuda.Pointer,
+              A: CuMatrix[Double], Aroff: Int, Acoff: Int,
+              B: CuMatrix[Double], Broff: Int, Bcoff: Int,
+              beta: jcuda.Pointer,
+              C: CuMatrix[Double], Croff: Int, Ccoff: Int)(implicit handle: cublasHandle) {
+
+    JCublas2.cublasDgemm(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N,
+      m, n, k, alpha,
+      A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      B.offsetPointer.withByteOffset(B.linearIndex(Broff, Bcoff) * B.elemSize), B.majorStride,
+      beta,
+      C.offsetPointer.withByteOffset(C.linearIndex(Croff, Ccoff) * C.elemSize), C.majorStride)
+  }
+
+  def SgemmTT(m: Int, n: Int, k: Int, alpha: jcuda.Pointer,
+              A: CuMatrix[Float], Aroff: Int, Acoff: Int,
+              B: CuMatrix[Float], Broff: Int, Bcoff: Int,
+              beta: jcuda.Pointer,
+              C: CuMatrix[Float], Croff: Int, Ccoff: Int)(implicit handle: cublasHandle) {
+
+    JCublas2.cublasSgemm(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_T,
+      m, n, k, alpha,
+      A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      B.offsetPointer.withByteOffset(B.linearIndex(Broff, Bcoff) * B.elemSize), B.majorStride,
+      beta,
+      C.offsetPointer.withByteOffset(C.linearIndex(Croff, Ccoff) * C.elemSize), C.majorStride)
+  }
+
+  def DgemmTT(m: Int, n: Int, k: Int, alpha: jcuda.Pointer,
+              A: CuMatrix[Double], Aroff: Int, Acoff: Int,
+              B: CuMatrix[Double], Broff: Int, Bcoff: Int,
+              beta: jcuda.Pointer,
+              C: CuMatrix[Double], Croff: Int, Ccoff: Int)(implicit handle: cublasHandle) {
+
+    JCublas2.cublasDgemm(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_T,
       m, n, k, alpha,
       A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
       B.offsetPointer.withByteOffset(B.linearIndex(Broff, Bcoff) * B.elemSize), B.majorStride,
@@ -357,13 +456,13 @@ object CuWrapperMethods {
     else
       d_A := A
 
-    // A = A - B*C
+    // d_A = d_A - B*C
     SgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
 
     d_A.norm
   }
 
-  def residualDouble(A: CuMatrix[Double], B: CuMatrix[Double], C: CuMatrix[Double]): Double = {
+  def residualDouble(A: CuMatrix[Double], B: CuMatrix[Double], C: CuMatrix[Double], P: CuMatrix[Double] = null): Double = {
     if (B.rows != C.cols) {
       println("Dimensions have to match (B.rows must equal C.cols)")
       return 0.0
@@ -379,14 +478,57 @@ object CuWrapperMethods {
       return 0.0
     }
 
+    if (P != null && (A.rows != P.rows || A.cols != P.cols)) {
+      println("Wrong pivoting matrix")
+      return 0.0
+    }
+
     implicit val handle = A.blas
 
-    val d_A = CuMatrix.create[Double](A.rows, A.cols); d_A := A
+    val d_A = CuMatrix.create[Double](A.rows, A.cols)
+
     val minusOneArr = Array(-1.0)
     val oneArr = Array(1.0)
-    // A = A - B*C
+    val zeroArr = Array(0.0)
+
+    if (P != null)
+    // d_A = P*A
+      DgemmNN(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
+    else
+      d_A := A
+
+    // d_A = d_A - B*C
     DgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
 
     d_A.norm
+  }
+
+  /**
+   * Overwrites matrix A with an identity matrix
+   * (and fills out the zeroes if A is not square)
+   * @param A
+   */
+  def eyeizeFloat(A: CuMatrix[Float]) {
+    implicit val handle = A.blas
+
+    zeroOutFloat(A, 'U')
+    zeroOutFloat(A, 'L')
+
+    val diagLen = if (A.rows < A.cols) A.rows else A.cols
+    val d_diag = CuMatrix.ones[Float](diagLen, 1)
+
+    JCublas2.cublasScopy(handle, diagLen, d_diag.offsetPointer, 1, A.offsetPointer, A.majorStride + 1)
+  }
+
+  def eyeizeDouble(A: CuMatrix[Double]) {
+    implicit val handle = A.blas
+
+    zeroOutDouble(A, 'U')
+    zeroOutDouble(A, 'L')
+
+    val diagLen = if (A.rows < A.cols) A.rows else A.cols
+    val d_diag = CuMatrix.fromDense(DenseMatrix.ones[Double](diagLen, 1))
+
+    JCublas2.cublasDcopy(handle, diagLen, d_diag.offsetPointer, 1, A.offsetPointer, A.majorStride + 1)
   }
 }
