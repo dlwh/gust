@@ -257,6 +257,46 @@ object CuWrapperMethods {
     JCudaDriver.cuCtxSynchronize()
   }
 
+  def zeroOutDoubleOffset(A: CuMatrix[Double], Aroff: Int, Acoff: Int, fillMode: Char, includeDiagonal: Boolean = false) {
+    val nb = 32     // most cards can go as high as 1024 (32**2) threads per block
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    val zero_out = new CUfunction()
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUDouble.ptx")
+
+    val funcName = if (fillMode == 'U') "_Z6zerosUiiPdii" else "_Z6zerosLiiPdii"
+    JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
+
+    // kernel parameters:
+    val ldaArr = Array(A.majorStride)
+    val lda = jcuda.Pointer.to(ldaArr)
+    val mArr = Array(A.rows - Aroff)
+    val m = jcuda.Pointer.to(mArr)
+    val nArr = Array(A.cols - Acoff)
+    val n = jcuda.Pointer.to(nArr)
+    val inclArr = Array(if (includeDiagonal) 1 else 0)
+    val incl = jcuda.Pointer.to(inclArr)
+
+    val params = jcuda.Pointer.to(
+      m, n,
+      jcuda.Pointer.to(A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize)),
+      lda, incl
+    )
+
+    val gridDim = ((A.rows - Aroff) / nb + (if ((A.rows - Aroff) % nb == 0) 0 else 1),
+      (A.cols - Acoff) / nb + (if ((A.cols - Acoff) % nb == 0) 0 else 1),
+      1)
+    val blockDim = (nb, nb, 1)
+
+    JCudaDriver.cuLaunchKernel(zero_out, gridDim._1, gridDim._2, gridDim._3,
+      blockDim._1, blockDim._2, blockDim._3,
+      0, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+  }
+
   /*
    * wrapped calls to gemm, don't require passing lda's and elemSizes around
    */
