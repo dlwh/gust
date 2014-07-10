@@ -33,7 +33,7 @@ object CuSVD {
     val n = A.cols
 
     val d_A = CuMatrix.create[Float](m, n); d_A := A
-    val d_Q = CuMatrix.create[Float](m, n); eyeizeFloat(d_Q)
+    val d_Q = CuMatrix.create[Float](m, m); eyeizeFloat(d_Q)
     val d_P = CuMatrix.create[Float](n, n); eyeizeFloat(d_P)
 
     val oneArr = Array(1.0f)
@@ -50,23 +50,27 @@ object CuSVD {
     val d_P1 = CuMatrix.create[Float](n, n)
     val betaArr = Array(0.0f)
 
-    cfor(0)(_ < n - 1, _ + 1) { i => {
+    cfor(0)(_ < n, _ + 1) { i => {
       // eliminate a column:
       householderMatFloat(d_A, i, i, d_v, d_Q1)
 
-      // d_A = d_Q1 * d_A
+      //d_A = d_Q1 * d_A
+      //SgemmNN(m, n, m, one, d_Q1, 0, 0, d_A, 0, 0, zero, d_A, 0, 0)
       SgemmNN(m-i, n-i, m-i, one, d_Q1, i, i, d_A, i, i, zero, d_A, i, i)
       // d_Q = d_Q1 * d_Q
-      SgemmNN(m-i, m-i, m-i, one, d_Q1, i, i, d_Q, i, i, zero, d_Q, i, i)
+      SgemmNN(m, m, m, one, d_Q1, 0, 0, d_Q, 0, 0, zero, d_Q, 0, 0)
+      //SgemmNN(m-i, m-i, m-i, one, d_Q1, i, i, d_Q, i, i, zero, d_Q, i, i)
 
       if (i < n - 2) {
         // eliminate a row:
         householderMatFloat(d_A, i, i + 1, d_v, d_P1, col = false)
 
         // d_A = d_A * d_P1
+        //SgemmNN(m, n, n, one, d_A, 0, 0, d_P1, 0, 0, zero, d_A, 0, 0)
         SgemmNN(m-i, n-i-1, n-i-1, one, d_A, i, i+1, d_P1, i+1, i+1, zero, d_A, i, i+1)
         // d_P = d_P * d_P1
-        SgemmNN(n-i-1, n -i-1, n-i-1, one, d_P, i+1, i+1, d_P1, i+1, i+1, zero, d_P, i+1, i+1)
+        SgemmNN(n, n, n, one, d_P, 0, 0, d_P1, 0, 0, zero, d_P, 0, 0)
+        //SgemmNN(n-i-1, n -i-1, n-i-1, one, d_P, i+1, i+1, d_P1, i+1, i+1, zero, d_P, i+1, i+1)
       }
     }}
 
