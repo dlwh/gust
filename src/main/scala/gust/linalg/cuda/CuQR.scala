@@ -15,23 +15,14 @@ import com.github.fommil.netlib.LAPACK.{getInstance => lapack}
  */
 object CuQR extends UFunc {
 
-  implicit object implDoubleFullFact extends Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double])] {
-    def apply(A: CuMatrix[Double]) = {
-      implicit val handle = A.blas
-      val (d_A, tau) = QRDoubleMN(A)
-      QRFactorsDouble(d_A, tau)
-    }
-  }
-
-  implicit object implFloatFullFact extends Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float])] {
-    def apply(A: CuMatrix[Float]) = {
-      implicit val handle = A.blas
-      val (d_A, tau) = QRFloatMN(A)
-      QRFactorsFloat(d_A, tau)
-    }
-  }
-
-
+  /**
+   * Given a matrix containing both the upper triangular matrix and the householder vectors, and
+   * a vector containing the householder quantities, constructs full Q and R matrices.
+   * @param A
+   * @param tau
+   * @param handle
+   * @return
+   */
   def QRFactorsFloat(A: CuMatrix[Float], tau: DenseVector[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
     if (A.rows < A.cols) {
       println("Number of rows of matrix A cannot be smaller than the number of columns.")

@@ -24,36 +24,12 @@ import com.github.fommil.netlib.ARPACK
 import org.netlib.util.intW
 import spire.syntax.cfor._
 import CuWrapperMethods._
+import breeze.linalg._
 
 /**
  * Created by piotrek on 21.05.2014.
  */
 object CuLU extends UFunc {
-
-//  val hostOne = Pointer.pointerToFloat(1.0f).toCuPointer
-//  val hostMinusOne = Pointer.pointerToFloat(-1.0f).toCuPointer
-//  val hostZero = Pointer.pointerToFloat(0.0f).toCuPointer
-
-  /**
-   * LU factorization with pivoting: the returned matrices are (P, L, U) // in this order
-   */
-  implicit object implDouble extends Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
-    def apply(A: CuMatrix[Double]) = {
-      implicit val handle = A.blas
-      val (d_LU, d_P) = LUDouble(A)
-      val (d_L, d_U) = LUFactorsDouble(d_LU)
-      (d_P, d_L, d_U)
-    }
-  }
-
-  implicit object implFloat extends Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] {
-    def apply(A: CuMatrix[Float]) = {
-      implicit val handle = A.blas
-      val (d_LU, d_P) = LUFloat(A)
-      val (d_L, d_U) = LUFactorsFloat(d_LU)
-      (d_P, d_L, d_U)
-    }
-  }
 
 
   /**

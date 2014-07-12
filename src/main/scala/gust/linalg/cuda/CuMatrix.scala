@@ -208,9 +208,6 @@ class CuMatrix[V](val rows: Int,
 
   def copy: CuMatrix[V] = ???
 
-  // for now only Double
-  //def \(B: CuMatrix[Double]) = CuMethods.solve2(this.asInstanceOf[CuMatrix[Double]], B)
-
   /**
    * Method for slicing that is tuned for Matrices.
    * @return
@@ -220,7 +217,7 @@ class CuMatrix[V](val rows: Int,
   }
 
   // to make life easier when debugging
-  override def toString = this.toDense.toString + "\nPointer: " + data.toString
+  override def toString = this.toDense.toString + "\nPointer: " + data.toString + "\n"
 
   /**
    * A Frobenius norm of a matrix
@@ -268,6 +265,15 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
     mat := semiring.one
 
 
+    mat
+  }
+
+  def eye[V](size: Int)(implicit ct: ClassTag[V], blas: cublasHandle, semiring: Semiring[V]): CuMatrix[V] = {
+    val mat = CuMatrix.zeros[V](size, size)
+    val diag = DenseVector.ones[V](size)
+    val p = Pointer.pointerToArray(diag.data).as(ct.runtimeClass)
+
+    JCublas2.cublasSetVector(size, mat.elemSize.toInt, p.toCuPointer, 1, mat.offsetPointer, mat.majorStride+1)
     mat
   }
 
@@ -809,6 +815,64 @@ trait CuMatrixOps { this: CuMatrix.type =>
         CuSolve.solveFloat(_a, _b)
       else
         CuSolve.QRSolveFloat(_a, _b)
+    }
+  }
+
+  /**
+   * LU factorization with pivoting: the returned matrices are (P, L, U) // in this order
+   */
+  implicit object canLUFloat extends LU.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] {
+    def apply(_a: CuMatrix[Float]) = {
+      import _a.blas
+      val (d_LU, d_P) = CuLU.LUFloat(_a)
+      val (d_L, d_U) = CuLU.LUFactorsFloat(d_LU)
+      (d_P, d_L, d_U)
+    }
+  }
+
+  implicit object canLUDouble extends LU.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
+    def apply(_a: CuMatrix[Double]) = {
+      import _a.blas
+      val (d_LU, d_P) = CuLU.LUDouble(_a)
+      val (d_L, d_U) = CuLU.LUFactorsDouble(d_LU)
+      (d_P, d_L, d_U)
+    }
+  }
+
+  /**
+   * QR factorization
+   */
+  implicit object canQRDouble extends qr.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float])] {
+    def apply(_a: CuMatrix[Float]) = {
+      import _a.blas
+      val (d_A, tau) = CuQR.QRFloatMN(_a)
+      CuQR.QRFactorsFloat(d_A, tau)
+    }
+  }
+
+  implicit object canQRFloat extends qr.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double])] {
+    def apply(_a: CuMatrix[Double]) = {
+      import _a.blas
+      val (d_A, tau) = CuQR.QRDoubleMN(_a)
+      CuQR.QRFactorsDouble(d_A, tau)
+    }
+  }
+
+  /**
+   * Singular Value Decomposition. Returns (U, E, VT) (unlike matlab, which
+   * returns the V without the transpose)
+   */
+  implicit object canSVDFloat extends svd.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] {
+    def apply(_a: CuMatrix[Float]) = {
+      import _a.blas
+      CuSVD.SVDFloat(_a)
+    }
+  }
+
+  implicit object canSVDDouble extends svd.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
+    def apply(_a: CuMatrix[Double]) = {
+      import _a.blas
+      CuSVD.SVDDouble(_a)
     }
   }
 }
