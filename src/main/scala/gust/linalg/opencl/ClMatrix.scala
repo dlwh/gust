@@ -3,7 +3,7 @@ package gust.linalg.opencl
 import java.lang.Math._
 import java.nio.ByteOrder
 
-import breeze.linalg.operators.OpSet
+import breeze.linalg.operators.{OpSub, OpAdd, OpSet}
 import breeze.linalg.support.CanTranspose
 import breeze.linalg.{View, DenseMatrix, NumericOps}
 import com.nativelibs4java.opencl.CLMem.Usage
@@ -112,7 +112,7 @@ class CLMatrix(val rows: Int, val cols: Int,
 
 }
 
-object CLMatrix extends LowPriorityNativeMatrix {
+object CLMatrix extends LowPriorityNativeMatrix with CLMatrixOps {
 
   def create(rows: Int, cols: Int)(implicit context: CLContext, queue: CLQueue) = {
     val (data, buff) = opencl.allocate(rows*cols, context, queue)
@@ -149,6 +149,74 @@ trait LowPriorityNativeMatrix {
   implicit def SetCLMDMOp: OpSet.InPlaceImpl2[CLMatrix, DenseMatrix[Float]] = new OpSet.InPlaceImpl2[CLMatrix, DenseMatrix[Float]] {
     def apply(a: CLMatrix, b: DenseMatrix[Float]) {
       a.writeFromDense(b)
+    }
+  }
+
+}
+
+trait CLMatrixOps {
+
+  implicit def CLMatrixFAddCLMatrixF(implicit context: CLContext, queue: CLQueue): OpAdd.Impl2[CLMatrix, CLMatrix, CLMatrix] = new OpAdd.Impl2[CLMatrix, CLMatrix, CLMatrix] {
+    def apply(a : CLMatrix, b : CLMatrix): CLMatrix = {
+      require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+
+      val addKernel = CLKernelManager.getKernel("add")
+      val result = CLMatrix.create(a.rows, a.cols)
+      addKernel.setArgs(result.buff, a.buff, b.buff, a.size.asInstanceOf[JInt])
+
+      val addEvt = addKernel.enqueueNDRange(queue, Array(a.size))
+      val outPtr = result.buff.read(queue, addEvt)
+
+      outPtr.copyTo(result.data)
+      result
+    }
+  }
+
+  implicit def CLMatrixFSubCLMatrixF(implicit context: CLContext, queue: CLQueue): OpSub.Impl2[CLMatrix, CLMatrix, CLMatrix] = new OpSub.Impl2[CLMatrix, CLMatrix, CLMatrix] {
+    def apply(a : CLMatrix, b : CLMatrix): CLMatrix = {
+      require(a.rows == b.rows, s"Row dimension mismatch for subtraction: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+
+      val subKernel = CLKernelManager.getKernel("sub")
+      val result = CLMatrix.create(a.rows, a.cols)
+      subKernel.setArgs(result.buff, a.buff, b.buff, a.size.asInstanceOf[JInt])
+
+      val addEvt = subKernel.enqueueNDRange(queue, Array(a.size))
+      val outPtr = result.buff.read(queue, addEvt)
+
+      outPtr.copyTo(result.data)
+      result
+    }
+  }
+
+  implicit def CLMatrixFAddCLMatrixFInPlace(implicit context: CLContext, queue: CLQueue): OpAdd.InPlaceImpl2[CLMatrix, CLMatrix] = new OpAdd.InPlaceImpl2[CLMatrix, CLMatrix] {
+    def apply(a : CLMatrix, b : CLMatrix): Unit = {
+      require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+
+      val addKernel = CLKernelManager.getKernel("add_in_place")
+      addKernel.setArgs(a.buff, b.buff, a.size.asInstanceOf[JInt])
+
+      val addEvt = addKernel.enqueueNDRange(queue, Array(a.size))
+      val outPtr = a.buff.read(queue, addEvt)
+
+      outPtr.copyTo(a.data)
+    }
+  }
+
+  implicit def CLMatrixFSubCLMatrixFInPlace(implicit context: CLContext, queue: CLQueue): OpSub.InPlaceImpl2[CLMatrix, CLMatrix] = new OpSub.InPlaceImpl2[CLMatrix, CLMatrix] {
+    def apply(a : CLMatrix, b : CLMatrix): Unit = {
+      require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+
+      val subKernel = CLKernelManager.getKernel("sub_in_place")
+      subKernel.setArgs(a.buff, b.buff, a.size.asInstanceOf[JInt])
+
+      val addEvt = subKernel.enqueueNDRange(queue, Array(a.size))
+      val outPtr = a.buff.read(queue, addEvt)
+
+      outPtr.copyTo(a.data)
     }
   }
 

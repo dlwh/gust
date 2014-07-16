@@ -19,8 +19,8 @@ package object opencl {
     val ptr = Pointer.allocateFloats(size).order(byteOrder)
     val buff = context.createBuffer(Usage.InputOutput, ptr, false) // host allocation
 
-    val data: Pointer[JFloat] = buff.map(queue, CLMem.MapFlags.ReadWrite)
-    (data, buff)
+    //val data: Pointer[JFloat] = buff.map(queue, CLMem.MapFlags.ReadWrite)
+    (ptr, buff)
   }
 
   def allocateZeros(size: Long, context: CLContext, queue: CLQueue)  = {
@@ -29,8 +29,8 @@ package object opencl {
     ptr.clearValidBytes() // I don't really know if it's the right thing to use
     val buff = context.createBuffer(Usage.InputOutput, ptr, false) // host allocation
 
-    val data: Pointer[JFloat] = buff.map(queue, CLMem.MapFlags.ReadWrite)
-    (data, buff)
+    //val data: Pointer[JFloat] = buff.map(queue, CLMem.MapFlags.ReadWrite)
+    (ptr, buff)
   }
 
   def allocateWithData(array: Array[Float], context: CLContext, queue: CLQueue) = {
@@ -39,12 +39,12 @@ package object opencl {
 
     val buff = context.createBuffer(Usage.InputOutput, ptr, false) // host allocation
 
-    val data: Pointer[JFloat] = buff.map(queue, CLMem.MapFlags.ReadWrite)
-    (data, buff)
+    //val data: Pointer[JFloat] = buff.map(queue, CLMem.MapFlags.ReadWrite)
+    (ptr, buff)
   }
 
   def deallocate(pointer: Pointer[JFloat], buffer: CLBuffer[JFloat], context: CLContext, queue: CLQueue) = {
-    buffer.unmap(queue, pointer)
+    //buffer.unmap(queue, pointer)
     pointer.release()
   }
 

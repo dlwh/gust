@@ -11,7 +11,7 @@ object CLKernelManager {
   var kernels = Map.empty[String, CLKernel]
 
   def prepareKernel(name: String) = {
-    val src = IOUtils.readText(this.getClass.getResource("/gust/linalg/opencl/transpose_kernel_float.cl"))
+    val src = IOUtils.readText(this.getClass.getResource("/gust/linalg/opencl/cl_kernels_float.cl"))
     val program = context.createProgram(src)
     val kernel = program.createKernel(name)
 
