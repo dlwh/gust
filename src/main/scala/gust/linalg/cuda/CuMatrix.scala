@@ -222,23 +222,51 @@ class CuMatrix[V](val rows: Int,
   /**
    * A Frobenius norm of a matrix
    */
-  def norm(implicit c: ClassTag[V]): Double = {
-    c.toString() match {    // it doesn't feel like the right way to use the class tag but it works for now...
-      case "Float" => {
+  def norm(implicit ct: ClassTag[V]): Double = {
+    ct.toString() match {    // it doesn't feel like the right way to use the class tag but it works for now...
+      case "Float" =>
         val normArr = Array(0.0f)
         JCublas2.cublasSnrm2(blas, size, offsetPointer, 1, jcuda.Pointer.to(normArr))
 
         normArr(0)
-      }
-      case "Double" => {
+
+      case "Double" =>
         val normArr = Array(0.0)
         JCublas2.cublasDnrm2(blas, size, offsetPointer, 1, jcuda.Pointer.to(normArr))
 
         normArr(0)
-      }
-      case _ => 0.0
+
+      case _ => println("[norm] :::Unsupported type " + ct.toString() + ":::"); 0.0
     }
   }
+
+  def isSymmetric(implicit ct: ClassTag[V]): Boolean =  if (rows != cols) false else ct.toString() match {
+      case "Float" =>
+        val hostOne = jcuda.Pointer.to(Array(1.0f))
+        val hostMinusOne = jcuda.Pointer.to(Array(-1.0f))
+        val rv = CuMatrix.create[Float](rows, cols)
+
+        JCublas2.cublasSgeam(blas, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T,
+          rows, cols, hostOne,
+          offsetPointer, majorStride, hostMinusOne, offsetPointer, majorStride,
+          rv.offsetPointer, rv.majorStride)
+
+        rv.norm < 1e-15
+
+      case "Double" =>
+        val hostOne = jcuda.Pointer.to(Array(1.0))
+        val hostMinusOne = jcuda.Pointer.to(Array(-1.0))
+        val rv = CuMatrix.create[Double](rows, cols)
+
+        JCublas2.cublasDgeam(blas, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T,
+          rows, cols, hostOne,
+          offsetPointer, majorStride, hostMinusOne, offsetPointer, majorStride,
+          rv.offsetPointer, rv.majorStride)
+
+        rv.norm < 1e-15
+
+      case _ => println("[isSymmetric] :::Unsupported type -- " + ct.toString() + ":::"); false
+    }
 
 }
 
@@ -791,6 +819,30 @@ trait CuMatrixOps { this: CuMatrix.type =>
     }
   }
 
+  implicit object CuMatrixFMulScalarF extends OpMulMatrix.Impl2[CuMatrix[Float], Float, CuMatrix[Float]] {
+    def apply(_a: CuMatrix[Float], k: Float) = {
+      import _a.blas
+      val rv = CuMatrix.create[Float](_a.rows, _a.cols)
+
+      rv := _a
+      val kArr = Array(k)
+      JCublas2.cublasSscal(_a.blas, rv.size, jcuda.Pointer.to(kArr), rv.offsetPointer, 1)
+      rv
+    }
+  }
+
+  implicit object CuMatrixDMulScalarD extends OpMulMatrix.Impl2[CuMatrix[Double], Double, CuMatrix[Double]] {
+    def apply(_a: CuMatrix[Double], k: Double) = {
+      import _a.blas
+      val rv = CuMatrix.create[Double](_a.rows, _a.cols)
+
+      rv := _a
+      val kArr = Array(k)
+      JCublas2.cublasDscal(_a.blas, rv.size, jcuda.Pointer.to(kArr), rv.offsetPointer, 1)
+      rv
+    }
+  }
+
 
   implicit object canSolveCuMatrixDouble extends OpSolveMatrixBy.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
 
@@ -873,6 +925,23 @@ trait CuMatrixOps { this: CuMatrix.type =>
     def apply(_a: CuMatrix[Double]) = {
       import _a.blas
       CuSVD.SVDDouble(_a)
+    }
+  }
+
+  /*
+   * Cholesky decomposition, returns only L (such that A = L * L')
+   */
+  implicit object canCholeskyFloat extends cholesky.Impl[CuMatrix[Float], CuMatrix[Float]] {
+    def apply(_a: CuMatrix[Float]) = {
+      import _a.blas
+      CuCholesky.choleskyFloat(_a)
+    }
+  }
+
+  implicit object canCholeskyDouble extends cholesky.Impl[CuMatrix[Double], CuMatrix[Double]] {
+    def apply(_a: CuMatrix[Double]) = {
+      import _a.blas
+      CuCholesky.choleskyDouble(_a)
     }
   }
 }

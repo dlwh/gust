@@ -28,3 +28,18 @@ extern "C" {
     C[i + j*ldc] = A[i + j*lda] + B[i + j*ldb];
 }
 }
+
+/*
+ * Copy that allows us to move around pieces of a matrix
+ */
+extern "C" {
+ __global__ void copy(int m, int n, double *dst, int lddst, double *src, int ldsrc)
+{
+    int i = blockIdx.x + threadIdx.x;
+    int j = blockIdx.y + threadIdx.y;
+
+    if (i >= m || j >= n) return;
+
+    dst[i + j*lddst] = src[i + j*ldsrc];
+}
+}

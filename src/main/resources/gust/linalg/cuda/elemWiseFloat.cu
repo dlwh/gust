@@ -28,3 +28,18 @@ extern "C" {
     C[i + j*ldc] = A[i + j*lda] + B[i + j*ldb];
 }
 }
+
+/*
+ * Copy of elements
+ */
+extern "C" {
+ __global__ void copy(int m, int n, float *dst, int lddst, float *src, int ldsrc)
+{
+    int i = blockIdx.x + threadIdx.x;
+    int j = blockIdx.y + threadIdx.y;
+
+    if (i >= m || j >= n) return;
+
+    dst[i + j*lddst] = src[i + j*ldsrc];
+}
+}

@@ -10,6 +10,8 @@ import gust.util.cuda.{CuContext, CuDevice}
 /**
  * Created by piotrek on 16.06.2014.
  *
+ * TODO using separate function names for Doubles and Floats starts to get
+ * a little inconvenient. Should think of making more generic functions
  */
 object CuWrapperMethods {
 
@@ -452,12 +454,68 @@ object CuWrapperMethods {
       src.majorStride * src.elemSize, m * src.elemSize, n, cudaMemcpyKind.cudaMemcpyDeviceToHost)
   }
 
+  def copyFloat(m: Int, n: Int, dst: CuMatrix[Float], dst_roff: Int, dst_coff: Int,
+                src: CuMatrix[Float], src_roff: Int, src_coff: Int) {
+    copy[Float](m, n, dst, dst_roff, dst_coff, src, src_roff, src_coff, "src/main/resources/gust/linalg/cuda/elemWiseFloat.ptx")
+  }
+
+  def copyDouble(m: Int, n: Int, dst: CuMatrix[Double], dst_roff: Int, dst_coff: Int,
+                src: CuMatrix[Double], src_roff: Int, src_coff: Int) {
+    copy[Double](m, n, dst, dst_roff, dst_coff, src, src_roff, src_coff, "src/main/resources/gust/linalg/cuda/elemWiseDouble.ptx")
+  }
+
+  def copy[V](m: Int, n: Int, dst: CuMatrix[V], dst_roff: Int, dst_coff: Int,
+                 src: CuMatrix[V], src_roff: Int, src_coff: Int, kernelPath: String) {
+    val nb = 32     // most cards can go as high as 1024 (32**2) threads per block
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    val copy = new CUfunction()
+    JCudaDriver.cuModuleLoad(module, kernelPath)
+
+    val funcName = "copy"
+    JCudaDriver.cuModuleGetFunction(copy, module, funcName)
+
+    // kernel parameters:
+    val ldsrcArr = Array(src.majorStride)
+    val ldsrc = jcuda.Pointer.to(ldsrcArr)
+    val lddstArr = Array(dst.majorStride)
+    val lddst = jcuda.Pointer.to(lddstArr)
+
+
+    val mArr = Array(m)
+    val _m = jcuda.Pointer.to(mArr)
+    val nArr = Array(n)
+    val _n = jcuda.Pointer.to(nArr)
+
+    val params = jcuda.Pointer.to(
+      _m, _n,
+      jcuda.Pointer.to(dst.offsetPointer.withByteOffset(dst.linearIndex(dst_roff, dst_coff) * dst.elemSize)),
+      lddst,
+      jcuda.Pointer.to(src.offsetPointer.withByteOffset(src.linearIndex(src_roff, src_coff) * src.elemSize)),
+      ldsrc
+    )
+
+    val gridDim = ((src.rows - src_roff) / nb + (if ((src.rows - src_roff) % nb == 0) 0 else 1),
+      (src.cols - src_coff) / nb + (if ((src.cols - src_coff) % nb == 0) 0 else 1),
+      1)
+    val blockDim = (nb, nb, 1)
+
+    JCudaDriver.cuLaunchKernel(copy, gridDim._1, gridDim._2, gridDim._3,
+      blockDim._1, blockDim._2, blockDim._3,
+      0, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+  }
+
 
   /*
    * Functions for calculating the residuals:
    * calculates |A - BC| where BC are Q and R in case of QR factorization or L and U
    * in case of LU factorization.
    * If the pivot matrix is not null, we actually calculate |PA - BC|.
+   * In case of Cholesky factorization L and L.t should be given as B and C
    *
    * It can also calculate the residual in case of the solve method, since we treat vectors as matrices
    */
@@ -492,12 +550,22 @@ object CuWrapperMethods {
 
     if (P != null)
       // d_A = P*A
-      SgemmNN(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
+      if (!A.isTranspose)
+        SgemmNN(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
+      else
+        SgemmNT(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
     else
       d_A := A
 
     // d_A = d_A - B*C
-    SgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    if (B.isTranspose && C.isTranspose)
+      SgemmTT(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    else if (B.isTranspose)
+      SgemmTN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    else if (C.isTranspose)
+      SgemmNT(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    else
+      SgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
 
     d_A.norm
   }
@@ -533,12 +601,22 @@ object CuWrapperMethods {
 
     if (P != null)
     // d_A = P*A
-      DgemmNN(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
+      if (!A.isTranspose)
+        DgemmNN(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
+      else
+        DgemmNT(A.rows, A.cols, A.cols, jcuda.Pointer.to(oneArr), P, 0, 0, A, 0, 0, jcuda.Pointer.to(zeroArr), d_A, 0, 0)
     else
       d_A := A
 
     // d_A = d_A - B*C
-    DgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    if (B.isTranspose && C.isTranspose)
+      DgemmTT(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    else if (B.isTranspose)
+      DgemmTN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    else if (C.isTranspose)
+      DgemmNT(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
+    else
+      DgemmNN(d_A.rows, d_A.cols, C.cols, jcuda.Pointer.to(minusOneArr), B, 0, 0, C, 0, 0, jcuda.Pointer.to(oneArr), d_A, 0, 0)
 
     d_A.norm
   }

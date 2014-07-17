@@ -1,34 +1,77 @@
-__kernel void add(__global float* out, __global const float* a, __global const float* b, int n)
+__kernel void add(__global float *out, int ldout,
+                 __global const float *a, int lda,
+                 __global const float *b, int ldb,
+                 int h, int w, int blockDimX, int blockDimY)
 {
-    int idx = get_global_id(0);
-    if (idx >= n) return;
+    int blockIdx = get_group_id(0);
+    int blockIdy = get_group_id(1);
 
-    out[idx] = a[idx] + b[idx];
+    int threadIdx = get_local_id(0);
+    int threadIdy = get_local_id(1);
+
+    int row = blockIdx * blockDimX + threadIdx;
+    int col = blockIdy * blockDimY + threadIdy;
+
+    if (row >= h || col >= w) return;
+
+    out[row + col*ldout] = a[row + col*lda] + b[row + col*ldb];
 }
 
-__kernel void add_in_place(__global float* a, __global const float* b, int n)
+__kernel void add_in_place(__global float *out, int ldout,
+                         __global const float *in, int ldin,
+                         int h, int w, int blockDimX, int blockDimY)
 {
-    int idx = get_global_id(0);
-    if (idx >= n) return;
+    int blockIdx = get_group_id(0);
+    int blockIdy = get_group_id(1);
 
-    a[idx] += b[idx];
+    int threadIdx = get_local_id(0);
+    int threadIdy = get_local_id(1);
+
+    int row = blockIdx * blockDimX + threadIdx;
+    int col = blockIdy * blockDimY + threadIdy;
+
+    if (row >= h || col >= w) return;
+
+    out[row + col*ldout] += in[row + col*ldin];
 }
 
-__kernel void sub(__global float* out, __global const float* a, __global const float* b, int n)
+__kernel void sub(__global float *out, int ldout,
+                 __global const float *a, int lda,
+                 __global const float *b, int ldb,
+                 int h, int w, int blockDimX, int blockDimY)
 {
-    int idx = get_global_id(0);
-    if (idx >= n) return;
+    int blockIdx = get_group_id(0);
+    int blockIdy = get_group_id(1);
 
-    out[idx] = a[idx] - b[idx];
+    int threadIdx = get_local_id(0);
+    int threadIdy = get_local_id(1);
+
+    int row = blockIdx * blockDimX + threadIdx;
+    int col = blockIdy * blockDimY + threadIdy;
+
+    if (row >= h || col >= w) return;
+
+    out[row + col*ldout] = a[row + col*lda] - b[row + col*ldb];
 }
 
-__kernel void sub_in_place(__global float* a, __global const float* b, int n)
+__kernel void sub_in_place(__global float *out, int ldout,
+                         __global const float *in, int ldin,
+                         int h, int w, int blockDimX, int blockDimY)
 {
-    int idx = get_global_id(0);
-    if (idx >= n) return;
+    int blockIdx = get_group_id(0);
+    int blockIdy = get_group_id(1);
 
-    a[idx] -= b[idx];
+    int threadIdx = get_local_id(0);
+    int threadIdy = get_local_id(1);
+
+    int row = blockIdx * blockDimX + threadIdx;
+    int col = blockIdy * blockDimY + threadIdy;
+
+    if (row >= h || col >= w) return;
+
+    out[row + col*ldout] -= in[row + col*ldin];
 }
+
 
 
 /* TODO make this kernel less clumsy */

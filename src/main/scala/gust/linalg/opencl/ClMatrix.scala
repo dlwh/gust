@@ -10,6 +10,7 @@ import com.nativelibs4java.opencl.CLMem.Usage
 import com.nativelibs4java.opencl._
 import com.nativelibs4java.util._
 import gust.util.opencl
+import gust.util.opencl.CLConfig._
 import gust.util.opencl.{CLKernelManager, JInt, JFloat, JLong}
 import org.bridj.Pointer
 import spire.syntax.cfor._
@@ -161,11 +162,20 @@ trait CLMatrixOps {
       require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
       require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
 
+      val blockDim = 8
+      val globalDimX = a.rows - (a.rows % 8) + (if (a.rows % 8 != 0) 8 else 0)
+      val globalDimY = a.cols - (a.cols % 8) + (if (a.cols % 8 != 0) 8 else 0)
+
       val addKernel = CLKernelManager.getKernel("add")
       val result = CLMatrix.create(a.rows, a.cols)
-      addKernel.setArgs(result.buff, a.buff, b.buff, a.size.asInstanceOf[JInt])
 
-      val addEvt = addKernel.enqueueNDRange(queue, Array(a.size))
+      addKernel.setArgs(result.buff, result.majorStride.asInstanceOf[JInt],
+                        a.buff, a.majorStride.asInstanceOf[JInt],
+                        b.buff, b.majorStride.asInstanceOf[JInt],
+                        a.rows.asInstanceOf[JInt], a.cols.asInstanceOf[JInt],
+                        blockDim.asInstanceOf[JInt], blockDim.asInstanceOf[JInt])
+
+      val addEvt = addKernel.enqueueNDRange(queue, Array(globalDimX, globalDimY), Array(blockDim, blockDim))
       val outPtr = result.buff.read(queue, addEvt)
 
       outPtr.copyTo(result.data)
@@ -174,16 +184,25 @@ trait CLMatrixOps {
   }
 
   implicit def CLMatrixFSubCLMatrixF(implicit context: CLContext, queue: CLQueue): OpSub.Impl2[CLMatrix, CLMatrix, CLMatrix] = new OpSub.Impl2[CLMatrix, CLMatrix, CLMatrix] {
-    def apply(a : CLMatrix, b : CLMatrix): CLMatrix = {
+    def apply(a: CLMatrix, b: CLMatrix): CLMatrix = {
       require(a.rows == b.rows, s"Row dimension mismatch for subtraction: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
       require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
 
+      val blockDim = 8
+      val globalDimX = a.rows - (a.rows % 8) + (if (a.rows % 8 != 0) 8 else 0)
+      val globalDimY = a.cols - (a.cols % 8) + (if (a.cols % 8 != 0) 8 else 0)
+
       val subKernel = CLKernelManager.getKernel("sub")
       val result = CLMatrix.create(a.rows, a.cols)
-      subKernel.setArgs(result.buff, a.buff, b.buff, a.size.asInstanceOf[JInt])
 
-      val addEvt = subKernel.enqueueNDRange(queue, Array(a.size))
-      val outPtr = result.buff.read(queue, addEvt)
+      subKernel.setArgs(result.buff, result.majorStride.asInstanceOf[JInt],
+        a.buff, a.majorStride.asInstanceOf[JInt],
+        b.buff, b.majorStride.asInstanceOf[JInt],
+        a.rows.asInstanceOf[JInt], a.cols.asInstanceOf[JInt],
+        blockDim.asInstanceOf[JInt], blockDim.asInstanceOf[JInt])
+
+      val subEvt = subKernel.enqueueNDRange(queue, Array(globalDimX, globalDimY), Array(blockDim, blockDim))
+      val outPtr = result.buff.read(queue, subEvt)
 
       outPtr.copyTo(result.data)
       result
@@ -195,10 +214,17 @@ trait CLMatrixOps {
       require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
       require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
 
-      val addKernel = CLKernelManager.getKernel("add_in_place")
-      addKernel.setArgs(a.buff, b.buff, a.size.asInstanceOf[JInt])
+      val blockDim = 8
+      val globalDimX = a.rows - (a.rows % 8) + (if (a.rows % 8 != 0) 8 else 0)
+      val globalDimY = a.cols - (a.cols % 8) + (if (a.cols % 8 != 0) 8 else 0)
 
-      val addEvt = addKernel.enqueueNDRange(queue, Array(a.size))
+      val addKernel = CLKernelManager.getKernel("add_in_place")
+      addKernel.setArgs(a.buff, a.majorStride.asInstanceOf[JInt],
+        b.buff, b.majorStride.asInstanceOf[JInt],
+        a.rows.asInstanceOf[JInt], a.cols.asInstanceOf[JInt],
+        blockDim.asInstanceOf[JInt], blockDim.asInstanceOf[JInt])
+
+      val addEvt = addKernel.enqueueNDRange(queue, Array(globalDimX, globalDimY), Array(blockDim, blockDim))
       val outPtr = a.buff.read(queue, addEvt)
 
       outPtr.copyTo(a.data)
@@ -210,11 +236,18 @@ trait CLMatrixOps {
       require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
       require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
 
-      val subKernel = CLKernelManager.getKernel("sub_in_place")
-      subKernel.setArgs(a.buff, b.buff, a.size.asInstanceOf[JInt])
+      val blockDim = 8
+      val globalDimX = a.rows - (a.rows % 8) + (if (a.rows % 8 != 0) 8 else 0)
+      val globalDimY = a.cols - (a.cols % 8) + (if (a.cols % 8 != 0) 8 else 0)
 
-      val addEvt = subKernel.enqueueNDRange(queue, Array(a.size))
-      val outPtr = a.buff.read(queue, addEvt)
+      val subKernel = CLKernelManager.getKernel("sub_in_place")
+      subKernel.setArgs(a.buff, a.majorStride.asInstanceOf[JInt],
+                        b.buff, b.majorStride.asInstanceOf[JInt],
+                        a.rows.asInstanceOf[JInt], a.cols.asInstanceOf[JInt],
+                        blockDim.asInstanceOf[JInt], blockDim.asInstanceOf[JInt])
+
+      val subEvt = subKernel.enqueueNDRange(queue, Array(globalDimX, globalDimY), Array(blockDim, blockDim))
+      val outPtr = a.buff.read(queue, subEvt)
 
       outPtr.copyTo(a.data)
     }
