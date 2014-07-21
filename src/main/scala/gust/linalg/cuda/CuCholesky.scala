@@ -2,6 +2,7 @@ package gust.linalg.cuda
 
 import breeze.linalg.{NotConvergedException, DenseMatrix}
 import jcuda.jcublas._
+import jcuda.jcusparse._
 import org.netlib.util.intW
 import spire.syntax.cfor._
 import gust.linalg.cuda.CuWrapperMethods._
@@ -195,6 +196,57 @@ object CuCholesky {
 
     d_L
   }
+
+  def incompleteCholeskyFloat(A: CuSparseMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): CuSparseMatrix[Float] = {
+    if (A.rows != A.cols) {
+      println("A has to be a square matrix")
+      return A
+    }
+
+    val AS = A.copy
+
+    // for now the matrix will be treated as symmetric even if it's not
+    JCusparse2.cusparseSetMatType(AS.descr, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_SYMMETRIC)
+    JCusparse2.cusparseSetMatFillMode(AS.descr, cusparseFillMode.CUSPARSE_FILL_MODE_UPPER)
+
+    val info = new cusparseSolveAnalysisInfo
+    JCusparse2.cusparseCreateSolveAnalysisInfo(info)
+    val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val m = AS.rows
+    val nnz = AS.csrVal.rows
+    JCusparse2.cusparseScsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseScsric0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+
+    JCusparse2.cusparseDestroySolveAnalysisInfo(info)
+
+    AS
+  }
+
+  def incompleteCholeskyDouble(A: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): CuSparseMatrix[Double] = {
+    if (A.rows != A.cols) {
+      println("A has to be a square matrix")
+      return A
+    }
+
+    val AS = A.copy
+
+    // for now the matrix will be treated as symmetric even if it's not
+    JCusparse2.cusparseSetMatType(AS.descr, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_SYMMETRIC)
+    JCusparse2.cusparseSetMatFillMode(AS.descr, cusparseFillMode.CUSPARSE_FILL_MODE_UPPER)
+
+    val info = new cusparseSolveAnalysisInfo
+    JCusparse2.cusparseCreateSolveAnalysisInfo(info)
+    val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val m = AS.rows
+    val nnz = AS.csrVal.rows
+    JCusparse2.cusparseDcsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseDcsric0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+
+    JCusparse2.cusparseDestroySolveAnalysisInfo(info)
+
+    AS
+  }
+
 
   private def uploadLFloat(n: Int, dst: CuMatrix[Float], dstRoff: Int, dstCoff: Int, src: DenseMatrix[Float], srcRoff: Int, srcCoff: Int) {
     val nb = 128

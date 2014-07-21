@@ -5,6 +5,7 @@ import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2, cublasDiagType, cublasFillMode, cublasSideMode}
 import gust.util.cuda
+import jcuda.jcusparse._
 import jcuda.runtime.{cudaError, cudaMemcpyKind, cudaStream_t, JCuda}
 import cuda._
 import breeze.linalg.operators._
@@ -449,6 +450,128 @@ object CuLU extends UFunc {
     }
 
     (d_A, PM)
+  }
+
+  def incompleteLUFloat(A: CuSparseMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): CuSparseMatrix[Float] = {
+    if (A.rows != A.cols) {
+      println("A has to be a square matrix")
+      return A
+    }
+
+    val AS = A.copy
+
+    val info = new cusparseSolveAnalysisInfo
+    JCusparse2.cusparseCreateSolveAnalysisInfo(info)
+    val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val m = AS.rows
+    val nnz = AS.csrVal.rows
+    JCusparse2.cusparseScsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseScsrilu0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+
+    JCusparse2.cusparseDestroySolveAnalysisInfo(info)
+
+    AS
+  }
+
+  def incompleteLUDouble(A: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): CuSparseMatrix[Double] = {
+    if (A.rows != A.cols) {
+      println("A has to be a square matrix")
+      return A
+    }
+
+    val AS = A.copy
+
+    val info = new cusparseSolveAnalysisInfo
+    JCusparse2.cusparseCreateSolveAnalysisInfo(info)
+    val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val m = AS.rows
+    val nnz = AS.csrVal.rows
+    JCusparse2.cusparseDcsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseDcsrilu0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+
+    JCusparse2.cusparseDestroySolveAnalysisInfo(info)
+
+    AS
+  }
+
+  def incompleteLUFactorsFloat(A: CuSparseMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): (CuSparseMatrix[Float], CuSparseMatrix[Float]) = {
+    val denseCsrValL = A.csrVal.toDense
+    val denseCsrValU = A.csrVal.toDense
+    val denseCsrRowPtrA = A.csrRowPtr.toDense
+    val denseCsrColIndA = A.csrColInd.toDense
+
+    // construct L (ones on the diagonal) and U:
+    cfor(0)(_ < A.rows, _ + 1) { i => {
+      cfor(denseCsrRowPtrA(i, 0))(_ < denseCsrRowPtrA(i+1, 0), _ + 1) { j => {
+        val row = i
+        val col = denseCsrColIndA(j, 0)
+
+        if (row == col) denseCsrValL(j, 0) = 1.0f
+        else if (row < col) denseCsrValL(j, 0) = 0.0f
+
+        if (row > col) denseCsrValU(j, 0) = 0.0f
+      }}
+    }}
+
+    // create new descriptors:
+    val descrL = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrL)
+    JCusparse2.cusparseSetMatType(descrL, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    //JCusparse2.cusparseSetMatFillMode(descrL, cusparseFillMode.CUSPARSE_FILL_MODE_LOWER)
+    JCusparse2.cusparseSetMatIndexBase(descrL, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrL, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    val descrU = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrU)
+    JCusparse2.cusparseSetMatType(descrU, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    //JCusparse2.cusparseSetMatFillMode(descrU, cusparseFillMode.CUSPARSE_FILL_MODE_UPPER)
+    JCusparse2.cusparseSetMatIndexBase(descrU, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrU, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    (new CuSparseMatrix[Float](A.rows, A.cols, descrL, CuMatrix.fromDense(denseCsrValL),
+                           CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)),
+     new CuSparseMatrix[Float](A.rows, A.cols, descrU, CuMatrix.fromDense(denseCsrValU),
+                           CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)))
+  }
+
+  def incompleteLUFactorsDouble(A: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): (CuSparseMatrix[Double], CuSparseMatrix[Double]) = {
+    val denseCsrValL = A.csrVal.toDense
+    val denseCsrValU = A.csrVal.toDense
+    val denseCsrRowPtrA = A.csrRowPtr.toDense
+    val denseCsrColIndA = A.csrColInd.toDense
+
+    // construct L (ones on the diagonal) and U:
+    cfor(0)(_ < A.rows, _ + 1) { i => {
+      cfor(denseCsrRowPtrA(i, 0))(_ < denseCsrRowPtrA(i+1, 0), _ + 1) { j => {
+        val row = i
+        val col = denseCsrColIndA(j, 0)
+
+        if (row == col) denseCsrValL(j, 0) = 1.0f
+        else if (row < col) denseCsrValL(j, 0) = 0.0f
+
+        if (row > col) denseCsrValU(j, 0) = 0.0f
+      }}
+    }}
+
+    // create new descriptors:
+    val descrL = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrL)
+    JCusparse2.cusparseSetMatType(descrL, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    //JCusparse2.cusparseSetMatFillMode(descrL, cusparseFillMode.CUSPARSE_FILL_MODE_LOWER)
+    JCusparse2.cusparseSetMatIndexBase(descrL, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrL, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    val descrU = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrU)
+    JCusparse2.cusparseSetMatType(descrU, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    //JCusparse2.cusparseSetMatFillMode(descrU, cusparseFillMode.CUSPARSE_FILL_MODE_UPPER)
+    JCusparse2.cusparseSetMatIndexBase(descrU, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrU, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    (new CuSparseMatrix[Double](A.rows, A.cols, descrL, CuMatrix.fromDense(denseCsrValL),
+      CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)),
+      new CuSparseMatrix[Double](A.rows, A.cols, descrU, CuMatrix.fromDense(denseCsrValU),
+        CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)))
   }
 
 }

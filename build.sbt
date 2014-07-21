@@ -11,11 +11,13 @@ libraryDependencies ++= Seq(
   "org.scalanlp" %% "breeze-macros" % "0.3" % "compile",
   "org.scalanlp" %% "breeze" % "0.7",
   "org.scalatest" %% "scalatest" % "2.0.M5b",
+  "com.nativelibs4java" % "bridj" % "0.6.2",
   "com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
-  "com.nativelibs4java" % "javacl-blas" % "1.0.0-RC3",
+  //"com.nativelibs4java" % "javacl-blas" % "1.0.0-RC3",
   "org.scalanlp" % "jcuda" % "0.5.5",
   "org.scalanlp" % "jcublas2" % "0.5.5",
   "org.scalanlp" % "jcurand" % "0.5.5",
+  "org.scalanlp" % "jcusparse2" % "0.5.5",
   "com.github.axel22" %% "scalameter" % "0.4"
 )
 
