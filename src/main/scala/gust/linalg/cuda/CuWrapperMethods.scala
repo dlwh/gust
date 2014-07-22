@@ -2,6 +2,7 @@ package gust.linalg.cuda
 
 import jcuda.jcublas.{cublasOperation, JCublas2, cublasHandle}
 import breeze.linalg.DenseMatrix
+import jcuda.jcusparse._
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
 import jcuda.driver.{CUfunction, CUmodule, JCudaDriver}
 import gust.util.cuda.{CuContext, CuDevice}
@@ -649,4 +650,213 @@ object CuWrapperMethods {
 
     JCublas2.cublasDcopy(handle, diagLen, d_diag.offsetPointer, 1, A.offsetPointer, A.majorStride + 1)
   }
+
+  /* methods for sparse matrices */
+
+  /**
+   * Performs the addition: C = alpha * AS + beta * BS
+   * @param alpha (scalar)
+   * @param AS
+   * @param beta  (scalar)
+   * @param BS
+   * @return C = alpha * A + beta * B
+   */
+  def sparseSgeam(alpha: Float, AS: CuSparseMatrix[Float], beta: Float, BS: CuSparseMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): CuSparseMatrix[Float] = {
+
+    val A = if (AS.isTranspose) AS.transpose else AS
+    val B = if (BS.isTranspose) BS.transpose else BS
+
+    require(A.rows == B.rows, s"Row dimension mismatch for addition: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
+    require(A.cols == B.cols, s"Column dimension mismatch: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
+
+    val m = A.rows
+    val n = A.cols
+
+    val nnzHost = Array(0)
+    val nnzHostPtr = jcuda.Pointer.to(nnzHost)
+    JCusparse2.cusparseSetPointerMode(sparseHandle, cusparsePointerMode.CUSPARSE_POINTER_MODE_HOST)
+
+    val descrC = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrC)
+    JCusparse2.cusparseSetMatType(descrC, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    JCusparse2.cusparseSetMatIndexBase(descrC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrC, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
+
+    JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
+      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+      descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
+
+    var nnzC = nnzHost(0)
+    if (nnzC == 0) {  // trick from cusparse's doc page
+      JCuda.cudaMemcpy(nnzHostPtr,
+        csrRowPtrC.offsetPointer.withByteOffset(csrRowPtrC.linearIndex(m, 0) * csrRowPtrC.elemSize),
+        1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+      nnzC = nnzHost(0)
+    }
+
+    val alphaPtr = jcuda.Pointer.to(Array(alpha))
+    val betaPtr = jcuda.Pointer.to(Array(beta))
+
+    val csrValC = CuMatrix.create[Float](nnzC, 1)
+    val csrColIndC = CuMatrix.create[Int](nnzC, 1)
+
+    JCusparse2.cusparseScsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.csrVal.offsetPointer,
+      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, betaPtr, B.descr, B.nnz, B.csrVal.offsetPointer,
+      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+
+    new CuSparseMatrix[Float](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
+  }
+
+  def sparseDgeam(alpha: Double, AS: CuSparseMatrix[Double], beta: Double, BS: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): CuSparseMatrix[Double] = {
+
+    val A = if (AS.isTranspose) AS.transpose else AS
+    val B = if (BS.isTranspose) BS.transpose else BS
+
+    require(A.rows == B.rows, s"Row dimension mismatch for addition: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
+    require(A.cols == B.cols, s"Column dimension mismatch: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
+
+    val m = A.rows
+    val n = A.cols
+
+    val nnzHost = Array(0)
+    val nnzHostPtr = jcuda.Pointer.to(nnzHost)
+    JCusparse2.cusparseSetPointerMode(sparseHandle, cusparsePointerMode.CUSPARSE_POINTER_MODE_HOST)
+
+    val descrC = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrC)
+    JCusparse2.cusparseSetMatType(descrC, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    JCusparse2.cusparseSetMatIndexBase(descrC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrC, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
+
+    JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
+      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+      descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
+
+    var nnzC = nnzHost(0)
+    if (nnzC == 0) {  // trick from cusparse's doc page
+      JCuda.cudaMemcpy(nnzHostPtr,
+        csrRowPtrC.offsetPointer.withByteOffset(csrRowPtrC.linearIndex(m, 0) * csrRowPtrC.elemSize),
+        1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+      nnzC = nnzHost(0)
+    }
+
+    val alphaPtr = jcuda.Pointer.to(Array(alpha))
+    val betaPtr = jcuda.Pointer.to(Array(beta))
+
+    val csrValC = CuMatrix.create[Double](nnzC, 1)
+    val csrColIndC = CuMatrix.create[Int](nnzC, 1)
+
+    JCusparse2.cusparseDcsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.csrVal.offsetPointer,
+      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, betaPtr, B.descr, B.nnz, B.csrVal.offsetPointer,
+      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+
+    new CuSparseMatrix[Double](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
+  }
+
+  /**
+   * Computes matrix product: C = A * B
+   * @param A
+   * @param B
+   * @return C
+   */
+  def sparseSgemm(A: CuSparseMatrix[Float], B: CuSparseMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
+    val transA = A.isTranspose
+    val transB = B.isTranspose
+
+    val m = if (transA) A.cols else A.rows
+    val n = if (transB) B.rows else B.cols
+
+    val k = if (transA) A.rows else A.cols
+    val k_ = if (transB) B.cols else B.rows
+
+    require(k == k_, s"Dimension mismatch for multiplication: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
+
+    val nnzHost = Array(0)
+    val nnzHostPtr = jcuda.Pointer.to(nnzHost)
+    JCusparse2.cusparseSetPointerMode(sparseHandle, cusparsePointerMode.CUSPARSE_POINTER_MODE_HOST)
+
+    val descrC = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrC)
+    JCusparse2.cusparseSetMatType(descrC, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    JCusparse2.cusparseSetMatIndexBase(descrC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrC, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
+    val opA = if (transA) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val opB = if (transB) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+
+    JCusparse2.cusparseXcsrgemmNnz(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
+      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+      descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
+
+    var nnzC = nnzHost(0)
+    if (nnzC == 0) {
+      JCuda.cudaMemcpy(nnzHostPtr,
+        csrRowPtrC.offsetPointer.withByteOffset(csrRowPtrC.linearIndex(m, 0) * csrRowPtrC.elemSize),
+        1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+      nnzC = nnzHost(0)
+    }
+
+    val csrValC = CuMatrix.create[Float](nnzC, 1)
+    val csrColIndC = CuMatrix.create[Int](nnzC, 1)
+
+    JCusparse2.cusparseScsrgemm(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrVal.offsetPointer,
+      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrVal.offsetPointer,
+      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+
+    new CuSparseMatrix[Float](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
+  }
+
+  def sparseDgemm(A: CuSparseMatrix[Double], B: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
+    val transA = A.isTranspose
+    val transB = B.isTranspose
+
+    val m = if (transA) A.cols else A.rows
+    val n = if (transB) B.rows else B.cols
+
+    val k = if (transA) A.rows else A.cols
+    val k_ = if (transB) B.cols else B.rows
+
+    require(k == k_, s"Dimension mismatch for multiplication: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
+
+    val nnzHost = Array(0)
+    val nnzHostPtr = jcuda.Pointer.to(nnzHost)
+    JCusparse2.cusparseSetPointerMode(sparseHandle, cusparsePointerMode.CUSPARSE_POINTER_MODE_HOST)
+
+    val descrC = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrC)
+    JCusparse2.cusparseSetMatType(descrC, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    JCusparse2.cusparseSetMatIndexBase(descrC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrC, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
+    val opA = if (transA) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val opB = if (transB) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+
+    JCusparse2.cusparseXcsrgemmNnz(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
+      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+      descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
+
+    var nnzC = nnzHost(0)
+    if (nnzC == 0) {
+      JCuda.cudaMemcpy(nnzHostPtr,
+        csrRowPtrC.offsetPointer.withByteOffset(csrRowPtrC.linearIndex(m, 0) * csrRowPtrC.elemSize),
+        1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+      nnzC = nnzHost(0)
+    }
+
+    val csrValC = CuMatrix.create[Double](nnzC, 1)
+    val csrColIndC = CuMatrix.create[Int](nnzC, 1)
+
+    JCusparse2.cusparseDcsrgemm(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrVal.offsetPointer,
+      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrVal.offsetPointer,
+      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+
+    new CuSparseMatrix[Double](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
+  }
+
 }

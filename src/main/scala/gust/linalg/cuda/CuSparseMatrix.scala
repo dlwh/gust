@@ -1,9 +1,12 @@
 package gust.linalg.cuda
 
+import breeze.linalg.operators.{OpMulMatrix, OpSub, OpAdd}
 import breeze.linalg.{NumericOps, DenseMatrix}
+import com.nativelibs4java.opencl.{CLQueue, CLContext}
 import gust.util.cuda
 import jcuda.jcublas.cublasHandle
 import jcuda.jcusparse._
+import jcuda.runtime.{cudaMemcpyKind, JCuda}
 import scala.reflect.ClassTag
 
 /**
@@ -20,11 +23,12 @@ class CuSparseMatrix[V](val rows: Int, val cols: Int,
 
   def elemSize = csrVal.data.getIO.getTargetSize
 
+  def nnz = csrVal.size
+
   def toCuMatrix(implicit blasHandle: cublasHandle, ct: ClassTag[V]): CuMatrix[V] = {
     val A = CuMatrix.create[V](rows, cols)
-    val matType = ct.toString()
-    val cuspFunc = if (matType.equals("Double")) JCusparse2.cusparseDcsr2dense _
-                   else if (matType.equals("Float")) JCusparse2.cusparseScsr2dense _
+    val cuspFunc = if (A.elemSize == 8) JCusparse2.cusparseDcsr2dense _ // if (matType.equals("Double")) JCusparse2.cusparseDcsr2dense _
+                   else if (A.elemSize == 4) JCusparse2.cusparseScsr2dense _ // else if (matType.equals("Float")) JCusparse2.cusparseScsr2dense _
                    else throw new UnsupportedOperationException("can't convert a matrix that's not Float nor Double")
 
     cuspFunc(sparseHandle, rows, cols, descr,
@@ -50,6 +54,29 @@ class CuSparseMatrix[V](val rows: Int, val cols: Int,
       csrColIndC, isTranspose)
   }
 
+  // perform the transpose explicitly:
+  def transpose(implicit blasHandle: cublasHandle, ct: ClassTag[V]) = {
+    val descrT = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrT)
+    JCusparse2.cusparseSetMatType(descrT, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    JCusparse2.cusparseSetMatIndexBase(descrT, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrT, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    val cscVal = CuMatrix.create[V](csrVal.rows, 1)
+    val cscRowInd = CuMatrix.create[Int](nnz, 1)
+    val cscColPtr = CuMatrix.create[Int](cols+1, 1)
+
+    val cuspOp = if (ct.toString().equals("Float")) JCusparse2.cusparseScsr2csc _
+                 else JCusparse2.cusparseDcsr2csc _
+
+    cuspOp(sparseHandle, rows, cols, nnz, csrVal.offsetPointer, csrRowPtr.offsetPointer, csrColInd.offsetPointer,
+      cscVal.offsetPointer, cscRowInd.offsetPointer, cscColPtr.offsetPointer,
+      cusparseAction.CUSPARSE_ACTION_NUMERIC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+
+    new CuSparseMatrix[V](cols, rows, descrT, cscVal, cscColPtr,
+      cscRowInd, isTranspose)
+  }
+
   def release() {
     JCusparse2.cusparseDestroyMatDescr(descr)
     csrVal.release()
@@ -63,7 +90,7 @@ class CuSparseMatrix[V](val rows: Int, val cols: Int,
 
 }
 
-object CuSparseMatrix {
+object CuSparseMatrix extends CuSparseOps {
 
   def fromCuMatrix[V](A: CuMatrix[V])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle, ct: ClassTag[V]) = {
     // create matrix descriptor and some info:
@@ -74,8 +101,8 @@ object CuSparseMatrix {
     JCusparse2.cusparseSetMatDiagType(descr, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
     // we have to decide which functions to use:
-    val isOfTypeD = ct.toString().equals("Double")
-    val isOfTypeS = ct.toString().equals("Float")
+    val isOfTypeD = A.elemSize == 8 //ct.toString().equals("Double")
+    val isOfTypeS = A.elemSize == 4 //ct.toString().equals("Float")
 
     // here we're using JCusparse because JCusparse2.cusparse<t>nnz appears not to be working
     val cuspFuncNnz = if (isOfTypeD) JCusparse.cusparseDnnz _
@@ -118,8 +145,8 @@ object CuSparseMatrix {
     val d_A = CuMatrix.fromDense(A)
 
     // we have to decide which functions to use:
-    val isOfTypeD = ct.toString().equals("Double")
-    val isOfTypeS = ct.toString().equals("Float")
+    val isOfTypeD = d_A.elemSize == 8 //ct.toString().equals("Double")
+    val isOfTypeS = d_A.elemSize == 4 //ct.toString().equals("Float")
 
     // same as above with cusparse<t>nnz
     val cuspFuncNnz = if (isOfTypeD) JCusparse.cusparseDnnz _
@@ -153,5 +180,51 @@ object CuSparseMatrix {
 }
 
 trait CuSparseOps {
+  implicit def CuSpMatrixFAddCuSpMatrixF(implicit blas: cublasHandle): OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] = new OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
+    def apply(a: CuSparseMatrix[Float], b: CuSparseMatrix[Float]): CuSparseMatrix[Float] = {
+      import a.sparseHandle
 
+      CuWrapperMethods.sparseSgeam(1.0f, a, 1.0f, b)
+    }
+  }
+
+  implicit def CuSpMatrixDAddCuSpMatrixD(implicit blas: cublasHandle): OpAdd.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] = new OpAdd.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
+    def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
+      import a.sparseHandle
+
+      CuWrapperMethods.sparseDgeam(1.0f, a, 1.0f, b)
+    }
+  }
+
+  implicit def CuSpMatrixFSubCuSpMatrixF(implicit blas: cublasHandle): OpSub.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] = new OpSub.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
+    def apply(a: CuSparseMatrix[Float], b: CuSparseMatrix[Float]): CuSparseMatrix[Float] = {
+      import a.sparseHandle
+
+      CuWrapperMethods.sparseSgeam(1.0f, a, -1.0f, b)
+    }
+  }
+
+  implicit def CuSpMatrixDSubCuSpMatrixD(implicit blas: cublasHandle): OpSub.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] = new OpSub.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
+    def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
+      import a.sparseHandle
+
+      CuWrapperMethods.sparseDgeam(1.0f, a, -1.0f, b)
+    }
+  }
+
+  implicit def CuSpMatrixFMulCuSpMatrixF(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] = new OpMulMatrix.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
+    def apply(a: CuSparseMatrix[Float], b: CuSparseMatrix[Float]): CuSparseMatrix[Float] = {
+      import a.sparseHandle
+
+      CuWrapperMethods.sparseSgemm(a, b)
+    }
+  }
+
+  implicit def CuSpMatrixDMulCuSpMatrixD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] = new OpMulMatrix.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
+    def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
+      import a.sparseHandle
+
+      CuWrapperMethods.sparseDgemm(a, b)
+    }
+  }
 }
