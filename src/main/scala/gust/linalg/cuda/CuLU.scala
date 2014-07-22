@@ -464,9 +464,8 @@ object CuLU extends UFunc {
     JCusparse2.cusparseCreateSolveAnalysisInfo(info)
     val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
     val m = AS.rows
-    val nnz = AS.csrVal.rows
-    JCusparse2.cusparseScsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
-    JCusparse2.cusparseScsrilu0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseScsrsv_analysis(sparseHandle, trans, m, AS.nnz, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
+    JCusparse2.cusparseScsrilu0(sparseHandle, trans, m, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
 
     JCusparse2.cusparseDestroySolveAnalysisInfo(info)
 
@@ -485,9 +484,8 @@ object CuLU extends UFunc {
     JCusparse2.cusparseCreateSolveAnalysisInfo(info)
     val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
     val m = AS.rows
-    val nnz = AS.csrVal.rows
-    JCusparse2.cusparseDcsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
-    JCusparse2.cusparseDcsrilu0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseDcsrsv_analysis(sparseHandle, trans, m, AS.nnz, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
+    JCusparse2.cusparseDcsrilu0(sparseHandle, trans, m, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
 
     JCusparse2.cusparseDestroySolveAnalysisInfo(info)
 
@@ -495,10 +493,10 @@ object CuLU extends UFunc {
   }
 
   def incompleteLUFactorsFloat(A: CuSparseMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): (CuSparseMatrix[Float], CuSparseMatrix[Float]) = {
-    val denseCsrValL = A.csrVal.toDense
-    val denseCsrValU = A.csrVal.toDense
-    val denseCsrRowPtrA = A.csrRowPtr.toDense
-    val denseCsrColIndA = A.csrColInd.toDense
+    val denseCsrValL = A.cscVal.toDense
+    val denseCsrValU = A.cscVal.toDense
+    val denseCsrRowPtrA = A.cscColPtr.toDense
+    val denseCsrColIndA = A.cscRowInd.toDense
 
     // construct L (ones on the diagonal) and U:
     cfor(0)(_ < A.rows, _ + 1) { i => {
@@ -529,16 +527,16 @@ object CuLU extends UFunc {
     JCusparse2.cusparseSetMatDiagType(descrU, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
     (new CuSparseMatrix[Float](A.rows, A.cols, descrL, CuMatrix.fromDense(denseCsrValL),
-                           CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)),
+                           CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)).transpose,
      new CuSparseMatrix[Float](A.rows, A.cols, descrU, CuMatrix.fromDense(denseCsrValU),
-                           CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)))
+                           CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)).transpose)
   }
 
   def incompleteLUFactorsDouble(A: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): (CuSparseMatrix[Double], CuSparseMatrix[Double]) = {
-    val denseCsrValL = A.csrVal.toDense
-    val denseCsrValU = A.csrVal.toDense
-    val denseCsrRowPtrA = A.csrRowPtr.toDense
-    val denseCsrColIndA = A.csrColInd.toDense
+    val denseCsrValL = A.cscVal.toDense
+    val denseCsrValU = A.cscVal.toDense
+    val denseCsrRowPtrA = A.cscColPtr.toDense
+    val denseCsrColIndA = A.cscRowInd.toDense
 
     // construct L (ones on the diagonal) and U:
     cfor(0)(_ < A.rows, _ + 1) { i => {
@@ -569,9 +567,9 @@ object CuLU extends UFunc {
     JCusparse2.cusparseSetMatDiagType(descrU, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
     (new CuSparseMatrix[Double](A.rows, A.cols, descrL, CuMatrix.fromDense(denseCsrValL),
-      CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)),
+      CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)).transpose,
       new CuSparseMatrix[Double](A.rows, A.cols, descrU, CuMatrix.fromDense(denseCsrValU),
-        CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)))
+        CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)).transpose)
   }
 
 }

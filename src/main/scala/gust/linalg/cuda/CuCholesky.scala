@@ -213,9 +213,8 @@ object CuCholesky {
     JCusparse2.cusparseCreateSolveAnalysisInfo(info)
     val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
     val m = AS.rows
-    val nnz = AS.csrVal.rows
-    JCusparse2.cusparseScsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
-    JCusparse2.cusparseScsric0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseScsrsv_analysis(sparseHandle, trans, m, AS.nnz, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
+    JCusparse2.cusparseScsric0(sparseHandle, trans, m, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
 
     JCusparse2.cusparseDestroySolveAnalysisInfo(info)
 
@@ -238,9 +237,8 @@ object CuCholesky {
     JCusparse2.cusparseCreateSolveAnalysisInfo(info)
     val trans = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
     val m = AS.rows
-    val nnz = AS.csrVal.rows
-    JCusparse2.cusparseDcsrsv_analysis(sparseHandle, trans, m, nnz, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
-    JCusparse2.cusparseDcsric0(sparseHandle, trans, m, AS.descr, AS.csrVal.offsetPointer, AS.csrRowPtr.offsetPointer, AS.csrColInd.offsetPointer, info)
+    JCusparse2.cusparseDcsrsv_analysis(sparseHandle, trans, m, AS.nnz, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
+    JCusparse2.cusparseDcsric0(sparseHandle, trans, m, AS.descr, AS.cscVal.offsetPointer, AS.cscColPtr.offsetPointer, AS.cscRowInd.offsetPointer, info)
 
     JCusparse2.cusparseDestroySolveAnalysisInfo(info)
 

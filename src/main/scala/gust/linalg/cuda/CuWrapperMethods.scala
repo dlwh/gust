@@ -684,8 +684,8 @@ object CuWrapperMethods {
 
     val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
 
-    JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
-      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+    JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.cscColPtr.offsetPointer,
+      A.cscRowInd.offsetPointer, B.descr, B.nnz, B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer,
       descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
 
     var nnzC = nnzHost(0)
@@ -702,9 +702,9 @@ object CuWrapperMethods {
     val csrValC = CuMatrix.create[Float](nnzC, 1)
     val csrColIndC = CuMatrix.create[Int](nnzC, 1)
 
-    JCusparse2.cusparseScsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.csrVal.offsetPointer,
-      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, betaPtr, B.descr, B.nnz, B.csrVal.offsetPointer,
-      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+    JCusparse2.cusparseScsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.cscVal.offsetPointer,
+      A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer, betaPtr, B.descr, B.nnz, B.cscVal.offsetPointer,
+      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
 
     new CuSparseMatrix[Float](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
   }
@@ -732,8 +732,8 @@ object CuWrapperMethods {
 
     val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
 
-    JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
-      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+    JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.cscColPtr.offsetPointer,
+      A.cscRowInd.offsetPointer, B.descr, B.nnz, B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer,
       descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
 
     var nnzC = nnzHost(0)
@@ -750,9 +750,9 @@ object CuWrapperMethods {
     val csrValC = CuMatrix.create[Double](nnzC, 1)
     val csrColIndC = CuMatrix.create[Int](nnzC, 1)
 
-    JCusparse2.cusparseDcsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.csrVal.offsetPointer,
-      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, betaPtr, B.descr, B.nnz, B.csrVal.offsetPointer,
-      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+    JCusparse2.cusparseDcsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.cscVal.offsetPointer,
+      A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer, betaPtr, B.descr, B.nnz, B.cscVal.offsetPointer,
+      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
 
     new CuSparseMatrix[Double](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
   }
@@ -789,8 +789,8 @@ object CuWrapperMethods {
     val opA = if (transA) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
     val opB = if (transB) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
 
-    JCusparse2.cusparseXcsrgemmNnz(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
-      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+    JCusparse2.cusparseXcsrgemmNnz(sparseHandle, opA, opB, m, n, k, B.descr, B.nnz, B.cscColPtr.offsetPointer,
+      B.cscRowInd.offsetPointer, A.descr, A.nnz, A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer,
       descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
 
     var nnzC = nnzHost(0)
@@ -804,9 +804,9 @@ object CuWrapperMethods {
     val csrValC = CuMatrix.create[Float](nnzC, 1)
     val csrColIndC = CuMatrix.create[Int](nnzC, 1)
 
-    JCusparse2.cusparseScsrgemm(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrVal.offsetPointer,
-      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrVal.offsetPointer,
-      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+    JCusparse2.cusparseScsrgemm(sparseHandle, opA, opB, m, n, k, B.descr, B.nnz, B.cscVal.offsetPointer,
+      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, A.descr, A.nnz, A.cscVal.offsetPointer,
+      A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
 
     new CuSparseMatrix[Float](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
   }
@@ -837,8 +837,8 @@ object CuWrapperMethods {
     val opA = if (transA) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
     val opB = if (transB) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
 
-    JCusparse2.cusparseXcsrgemmNnz(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrRowPtr.offsetPointer,
-      A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer,
+    JCusparse2.cusparseXcsrgemmNnz(sparseHandle, opA, opB, m, n, k, B.descr, B.nnz, B.cscColPtr.offsetPointer,
+      B.cscRowInd.offsetPointer, A.descr, A.nnz, A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer,
       descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
 
     var nnzC = nnzHost(0)
@@ -852,9 +852,9 @@ object CuWrapperMethods {
     val csrValC = CuMatrix.create[Double](nnzC, 1)
     val csrColIndC = CuMatrix.create[Int](nnzC, 1)
 
-    JCusparse2.cusparseDcsrgemm(sparseHandle, opA, opB, m, n, k, A.descr, A.nnz, A.csrVal.offsetPointer,
-      A.csrRowPtr.offsetPointer, A.csrColInd.offsetPointer, B.descr, B.nnz, B.csrVal.offsetPointer,
-      B.csrRowPtr.offsetPointer, B.csrColInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+    JCusparse2.cusparseDcsrgemm(sparseHandle, opA, opB, m, n, k, B.descr, B.nnz, B.cscVal.offsetPointer,
+      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, A.descr, A.nnz, A.cscVal.offsetPointer,
+      A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
 
     new CuSparseMatrix[Double](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
   }

@@ -11,28 +11,34 @@ import scala.reflect.ClassTag
 
 /**
  * Created by Piotr on 2014-07-18.
+ *
+ * NOTE: Matrix is stored in CSC format (following Breeze), but the cusparse API
+ * favours the CSR format. This is why the cusparse functions see the matrix as CSR,
+ * which is effectively a transpose. This may cause some confusion, for example:
+ * multiplication is done in reverse order (because B' * A' = (AB)'). However, the methods
+ * aim to be transparent to the end-user so it's not that bad after all.
  */
 class CuSparseMatrix[V](val rows: Int, val cols: Int,
                         val descr: cusparseMatDescr,
-                        val csrVal: CuMatrix[V],
-                        val csrRowPtr: CuMatrix[Int],
-                        val csrColInd: CuMatrix[Int],
+                        val cscVal: CuMatrix[V],
+                        val cscColPtr: CuMatrix[Int],
+                        val cscRowInd: CuMatrix[Int],
                         val isTranspose: Boolean = false)(implicit val sparseHandle: cusparseHandle) extends NumericOps[CuSparseMatrix[V]] {
 
   def size = rows * cols
 
-  def elemSize = csrVal.data.getIO.getTargetSize
+  def elemSize = cscVal.data.getIO.getTargetSize
 
-  def nnz = csrVal.size
+  def nnz = cscVal.size
 
   def toCuMatrix(implicit blasHandle: cublasHandle, ct: ClassTag[V]): CuMatrix[V] = {
     val A = CuMatrix.create[V](rows, cols)
-    val cuspFunc = if (A.elemSize == 8) JCusparse2.cusparseDcsr2dense _ // if (matType.equals("Double")) JCusparse2.cusparseDcsr2dense _
-                   else if (A.elemSize == 4) JCusparse2.cusparseScsr2dense _ // else if (matType.equals("Float")) JCusparse2.cusparseScsr2dense _
+    val cuspFunc = if (A.elemSize == 8) JCusparse2.cusparseDcsc2dense _ // if (matType.equals("Double")) JCusparse2.cusparseDcsr2dense _
+                   else if (A.elemSize == 4) JCusparse2.cusparseScsc2dense _ // else if (matType.equals("Float")) JCusparse2.cusparseScsr2dense _
                    else throw new UnsupportedOperationException("can't convert a matrix that's not Float nor Double")
 
     cuspFunc(sparseHandle, rows, cols, descr,
-      csrVal.offsetPointer, csrRowPtr.offsetPointer, csrColInd.offsetPointer, A.offsetPointer, A.majorStride)
+      cscVal.offsetPointer, cscRowInd.offsetPointer, cscColPtr.offsetPointer, A.offsetPointer, A.majorStride)
 
     if (isTranspose) A.t else A
   }
@@ -46,12 +52,12 @@ class CuSparseMatrix[V](val rows: Int, val cols: Int,
     JCusparse2.cusparseSetMatIndexBase(descrC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
     JCusparse2.cusparseSetMatDiagType(descrC, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
-    val csrValC = CuMatrix.create[V](csrVal.rows, 1); csrValC.writeFrom(csrVal)
-    val csrRowPtrC = CuMatrix.create[Int](csrRowPtr.rows, 1); csrRowPtrC.writeFrom(csrRowPtr)
-    val csrColIndC = CuMatrix.create[Int](csrColInd.rows, 1); csrColIndC.writeFrom(csrColInd)
+    val cscValC = CuMatrix.create[V](cscVal.rows, 1); cscValC.writeFrom(cscVal)
+    val cscColPtrC = CuMatrix.create[Int](cscColPtr.rows, 1); cscColPtrC.writeFrom(cscColPtr)
+    val cscRowIndC = CuMatrix.create[Int](cscRowInd.rows, 1); cscRowIndC.writeFrom(cscRowInd)
 
-    new CuSparseMatrix[V](rows, cols, descrC, csrValC, csrRowPtrC,
-      csrColIndC, isTranspose)
+    new CuSparseMatrix[V](rows, cols, descrC, cscValC, cscColPtrC,
+      cscRowIndC, isTranspose)
   }
 
   // perform the transpose explicitly:
@@ -62,31 +68,32 @@ class CuSparseMatrix[V](val rows: Int, val cols: Int,
     JCusparse2.cusparseSetMatIndexBase(descrT, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
     JCusparse2.cusparseSetMatDiagType(descrT, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
-    val cscVal = CuMatrix.create[V](csrVal.rows, 1)
-    val cscRowInd = CuMatrix.create[Int](nnz, 1)
-    val cscColPtr = CuMatrix.create[Int](cols+1, 1)
+    val csrVal = CuMatrix.create[V](nnz, 1)
+    val csrColInd = CuMatrix.create[Int](nnz, 1)
+    val csrRowPtr = CuMatrix.create[Int](rows+1, 1)
 
-    val cuspOp = if (ct.toString().equals("Float")) JCusparse2.cusparseScsr2csc _
-                 else JCusparse2.cusparseDcsr2csc _
+    val cuspOp = if (elemSize == 8) JCusparse2.cusparseDcsr2csc _
+                 else if (elemSize == 4) JCusparse2.cusparseScsr2csc _
+                 else throw new UnsupportedOperationException("Can't transpose a matrix with elem sizes different than 4 and 8")
 
-    cuspOp(sparseHandle, rows, cols, nnz, csrVal.offsetPointer, csrRowPtr.offsetPointer, csrColInd.offsetPointer,
-      cscVal.offsetPointer, cscRowInd.offsetPointer, cscColPtr.offsetPointer,
+    cuspOp(sparseHandle, cols, rows, nnz, cscVal.offsetPointer, cscColPtr.offsetPointer, cscRowInd.offsetPointer,
+      csrVal.offsetPointer, csrColInd.offsetPointer, csrRowPtr.offsetPointer,
       cusparseAction.CUSPARSE_ACTION_NUMERIC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
 
-    new CuSparseMatrix[V](cols, rows, descrT, cscVal, cscColPtr,
-      cscRowInd, isTranspose)
+    new CuSparseMatrix[V](cols, rows, descrT, csrVal, csrRowPtr,
+      csrColInd, isTranspose)
   }
 
   def release() {
     JCusparse2.cusparseDestroyMatDescr(descr)
-    csrVal.release()
-    csrRowPtr.release()
-    csrColInd.release()
+    cscVal.release()
+    cscColPtr.release()
+    cscRowInd.release()
   }
 
   override def repr = this
 
-  override def toString = "csrVal:  " + this.csrVal.t +  "csrColInd:  " + this.csrColInd.t + "csrRowPtr:  " + this.csrRowPtr.t
+  override def toString = "cscVal:  " + this.cscVal.t +  "cscRowInd:  " + this.cscRowInd.t + "cscColPtr:  " + this.cscColPtr.t
 
 }
 
@@ -109,73 +116,33 @@ object CuSparseMatrix extends CuSparseOps {
                       else if (isOfTypeS) JCusparse.cusparseSnnz _
                       else throw new UnsupportedOperationException("can't convert a matrix that's not Float nor Double")
 
-    val cuspFuncDense2csr = if (isOfTypeD) JCusparse2.cusparseDdense2csr _
-                            else if (isOfTypeS) JCusparse2.cusparseSdense2csr _
+    val cuspFuncDense2csc = if (isOfTypeD) JCusparse2.cusparseDdense2csc _
+                            else if (isOfTypeS) JCusparse2.cusparseSdense2csc _
                             else throw new UnsupportedOperationException("can't convert a matrix that's not Float nor Double")
 
     // get the number of non-zero entries per row:
-    val nnzPerRow = CuMatrix.create[Int](A.rows, 1)
+    val nnzPerCol = CuMatrix.create[Int](A.cols, 1)
     val nnzHost = Array(0)
     val nnzHostPtr= jcuda.Pointer.to(nnzHost)
 
-    cuspFuncNnz(sparseHandle, cusparseDirection.CUSPARSE_DIRECTION_ROW,
-         A.rows, A.cols, descr, A.offsetPointer, A.majorStride, nnzPerRow.offsetPointer, nnzHostPtr)
+    cuspFuncNnz(sparseHandle, cusparseDirection.CUSPARSE_DIRECTION_COLUMN,
+         A.rows, A.cols, descr, A.offsetPointer, A.majorStride, nnzPerCol.offsetPointer, nnzHostPtr)
 
 
     // create the sparse matrix:
     val nnz = nnzHost(0)
-    val csrValA = CuMatrix.create[V](nnz, 1)
-    val csrRowPtrA = CuMatrix.create[Int](A.rows+1, 1)
-    val csrColIndA = CuMatrix.create[Int](nnz, 1)
+    val cscValA = CuMatrix.create[V](nnz, 1)
+    val cscColPtrA = CuMatrix.create[Int](A.cols+1, 1)
+    val cscRowIndA = CuMatrix.create[Int](nnz, 1)
 
-    cuspFuncDense2csr(sparseHandle, A.rows, A.cols, descr, A.offsetPointer, A.majorStride,
-      nnzPerRow.offsetPointer, csrValA.offsetPointer, csrRowPtrA.offsetPointer, csrColIndA.offsetPointer)
+    cuspFuncDense2csc(sparseHandle, A.rows, A.cols, descr, A.offsetPointer, A.majorStride,
+      nnzPerCol.offsetPointer, cscValA.offsetPointer, cscRowIndA.offsetPointer, cscColPtrA.offsetPointer)
 
-    new CuSparseMatrix[V](A.rows, A.cols, descr, csrValA, csrRowPtrA, csrColIndA, A.isTranspose)
+    new CuSparseMatrix[V](A.rows, A.cols, descr, cscValA, cscColPtrA, cscRowIndA, A.isTranspose)
   }
 
   def fromDense[V <: AnyVal](A: DenseMatrix[V])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle, ct: ClassTag[V]) = {
-    // create matrix descriptor and some info:
-    val descr = new cusparseMatDescr
-    JCusparse2.cusparseCreateMatDescr(descr)
-    JCusparse2.cusparseSetMatType(descr, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
-    JCusparse2.cusparseSetMatIndexBase(descr, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
-    JCusparse2.cusparseSetMatDiagType(descr, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
-
-    val d_A = CuMatrix.fromDense(A)
-
-    // we have to decide which functions to use:
-    val isOfTypeD = d_A.elemSize == 8 //ct.toString().equals("Double")
-    val isOfTypeS = d_A.elemSize == 4 //ct.toString().equals("Float")
-
-    // same as above with cusparse<t>nnz
-    val cuspFuncNnz = if (isOfTypeD) JCusparse.cusparseDnnz _
-    else if (isOfTypeS) JCusparse.cusparseSnnz _
-    else throw new UnsupportedOperationException("can't convert a matrix that's not Float nor Double")
-
-    val cuspFuncDense2csr = if (isOfTypeD) JCusparse2.cusparseDdense2csr _
-    else if (isOfTypeS) JCusparse2.cusparseSdense2csr _
-    else throw new UnsupportedOperationException("can't convert a matrix that's not Float nor Double")
-
-    // get the number of non-zero entries per row:
-    val nnzPerRow = CuMatrix.create[Int](d_A.rows, 1)
-    val nnzHost = Array(0)
-    val nnzHostPtr = jcuda.Pointer.to(nnzHost)
-
-    cuspFuncNnz(sparseHandle, cusparseDirection.CUSPARSE_DIRECTION_ROW,
-      d_A.rows, d_A.cols, descr, d_A.offsetPointer, A.majorStride, nnzPerRow.offsetPointer, nnzHostPtr)
-
-
-    // create the sparse matrix:
-    val nnz = nnzHost(0)
-    val csrValA = CuMatrix.create[V](nnz, 1)
-    val csrRowPtrA = CuMatrix.create[Int](d_A.rows+1, 1)
-    val csrColIndA = CuMatrix.create[Int](nnz, 1)
-
-    cuspFuncDense2csr(sparseHandle, d_A.rows, d_A.cols, descr, d_A.offsetPointer, d_A.majorStride,
-      nnzPerRow.offsetPointer, csrValA.offsetPointer, csrRowPtrA.offsetPointer, csrColIndA.offsetPointer)
-
-    new CuSparseMatrix[V](d_A.rows, d_A.cols, descr, csrValA, csrRowPtrA, csrColIndA, d_A.isTranspose)
+    CuSparseMatrix.fromCuMatrix(CuMatrix.fromDense(A))
   }
 }
 
