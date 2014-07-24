@@ -147,7 +147,9 @@ object CuSparseMatrix extends CuSparseOps {
 }
 
 trait CuSparseOps {
-  implicit def CuSpMatrixFAddCuSpMatrixF(implicit blas: cublasHandle): OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] = new OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
+  // TODO something wrong with geam
+  implicit def CuSpMatrixFAddCuSpMatrixF(implicit blas: cublasHandle): OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] =
+    new OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
     def apply(a: CuSparseMatrix[Float], b: CuSparseMatrix[Float]): CuSparseMatrix[Float] = {
       import a.sparseHandle
 
@@ -155,7 +157,8 @@ trait CuSparseOps {
     }
   }
 
-  implicit def CuSpMatrixDAddCuSpMatrixD(implicit blas: cublasHandle): OpAdd.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] = new OpAdd.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
+  implicit def CuSpMatrixDAddCuSpMatrixD(implicit blas: cublasHandle): OpAdd.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] =
+    new OpAdd.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
     def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
       import a.sparseHandle
 
@@ -163,7 +166,8 @@ trait CuSparseOps {
     }
   }
 
-  implicit def CuSpMatrixFSubCuSpMatrixF(implicit blas: cublasHandle): OpSub.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] = new OpSub.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
+  implicit def CuSpMatrixFSubCuSpMatrixF(implicit blas: cublasHandle): OpSub.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] =
+    new OpSub.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
     def apply(a: CuSparseMatrix[Float], b: CuSparseMatrix[Float]): CuSparseMatrix[Float] = {
       import a.sparseHandle
 
@@ -171,7 +175,8 @@ trait CuSparseOps {
     }
   }
 
-  implicit def CuSpMatrixDSubCuSpMatrixD(implicit blas: cublasHandle): OpSub.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] = new OpSub.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
+  implicit def CuSpMatrixDSubCuSpMatrixD(implicit blas: cublasHandle): OpSub.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] =
+    new OpSub.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
     def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
       import a.sparseHandle
 
@@ -179,7 +184,8 @@ trait CuSparseOps {
     }
   }
 
-  implicit def CuSpMatrixFMulCuSpMatrixF(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] = new OpMulMatrix.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
+  implicit def CuSpMatrixFMulCuSpMatrixF(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] =
+    new OpMulMatrix.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
     def apply(a: CuSparseMatrix[Float], b: CuSparseMatrix[Float]): CuSparseMatrix[Float] = {
       import a.sparseHandle
 
@@ -187,11 +193,30 @@ trait CuSparseOps {
     }
   }
 
-  implicit def CuSpMatrixDMulCuSpMatrixD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] = new OpMulMatrix.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
+  implicit def CuSpMatrixDMulCuSpMatrixD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] =
+    new OpMulMatrix.Impl2[CuSparseMatrix[Double], CuSparseMatrix[Double], CuSparseMatrix[Double]] {
     def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
       import a.sparseHandle
 
       CuWrapperMethods.sparseDgemm(a, b)
     }
   }
+
+  implicit def CuSpMatrixFMulCuVectorF(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Float], CuMatrix[Float], CuMatrix[Float]] =
+    new OpMulMatrix.Impl2[CuSparseMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+      def apply(a: CuSparseMatrix[Float], b: CuMatrix[Float]): CuMatrix[Float] = {
+        import a.sparseHandle
+
+        CuWrapperMethods.sparseSgemv(a, b)
+      }
+    }
+
+  implicit def CuSpMatrixDMulCuVectorD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Double], CuMatrix[Double], CuMatrix[Double]] =
+    new OpMulMatrix.Impl2[CuSparseMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
+      def apply(a: CuSparseMatrix[Double], b: CuMatrix[Double]): CuMatrix[Double] = {
+        import a.sparseHandle
+
+        CuWrapperMethods.sparseDgemv(a, b)
+      }
+    }
 }

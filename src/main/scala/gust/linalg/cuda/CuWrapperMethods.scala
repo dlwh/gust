@@ -859,4 +859,48 @@ object CuWrapperMethods {
     new CuSparseMatrix[Double](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
   }
 
+  /**
+   * Performs the sparse_matrix * dense_vector multiplication (resulting in a dense vector)
+   * @param AS sparse matrix
+   * @param b dense vector
+   * @return AS * b, dense vector
+   */
+  def sparseSgemv(AS: CuSparseMatrix[Float], b: CuMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
+    // we cannot do a vector*matrix instead of matrix*vector, so we have to transpose:
+    val transA = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val A = AS.transpose
+
+    val m = AS.rows
+    val n = AS.cols // rows and cols of the original matrix (without the transpose)
+
+    val res = CuMatrix.create[Float](m, 1)
+    val zero = jcuda.Pointer.to(Array(0.0f))
+    val one = jcuda.Pointer.to(Array(1.0f))
+
+    JCusparse2.cusparseScsrmv(sparseHandle, transA, m, n, A.nnz, one,
+      A.descr, A.cscVal.offsetPointer, A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer,
+      b.offsetPointer, zero, res.offsetPointer)
+
+    res
+  }
+
+  def sparseDgemv(AS: CuSparseMatrix[Double], b: CuMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
+    // we cannot do a vector*matrix instead of matrix*vector, so we have to transpose:
+    val transA = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
+    val A = AS.transpose
+
+    val m = AS.rows
+    val n = AS.cols // rows and cols of the original matrix (without the transpose)
+
+    val res = CuMatrix.create[Double](m, 1)
+    val zero = jcuda.Pointer.to(Array(0.0))
+    val one = jcuda.Pointer.to(Array(1.0))
+
+    JCusparse2.cusparseDcsrmv(sparseHandle, transA, m, n, A.nnz, one,
+      A.descr, A.cscVal.offsetPointer, A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer,
+      b.offsetPointer, zero, res.offsetPointer)
+
+    res
+  }
+
 }
