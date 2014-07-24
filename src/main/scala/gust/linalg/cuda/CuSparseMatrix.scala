@@ -1,10 +1,11 @@
 package gust.linalg.cuda
 
-import breeze.linalg.operators.{OpMulMatrix, OpSub, OpAdd}
-import breeze.linalg.{NumericOps, DenseMatrix}
+import breeze.linalg.operators.{OpSolveMatrixBy, OpMulMatrix, OpSub, OpAdd}
+import breeze.linalg.support.CanTranspose
+import breeze.linalg.{cholesky, LU, NumericOps, DenseMatrix}
 import com.nativelibs4java.opencl.{CLQueue, CLContext}
 import gust.util.cuda
-import jcuda.jcublas.cublasHandle
+import jcuda.jcublas.{JCublas2, cublasHandle}
 import jcuda.jcusparse._
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
 import scala.reflect.ClassTag
@@ -144,10 +145,18 @@ object CuSparseMatrix extends CuSparseOps {
   def fromDense[V <: AnyVal](A: DenseMatrix[V])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle, ct: ClassTag[V]) = {
     CuSparseMatrix.fromCuMatrix(CuMatrix.fromDense(A))
   }
+
+
+  implicit def canTranspose[V]: CanTranspose[CuSparseMatrix[V], CuSparseMatrix[V]] = {
+    new CanTranspose[CuSparseMatrix[V], CuSparseMatrix[V]] {
+      def apply(from: CuSparseMatrix[V]) = {
+        from.transpose
+      }
+    }
+  }
 }
 
 trait CuSparseOps {
-  // TODO something wrong with geam
   implicit def CuSpMatrixFAddCuSpMatrixF(implicit blas: cublasHandle): OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] =
     new OpAdd.Impl2[CuSparseMatrix[Float], CuSparseMatrix[Float], CuSparseMatrix[Float]] {
     def apply(a: CuSparseMatrix[Float], b: CuSparseMatrix[Float]): CuSparseMatrix[Float] = {
@@ -162,7 +171,7 @@ trait CuSparseOps {
     def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
       import a.sparseHandle
 
-      CuWrapperMethods.sparseDgeam(1.0f, a, 1.0f, b)
+      CuWrapperMethods.sparseDgeam(1.0, a, 1.0, b)
     }
   }
 
@@ -180,7 +189,7 @@ trait CuSparseOps {
     def apply(a: CuSparseMatrix[Double], b: CuSparseMatrix[Double]): CuSparseMatrix[Double] = {
       import a.sparseHandle
 
-      CuWrapperMethods.sparseDgeam(1.0f, a, -1.0f, b)
+      CuWrapperMethods.sparseDgeam(1.0, a, -1.0, b)
     }
   }
 
@@ -217,6 +226,83 @@ trait CuSparseOps {
         import a.sparseHandle
 
         CuWrapperMethods.sparseDgemv(a, b)
+      }
+    }
+
+  implicit def CuSpMatrixFMulScalarF(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Float], Float, CuSparseMatrix[Float]] =
+    new OpMulMatrix.Impl2[CuSparseMatrix[Float], Float, CuSparseMatrix[Float]] {
+      def apply(a: CuSparseMatrix[Float], s: Float): CuSparseMatrix[Float] = {
+        JCublas2.cublasSscal(blas, a.nnz, jcuda.Pointer.to(Array(s)), a.cscVal.offsetPointer, 1)
+        a
+      }
+    }
+
+  implicit def CuSpMatrixDMulScalarD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuSparseMatrix[Double], Double, CuSparseMatrix[Double]] =
+    new OpMulMatrix.Impl2[CuSparseMatrix[Double], Double, CuSparseMatrix[Double]] {
+      def apply(a: CuSparseMatrix[Double], s: Double): CuSparseMatrix[Double] = {
+        JCublas2.cublasDscal(blas, a.nnz, jcuda.Pointer.to(Array(s)), a.cscVal.offsetPointer, 1)
+        a
+      }
+    }
+
+
+  implicit def canSolveCuSpMatrixFloat(implicit blas: cublasHandle): OpSolveMatrixBy.Impl2[CuSparseMatrix[Float], CuMatrix[Float], CuMatrix[Float]] =
+    new OpSolveMatrixBy.Impl2[CuSparseMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+      def apply(a: CuSparseMatrix[Float], b: CuMatrix[Float]) = {
+        import a.sparseHandle
+
+        CuSolve.sparseSolveFloat(a, b)
+      }
+    }
+
+  implicit def canSolveCuSpMatrixDouble(implicit blas: cublasHandle): OpSolveMatrixBy.Impl2[CuSparseMatrix[Double], CuMatrix[Double], CuMatrix[Double]] =
+    new OpSolveMatrixBy.Impl2[CuSparseMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
+      def apply(a: CuSparseMatrix[Double], b: CuMatrix[Double]) = {
+        import a.sparseHandle
+
+        CuSolve.sparseSolveDouble(a, b)
+      }
+    }
+
+  /**
+   * Incomplete LU factorization without pivoting. I'm not really sure whether this implicit should even be here.
+   * It's not a "real" LU and it may give the false impression.
+   */
+  implicit def canLUFloat(implicit blasHandle: cublasHandle): LU.Impl[CuSparseMatrix[Float], (CuSparseMatrix[Float], CuSparseMatrix[Float])] =
+    new LU.Impl[CuSparseMatrix[Float], (CuSparseMatrix[Float], CuSparseMatrix[Float])] {
+      def apply(_a: CuSparseMatrix[Float])= {
+        import _a.sparseHandle
+
+        val d_LU = CuLU.incompleteLUFloat(_a)
+        CuLU.incompleteLUFactorsFloat(d_LU)
+      }
+    }
+
+  implicit def canLUDouble(implicit blasHandle: cublasHandle): LU.Impl[CuSparseMatrix[Double], (CuSparseMatrix[Double], CuSparseMatrix[Double])] =
+    new LU.Impl[CuSparseMatrix[Double], (CuSparseMatrix[Double], CuSparseMatrix[Double])] {
+      def apply(_a: CuSparseMatrix[Double])= {
+        import _a.sparseHandle
+
+        val d_LU = CuLU.incompleteLUDouble(_a)
+        CuLU.incompleteLUFactorsDouble(d_LU)
+      }
+    }
+
+  implicit def canCholeskyFloat(implicit blasHandle: cublasHandle): cholesky.Impl[CuSparseMatrix[Float], CuSparseMatrix[Float]] =
+    new cholesky.Impl[CuSparseMatrix[Float], CuSparseMatrix[Float]] {
+      def apply(_a: CuSparseMatrix[Float])= {
+        import _a.sparseHandle
+
+        CuCholesky.incompleteCholFactorFloat(CuCholesky.incompleteCholeskyFloat(_a))
+      }
+    }
+
+  implicit def canCholeskyDouble(implicit blasHandle: cublasHandle): cholesky.Impl[CuSparseMatrix[Double], CuSparseMatrix[Double]] =
+    new cholesky.Impl[CuSparseMatrix[Double], CuSparseMatrix[Double]] {
+      def apply(_a: CuSparseMatrix[Double])= {
+        import _a.sparseHandle
+
+        CuCholesky.incompleteCholFactorDouble(CuCholesky.incompleteCholeskyDouble(_a))
       }
     }
 }

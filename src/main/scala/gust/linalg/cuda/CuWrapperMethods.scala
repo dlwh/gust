@@ -669,8 +669,8 @@ object CuWrapperMethods {
     require(A.rows == B.rows, s"Row dimension mismatch for addition: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
     require(A.cols == B.cols, s"Column dimension mismatch: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
 
-    val m = A.rows
-    val n = A.cols
+    val m = A.cols
+    val n = A.rows
 
     val nnzHost = Array(0)
     val nnzHostPtr = jcuda.Pointer.to(nnzHost)
@@ -682,16 +682,16 @@ object CuWrapperMethods {
     JCusparse2.cusparseSetMatIndexBase(descrC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
     JCusparse2.cusparseSetMatDiagType(descrC, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
-    val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
+    val cscColPtrC = CuMatrix.create[Int](m+1, 1)
 
     JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.cscColPtr.offsetPointer,
       A.cscRowInd.offsetPointer, B.descr, B.nnz, B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer,
-      descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
+      descrC, cscColPtrC.offsetPointer, nnzHostPtr)
 
     var nnzC = nnzHost(0)
     if (nnzC == 0) {  // trick from cusparse's doc page
       JCuda.cudaMemcpy(nnzHostPtr,
-        csrRowPtrC.offsetPointer.withByteOffset(csrRowPtrC.linearIndex(m, 0) * csrRowPtrC.elemSize),
+        cscColPtrC.offsetPointer.withByteOffset(cscColPtrC.linearIndex(m, 0) * cscColPtrC.elemSize),
         1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
       nnzC = nnzHost(0)
     }
@@ -699,14 +699,16 @@ object CuWrapperMethods {
     val alphaPtr = jcuda.Pointer.to(Array(alpha))
     val betaPtr = jcuda.Pointer.to(Array(beta))
 
-    val csrValC = CuMatrix.create[Float](nnzC, 1)
-    val csrColIndC = CuMatrix.create[Int](nnzC, 1)
+    val cscValC = CuMatrix.create[Float](nnzC, 1)
+    val cscRowIndC = CuMatrix.create[Int](nnzC, 1)
 
     JCusparse2.cusparseScsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.cscVal.offsetPointer,
       A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer, betaPtr, B.descr, B.nnz, B.cscVal.offsetPointer,
-      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, descrC, cscValC.offsetPointer, cscColPtrC.offsetPointer, cscRowIndC.offsetPointer)
 
-    new CuSparseMatrix[Float](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
+    new CuSparseMatrix[Float](
+
+      n, m, descrC, cscValC, cscColPtrC, cscRowIndC)
   }
 
   def sparseDgeam(alpha: Double, AS: CuSparseMatrix[Double], beta: Double, BS: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle): CuSparseMatrix[Double] = {
@@ -717,8 +719,8 @@ object CuWrapperMethods {
     require(A.rows == B.rows, s"Row dimension mismatch for addition: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
     require(A.cols == B.cols, s"Column dimension mismatch: ${(A.rows, A.cols)} ${(B.rows, B.cols)}")
 
-    val m = A.rows
-    val n = A.cols
+    val m = A.cols
+    val n = A.rows
 
     val nnzHost = Array(0)
     val nnzHostPtr = jcuda.Pointer.to(nnzHost)
@@ -730,16 +732,16 @@ object CuWrapperMethods {
     JCusparse2.cusparseSetMatIndexBase(descrC, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
     JCusparse2.cusparseSetMatDiagType(descrC, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
 
-    val csrRowPtrC = CuMatrix.create[Int](m+1, 1)
+    val cscColPtrC = CuMatrix.create[Int](m+1, 1)
 
     JCusparse2.cusparseXcsrgeamNnz(sparseHandle, m, n, A.descr, A.nnz, A.cscColPtr.offsetPointer,
       A.cscRowInd.offsetPointer, B.descr, B.nnz, B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer,
-      descrC, csrRowPtrC.offsetPointer, nnzHostPtr)
+      descrC, cscColPtrC.offsetPointer, nnzHostPtr)
 
     var nnzC = nnzHost(0)
     if (nnzC == 0) {  // trick from cusparse's doc page
       JCuda.cudaMemcpy(nnzHostPtr,
-        csrRowPtrC.offsetPointer.withByteOffset(csrRowPtrC.linearIndex(m, 0) * csrRowPtrC.elemSize),
+        cscColPtrC.offsetPointer.withByteOffset(cscColPtrC.linearIndex(m, 0) * cscColPtrC.elemSize),
         1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
       nnzC = nnzHost(0)
     }
@@ -747,14 +749,14 @@ object CuWrapperMethods {
     val alphaPtr = jcuda.Pointer.to(Array(alpha))
     val betaPtr = jcuda.Pointer.to(Array(beta))
 
-    val csrValC = CuMatrix.create[Double](nnzC, 1)
-    val csrColIndC = CuMatrix.create[Int](nnzC, 1)
+    val cscValC = CuMatrix.create[Double](nnzC, 1)
+    val cscRowIndC = CuMatrix.create[Int](nnzC, 1)
 
     JCusparse2.cusparseDcsrgeam(sparseHandle, m, n, alphaPtr, A.descr, A.nnz, A.cscVal.offsetPointer,
       A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer, betaPtr, B.descr, B.nnz, B.cscVal.offsetPointer,
-      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, descrC, csrValC.offsetPointer, csrRowPtrC.offsetPointer, csrColIndC.offsetPointer)
+      B.cscColPtr.offsetPointer, B.cscRowInd.offsetPointer, descrC, cscValC.offsetPointer, cscColPtrC.offsetPointer, cscRowIndC.offsetPointer)
 
-    new CuSparseMatrix[Double](m, n, descrC, csrValC, csrRowPtrC, csrColIndC)
+    new CuSparseMatrix[Double](n, m, descrC, cscValC, cscColPtrC, cscRowIndC)
   }
 
   /**

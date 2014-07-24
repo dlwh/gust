@@ -245,6 +245,60 @@ object CuCholesky {
     AS
   }
 
+  def incompleteCholFactorFloat(A: CuSparseMatrix[Float])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
+    val denseCsrValL = A.cscVal.toDense
+    val denseCsrRowPtrA = A.cscColPtr.toDense
+    val denseCsrColIndA = A.cscRowInd.toDense
+
+    // construct L (ones on the diagonal) and U:
+    cfor(0)(_ < A.rows, _ + 1) { i => {
+      cfor(denseCsrRowPtrA(i, 0))(_ < denseCsrRowPtrA(i+1, 0), _ + 1) { j => {
+        val row = i
+        val col = denseCsrColIndA(j, 0)
+
+        if (row > col) denseCsrValL(j, 0) = 0.0f
+      }}
+    }}
+
+    // create new descriptors:
+    val descrL = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrL)
+    JCusparse2.cusparseSetMatType(descrL, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    //JCusparse2.cusparseSetMatFillMode(descrL, cusparseFillMode.CUSPARSE_FILL_MODE_LOWER)
+    JCusparse2.cusparseSetMatIndexBase(descrL, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrL, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    new CuSparseMatrix[Float](A.rows, A.cols, descrL, CuMatrix.fromDense(denseCsrValL),
+      CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)).transpose
+  }
+
+  def incompleteCholFactorDouble(A: CuSparseMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
+    val denseCsrValL = A.cscVal.toDense
+    val denseCsrRowPtrA = A.cscColPtr.toDense
+    val denseCsrColIndA = A.cscRowInd.toDense
+
+    // construct L (ones on the diagonal) and U:
+    cfor(0)(_ < A.rows, _ + 1) { i => {
+      cfor(denseCsrRowPtrA(i, 0))(_ < denseCsrRowPtrA(i+1, 0), _ + 1) { j => {
+        val row = i
+        val col = denseCsrColIndA(j, 0)
+
+        if (row > col) denseCsrValL(j, 0) = 0.0
+      }}
+    }}
+
+    // create new descriptors:
+    val descrL = new cusparseMatDescr
+    JCusparse2.cusparseCreateMatDescr(descrL)
+    JCusparse2.cusparseSetMatType(descrL, cusparseMatrixType.CUSPARSE_MATRIX_TYPE_GENERAL)
+    //JCusparse2.cusparseSetMatFillMode(descrL, cusparseFillMode.CUSPARSE_FILL_MODE_LOWER)
+    JCusparse2.cusparseSetMatIndexBase(descrL, cusparseIndexBase.CUSPARSE_INDEX_BASE_ZERO)
+    JCusparse2.cusparseSetMatDiagType(descrL, cusparseDiagType.CUSPARSE_DIAG_TYPE_NON_UNIT)
+
+    new CuSparseMatrix[Double](A.rows, A.cols, descrL, CuMatrix.fromDense(denseCsrValL),
+      CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)).transpose
+  }
+
 
   private def uploadLFloat(n: Int, dst: CuMatrix[Float], dstRoff: Int, dstCoff: Int, src: DenseMatrix[Float], srcRoff: Int, srcCoff: Int) {
     val nb = 128
