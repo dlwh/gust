@@ -944,6 +944,79 @@ trait CuMatrixOps { this: CuMatrix.type =>
       CuCholesky.choleskyDouble(_a)
     }
   }
+
+  /* trace of a matrix */
+  implicit def canTrace[V](implicit ct: ClassTag[V]): trace.Impl[CuMatrix[V], V] =
+    new trace.Impl[CuMatrix[V], V] {
+      def apply(_a: CuMatrix[V]) = {
+        import _a.blas
+        val diagSize = if (_a.rows < _a.cols) _a.rows else _a.cols
+        val tracePtr = Pointer.allocateArray(_a.data.getIO, 1)
+
+        val cublasOp = if (_a.elemSize == 4) JCublas2.cublasSasum _
+                       else if (_a.elemSize == 8) JCublas2.cublasDasum _
+                       else throw new UnsupportedOperationException("Can only compute trace of a matrix with elem sizes 4 or 8")
+
+        cublasOp(blas, diagSize, _a.offsetPointer, _a.majorStride+1, tracePtr.toCuPointer)
+        tracePtr(0)
+      }
+    }
+
+  implicit def canDetUsingLUFloat(implicit handle: cublasHandle): det.Impl[CuMatrix[Float], Float] =
+    new det.Impl[CuMatrix[Float], Float] {
+      def apply(_a: CuMatrix[Float]) = {
+        val (m: CuMatrix[Float], ipiv: Array[Int]) = CuLU.LUFloatSimplePivot(_a)
+
+        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
+        var acc = if (numExchangedRows % 2 == 1) -1.0f else 1.0f
+        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+
+        acc * diagProduct
+      }
+    }
+
+  implicit def canDetUsingLUDouble(implicit handle: cublasHandle): det.Impl[CuMatrix[Double], Double] =
+    new det.Impl[CuMatrix[Double], Double] {
+      def apply(_a: CuMatrix[Double]) = {
+        val (m: CuMatrix[Double], ipiv: Array[Int]) = CuLU.LUDoubleSimplePivot(_a)
+
+        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
+        var acc = if (numExchangedRows % 2 == 1) -1.0 else 1.0
+        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+
+        acc * diagProduct
+      }
+    }
+
+  implicit def canCondUsingSVDFloat(implicit handle: cublasHandle): cond.Impl[CuMatrix[Float], Float] =
+    new cond.Impl[CuMatrix[Float], Float] {
+      def apply(_a: CuMatrix[Float]) = {
+        val (_, e, _) = CuSVD.SVDFloat(_a)
+
+        val h_e = DenseMatrix.zeros[Float](2, 1)
+        val k = Math.min(_a.rows, _a.cols) - 1
+
+        CuWrapperMethods.downloadFloat(1, 1, h_e, 0, 0, e, 0, 0)
+        CuWrapperMethods.downloadFloat(1, 1, h_e, 1, 0, e, k, k)
+
+        h_e(0, 0) / h_e(1, 0)
+      }
+    }
+
+  implicit def canCondUsingSVDDouble(implicit handle: cublasHandle): cond.Impl[CuMatrix[Double], Double] =
+    new cond.Impl[CuMatrix[Double], Double] {
+      def apply(_a: CuMatrix[Double]) = {
+        val (_, e, _) = CuSVD.SVDDouble(_a)
+
+        val h_e = DenseMatrix.zeros[Double](2, 1)
+        val k = Math.min(_a.rows, _a.cols) - 1
+
+        CuWrapperMethods.downloadDouble(1, 1, h_e, 0, 0, e, 0, 0)
+        CuWrapperMethods.downloadDouble(1, 1, h_e, 1, 0, e, k, k)
+
+        h_e(0, 0) / h_e(1, 0)
+      }
+    }
 }
 
 

@@ -1,11 +1,18 @@
 package gust.linalg.cuda
 
+import gust.util.cuda
+import cuda._
+import jcuda.Sizeof
 import jcuda.jcublas.{cublasOperation, JCublas2, cublasHandle}
 import breeze.linalg.DenseMatrix
 import jcuda.jcusparse._
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
 import jcuda.driver.{CUfunction, CUmodule, JCudaDriver}
 import gust.util.cuda.{CuContext, CuDevice}
+import org.bridj.Pointer
+import spire.syntax.cfor
+
+import scala.reflect.ClassTag
 
 
 /**
@@ -651,7 +658,115 @@ object CuWrapperMethods {
     JCublas2.cublasDcopy(handle, diagLen, d_diag.offsetPointer, 1, A.offsetPointer, A.majorStride + 1)
   }
 
-  /* methods for sparse matrices */
+
+  /**
+   * Reduction with multiplication, based on the code from JCuda.org/Samples/JCudaReduction,
+   * which in turn is based on the reduction from NVidia 'reduction' sample.
+   *
+   * Copyright 1993-2010 NVIDIA Corporation.
+   *
+   * @param A matrix from which we extract a set of numbers to be reduced
+   * @param Aroff row offset
+   * @param Acoff column offset
+   * @param lda stride (1 --> take a column, A.majorStride --> take a row, A.majorStride + 1 --> take a diagonal)
+   * @param numElems
+   * @return a product of all selected entries
+   */
+  def reduceMult[V](A: CuMatrix[V], Aroff: Int, Acoff: Int, lda: Int, numElems: Int)(implicit handle: cublasHandle, ct: ClassTag[V]): V = {
+
+    val data = new CuMatrix[V](numElems, 1)
+    val isOfTypeS = A.elemSize == 4
+    val isOfTypeD = A.elemSize == 8
+    if (!(isOfTypeS || isOfTypeD)) throw new UnsupportedOperationException("Can only handle matrices with elemSizes 4 and 8")
+
+    val (moduleName, cublasOp) = if (isOfTypeS) ("src/main/resources/gust/linalg/cuda/reduceFloat.ptx", JCublas2.cublasScopy _)
+                     else ("src/main/resources/gust/linalg/cuda/reduceDouble.ptx", JCublas2.cublasDcopy _)
+
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    val reduce = new CUfunction()
+    JCudaDriver.cuModuleLoad(module, moduleName)
+
+    JCudaDriver.cuModuleGetFunction(reduce, module, "reduce")
+
+    // copy the appropriate part of the matrix into a (linear) array:
+    cublasOp(handle, numElems, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize),
+      lda, data.offsetPointer, 1)
+
+    var nblocks = getBlockNum(numElems, 256, 256)
+    var nthreads = getThreadNum(numElems, 256, 256)
+
+    val idata = data
+    val odata = CuMatrix.create[V](nblocks, 1)
+
+    reduceIter[V](numElems, nthreads, nblocks, idata, odata, reduce)
+
+    var s = nblocks
+    while (s > 1) {
+      nthreads = getThreadNum(s, 256, 256)
+      nblocks = getBlockNum(s, 256, 256)
+
+      reduceIter(s, nthreads, nblocks, odata, odata, reduce)
+      s = (s + (nthreads*2-1)) / (nthreads*2)
+    }
+
+
+//    odata.data(0)
+    val h_result = Pointer.allocateArray[V](odata.data.getIO, 1)
+
+    JCuda.cudaMemcpy2D(h_result.toCuPointer, odata.elemSize,
+      odata.offsetPointer,
+      odata.majorStride * odata.elemSize, odata.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+
+    h_result(0)
+  }
+
+  /**
+   * Performs a single iteration of the reduction
+   */
+  def reduceIter[V](size: Int, threads: Int, blocks: Int, idata: CuMatrix[V], odata: CuMatrix[V], func: CUfunction) {
+    val sharedMemSize = threads * idata.elemSize.toInt * (if (threads <= 32) 2 else 1)
+
+    val params = jcuda.Pointer.to(
+      jcuda.Pointer.to(idata.offsetPointer),
+      jcuda.Pointer.to(odata.offsetPointer),
+      jcuda.Pointer.to(Array(size))
+    )
+
+    JCudaDriver.cuLaunchKernel(func, blocks, 1, 1,
+      threads, 1, 1,
+      sharedMemSize, null, params, null)
+    JCudaDriver.cuCtxSynchronize()
+  }
+
+  private def getThreadNum(size: Int, maxBlocks: Int, maxThreads: Int): Int = {
+    if (size < maxThreads*2) nextPow2((size+1) / 2) else maxThreads
+  }
+
+  private def getBlockNum(size: Int, maxBlocks: Int, maxThreads: Int): Int = {
+    var blocks = 0
+    val threads = getThreadNum(size, maxBlocks, maxThreads)
+    blocks = (size + (threads*2 - 1)) / (threads*2)
+    blocks = Math.min(maxBlocks, blocks)
+
+    blocks
+  }
+
+  private def nextPow2(n: Int): Int = {
+    var x = n - 1
+    x |= x >> 1
+    x |= x >> 2
+    x |= x >> 4
+    x |= x >> 8
+    x |= x >> 16
+
+    x + 1
+  }
+
+
+  /* ------ methods for sparse matrices --------------------------------------------- */
 
   /**
    * Performs the addition: C = alpha * AS + beta * BS

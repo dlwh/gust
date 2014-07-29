@@ -81,6 +81,38 @@ object CuLU extends UFunc {
    * variant it's all ones.
    */
   def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
+    val (d_A, h_P) = LUFloatSimplePivot(A)
+
+    // the pivoting matrix is Float (and not Int), because right now gust doesn't support
+    // matrix multiplication other than Float*Float or Double*Double.
+    // Of course, the swapping of rows is quite bad performance-wise but returning the
+    // matrix and not a vector is a good thing, I guess
+
+    // transforming permutation vector into permutation matrix
+    // this could be done with a trick: cublasSetVector with incy = PM.majorStride + 1,
+    // but I can't get CuMatrix.ones to work right now
+    val PM = CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))
+
+    cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
+      if (h_P(i) != i) {
+        JCublas2.cublasSswap(handle, PM.cols,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(i, 0) * PM.elemSize), PM.majorSize,
+          PM.offsetPointer.withByteOffset(PM.linearIndex(h_P(i), 0) * PM.elemSize), PM.majorSize)
+      }
+    }
+    }
+
+    (d_A, PM)
+
+  }
+
+  /**
+   * This returns the vector with row interchanges (it makes the determinant easier to implement)
+   * and that's how Breeze does it
+   * @param A
+   * @return matrix with both L and U, array with pivoting values
+   */
+  def LUFloatSimplePivot(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], Array[Int]) = {
     val P: Array[Int] = (0 until A.rows).toArray
     val d_A = CuMatrix.create[Float](A.rows, A.cols)
     d_A := A
@@ -210,21 +242,21 @@ object CuLU extends UFunc {
     }
 
     LUBlockedFloat(d_A)
-    // the pivoting matrix is Float (and not Int), because right now gust doesn't support
-    // matrix multiplication other than Float*Float or Double*Double.
-    // Of course, the swapping of rows is quite bad performance-wise but returning the
-    // matrix and not a vector is a good thing, I guess
 
-    // transforming permutation vector into permutation matrix
-    // this could be done with a trick: cublasSetVector with incy = PM.majorStride + 1,
-    // but I can't get CuMatrix.ones to work right now
-    val PM = CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))
+    (d_A, P)
+  }
+
+
+  def LUDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
+    val (d_A, h_P) = LUDoubleSimplePivot(A)
+
+    val PM = CuMatrix.fromDense(DenseMatrix.eye[Double](A.rows))
 
     cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
-      if (P(i) != i) {
-        JCublas2.cublasSswap(handle, PM.cols,
+      if (h_P(i) != i) {
+        JCublas2.cublasDswap(handle, PM.cols,
           PM.offsetPointer.withByteOffset(PM.linearIndex(i, 0) * PM.elemSize), PM.majorSize,
-          PM.offsetPointer.withByteOffset(PM.linearIndex(P(i), 0) * PM.elemSize), PM.majorSize)
+          PM.offsetPointer.withByteOffset(PM.linearIndex(h_P(i), 0) * PM.elemSize), PM.majorSize)
       }
     }
     }
@@ -232,8 +264,7 @@ object CuLU extends UFunc {
     (d_A, PM)
   }
 
-
-  def LUDouble(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], CuMatrix[Double]) = {
+  def LUDoubleSimplePivot(A: CuMatrix[Double])(implicit handle: cublasHandle): (CuMatrix[Double], Array[Int]) = {
     val P: Array[Int] = (0 until A.rows).toArray
     val d_A = CuMatrix.create[Double](A.rows, A.cols)
     d_A := A
@@ -352,18 +383,7 @@ object CuLU extends UFunc {
 
     LUBlockedDouble(d_A)
 
-    val PM = CuMatrix.fromDense(DenseMatrix.eye[Double](A.rows))
-
-    cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
-      if (P(i) != i) {
-        JCublas2.cublasSswap(handle, PM.cols,
-          PM.offsetPointer.withByteOffset(PM.linearIndex(i, 0) * PM.elemSize), PM.majorSize,
-          PM.offsetPointer.withByteOffset(PM.linearIndex(P(i), 0) * PM.elemSize), PM.majorSize)
-      }
-    }
-    }
-
-    (d_A, PM)
+    (d_A, P)
   }
 
 
