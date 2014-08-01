@@ -8,6 +8,7 @@ import gust.util.cuda
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import jcuda.jcusparse._
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
+import spire.syntax.cfor
 import scala.reflect.ClassTag
 
 /**
@@ -99,6 +100,7 @@ class CuSparseMatrix[V](val rows: Int, val cols: Int,
 }
 
 object CuSparseMatrix extends CuSparseOps {
+  this: CuSparseMatrix.type =>
 
   def fromCuMatrix[V](A: CuMatrix[V])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle, ct: ClassTag[V]) = {
     // create matrix descriptor and some info:
@@ -147,7 +149,7 @@ object CuSparseMatrix extends CuSparseOps {
   }
 
 
-  implicit def canTranspose[V]: CanTranspose[CuSparseMatrix[V], CuSparseMatrix[V]] = {
+  implicit def canTranspose[V](implicit blasHandle: cublasHandle, ct: ClassTag[V]): CanTranspose[CuSparseMatrix[V], CuSparseMatrix[V]] = {
     new CanTranspose[CuSparseMatrix[V], CuSparseMatrix[V]] {
       def apply(from: CuSparseMatrix[V]) = {
         from.transpose

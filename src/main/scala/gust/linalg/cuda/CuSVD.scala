@@ -2,7 +2,7 @@ package gust.linalg.cuda
 
 import breeze.generic.UFunc
 import jcuda.jcublas.{JCublas2, cublasHandle, cublasOperation}
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg._
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
 import org.netlib.util.intW
 import jcuda.driver.{CUfunction, CUmodule, JCudaDriver}
@@ -20,8 +20,6 @@ object CuSVD {
    * Computes the singular value decomposition of a matrix A such that:
    * A = U * E * Vt
    *
-   * TODO The naming convention here is a disaster, I need to fix it somehow because it's
-   * not readable.
    * @param A
    * @param handle
    * @return
@@ -91,6 +89,7 @@ object CuSVD {
       d_B.offsetPointer.withByteOffset(d_B.linearIndex(0, 1) * d_B.elemSize), d_B.majorStride+1,
       jcuda.Pointer.to(h_e.data), 1)
 
+    // !!
     val h_Ubd = DenseMatrix.zeros[Double](n, n)
     val h_VTbd = DenseMatrix.zeros[Double](n, n)
 
@@ -150,13 +149,11 @@ object CuSVD {
     val minusOne = jcuda.Pointer.to(minusOneArr)
 
     val d_v = CuMatrix.create[Float](m, 1)  // here we will store the householder vectors
-    val eyeM = CuMatrix.create[Float](m, m)
-    val eyeN = CuMatrix.create[Float](n, n) // having two will be good for tall-skinny matrices
     val d_Q1 = CuMatrix.create[Float](m, m)
     val d_P1 = CuMatrix.create[Float](n, n)
     val betaArr = Array(0.0f)
 
-    cfor(0)(_ < n, _ + 1) { i => {
+    cfor(0)(_ < n-1, _ + 1) { i => {
       // eliminate a column:
       householderMatFloat(d_A, i, i, d_v, d_Q1)
 
@@ -209,13 +206,11 @@ object CuSVD {
     val minusOne = jcuda.Pointer.to(minusOneArr)
 
     val d_v = CuMatrix.create[Double](m, 1)  // here we will store the householder vectors
-    val eyeM = CuMatrix.create[Double](m, m)
-    val eyeN = CuMatrix.create[Double](n, n) // having two will be good for tall-skinny matrices
     val d_Q1 = CuMatrix.create[Double](m, m)
     val d_P1 = CuMatrix.create[Double](n, n)
     val betaArr = Array(0.0)
 
-    cfor(0)(_ < n, _ + 1) { i => {
+    cfor(0)(_ < n-1, _ + 1) { i => {
       // eliminate a column:
       householderMatDouble(d_A, i, i, d_v, d_Q1)
 
@@ -223,7 +218,6 @@ object CuSVD {
       DgemmNN(m-i, n-i, m-i, one, d_Q1, i, i, d_A, i, i, zero, d_A, i, i)
       // d_Q = d_Q1 * d_Q
       DgemmNN(m, m, m, one, d_Q1, 0, 0, d_Q, 0, 0, zero, d_Q, 0, 0)
-      //SgemmNN(m-i, m-i, m-i, one, d_Q1, i, i, d_Q, i, i, zero, d_Q, i, i)
 
       if (i < n - 2) {
         // eliminate a row:

@@ -268,15 +268,29 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert(min(cumat) === min(rand))
   }
 
-//  test("Gaussian solve") { (_handle: cublasHandle) =>
-//    implicit val handle = _handle
-//    val a: DenseMatrix[Double] = DenseMatrix((1.0, 2.0, 3.0), (4.0, 5.0, 6.0), (7.0, 8.0, 9.0))
-//    val b: DenseMatrix[Double] = DenseMatrix((1.0), (2.0), (3.0))
-//    val A: CuMatrix[Double] = CuMatrix.fromDense(a)
-//    val B: CuMatrix[Double] = CuMatrix.fromDense(b)
-//
-//    val Result = CuMethods.solveDouble(A, B)
-//    assert(Result != null)
-//
-//  }
+  test("trace") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
+    val cumat = CuMatrix.fromDense(rand)
+
+    assert(Math.abs(trace(rand) - trace(cumat)) < 1e-10)
+  }
+
+  test("det") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
+    val cumat = CuMatrix.fromDense(rand)
+
+    assert(Math.abs(det(rand) - det(cumat)) < 1e-3)
+  }
+
+  // the results for cond are not satisfying at all -- this because of the bidiagonalizations
+  // numerical properties are not very good -- this in turn causes the smaller singular values to inaccurate
+  test("cond") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
+    val cumat: CuMatrix[Double] = CuMatrix.fromDense(rand)
+
+    assert(Math.abs(cond(rand) - cond(cumat)) < 1e-3)
+  }
 }

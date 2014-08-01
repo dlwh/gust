@@ -695,8 +695,11 @@ object CuWrapperMethods {
     cublasOp(handle, numElems, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize),
       lda, data.offsetPointer, 1)
 
-    var nblocks = getBlockNum(numElems, 256, 256)
-    var nthreads = getThreadNum(numElems, 256, 256)
+    val maxThreads = 256  // max. threads per block. adjusting this does affect performance
+    val maxBlocks = 2048
+
+    var nblocks = getBlockNum(numElems, maxBlocks, maxThreads)
+    var nthreads = getThreadNum(numElems, maxBlocks, maxThreads)
 
     val idata = data
     val odata = CuMatrix.create[V](nblocks, 1)
@@ -705,8 +708,8 @@ object CuWrapperMethods {
 
     var s = nblocks
     while (s > 1) {
-      nthreads = getThreadNum(s, 256, 256)
-      nblocks = getBlockNum(s, 256, 256)
+      nblocks = getBlockNum(s, maxBlocks, maxThreads)
+      nthreads = getThreadNum(s, maxBlocks, maxThreads)
 
       reduceIter(s, nthreads, nblocks, odata, odata, reduce)
       s = (s + (nthreads*2-1)) / (nthreads*2)

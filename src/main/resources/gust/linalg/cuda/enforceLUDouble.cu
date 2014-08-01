@@ -16,8 +16,8 @@ extern "C" {
 
 static __global__ void zerosU(int m, int n, double *matrix, int lda, int incl)
 {
-    int i = blockIdx.x + threadIdx.x;
-    int j = blockIdx.y + threadIdx.y;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (i >= m || j >= n) return;
 
@@ -34,8 +34,8 @@ extern "C" {
 
 static __global__ void zerosL(int m, int n, double *matrix, int lda, int incl)
 {
-    int i = blockIdx.x + threadIdx.x;
-    int j = blockIdx.y + threadIdx.y;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (i >= m || j >= n) return;
 

@@ -5,8 +5,8 @@
 extern "C" {
 __global__ void hadamard(int m, int n, double *A, int lda, double *B, int ldb, double *C, int ldc)
 {
-    int i = blockIdx.x + threadIdx.x;
-    int j = blockIdx.y + threadIdx.y;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (i >= m || j >= n) return;
 
@@ -20,8 +20,8 @@ __global__ void hadamard(int m, int n, double *A, int lda, double *B, int ldb, d
 extern "C" {
  __global__ void matrix_sum(int m, int n, double *A, int lda, double *B, int ldb, double *C, int ldc)
 {
-    int i = blockIdx.x + threadIdx.x;
-    int j = blockIdx.y + threadIdx.y;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (i >= m || j >= n) return;
 
@@ -35,8 +35,8 @@ extern "C" {
 extern "C" {
  __global__ void copy(int m, int n, double *dst, int lddst, double *src, int ldsrc)
 {
-    int i = blockIdx.x + threadIdx.x;
-    int j = blockIdx.y + threadIdx.y;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (i >= m || j >= n) return;
 

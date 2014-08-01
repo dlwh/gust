@@ -37,7 +37,7 @@ parallelExecution in Test := false
 logBuffered := false
 
 // NOTE: you have to disable -oDF in order for ScalaMeter to work
-//testOptions in Test += Tests.Argument("-oDF")
-testOptions in Test += Tests.Argument("-preJDK7")
+testOptions in Test += Tests.Argument("-oDF")
+//testOptions in Test += Tests.Argument("-preJDK7")
 
 addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full)
