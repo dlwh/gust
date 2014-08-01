@@ -68,10 +68,10 @@ object CuSVD {
 
     val zeroArr = Array(0.0f)
     val oneArr = Array(1.0f)
-    // d_Ubd = d_Q' * d_Ubd
-    SgemmTN(m, m, m, jcuda.Pointer.to(oneArr), d_Q, 0, 0, d_Ubd, 0, 0, jcuda.Pointer.to(zeroArr), d_Ubd, 0, 0)
-    // d_VTbd = d_VTbd * P'
-    SgemmNT(n, n, n, jcuda.Pointer.to(oneArr), d_VTbd, 0, 0, d_P, 0, 0, jcuda.Pointer.to(zeroArr), d_VTbd, 0, 0)
+    // d_Ubd = d_Q * d_Ubd
+    SgemmNN(m, m, m, jcuda.Pointer.to(oneArr), d_Q, 0, 0, d_Ubd, 0, 0, jcuda.Pointer.to(zeroArr), d_Ubd, 0, 0)
+    // d_VTbd = d_VTbd * P
+    SgemmNN(n, n, n, jcuda.Pointer.to(oneArr), d_VTbd, 0, 0, d_P, 0, 0, jcuda.Pointer.to(zeroArr), d_VTbd, 0, 0)
 
     (d_Ubd, d_B, d_VTbd)
   }
@@ -113,10 +113,10 @@ object CuSVD {
 
     val zeroArr = Array(0.0)
     val oneArr = Array(1.0)
-    // d_Ubd = d_Q' * d_Ubd
-    DgemmTN(m, m, m, jcuda.Pointer.to(oneArr), d_Q, 0, 0, d_Ubd, 0, 0, jcuda.Pointer.to(zeroArr), d_Ubd, 0, 0)
-    // d_VTbd = d_VTbd * P'
-    DgemmNT(n, n, n, jcuda.Pointer.to(oneArr), d_VTbd, 0, 0, d_P, 0, 0, jcuda.Pointer.to(zeroArr), d_VTbd, 0, 0)
+    // d_Ubd = d_Q * d_Ubd
+    DgemmNN(m, m, m, jcuda.Pointer.to(oneArr), d_Q, 0, 0, d_Ubd, 0, 0, jcuda.Pointer.to(zeroArr), d_Ubd, 0, 0)
+    // d_VTbd = d_VTbd * P
+    DgemmNN(n, n, n, jcuda.Pointer.to(oneArr), d_VTbd, 0, 0, d_P, 0, 0, jcuda.Pointer.to(zeroArr), d_VTbd, 0, 0)
 
     (d_Ubd, d_B, d_VTbd)
   }
@@ -151,9 +151,10 @@ object CuSVD {
     val d_v = CuMatrix.create[Float](m, 1)  // here we will store the householder vectors
     val d_Q1 = CuMatrix.create[Float](m, m)
     val d_P1 = CuMatrix.create[Float](n, n)
-    val betaArr = Array(0.0f)
 
-    cfor(0)(_ < n-1, _ + 1) { i => {
+    val steps = if (m == n) n-1 else n  // a rectangular matrix requires one more elimination step
+
+    cfor(0)(_ < steps, _ + 1) { i => {
       // eliminate a column:
       householderMatFloat(d_A, i, i, d_v, d_Q1)
 
@@ -161,8 +162,8 @@ object CuSVD {
       //d_A = d_Q1 * d_A
       //SgemmNN(m, n, m, one, d_Q1, 0, 0, d_A, 0, 0, zero, d_A, 0, 0)
       SgemmNN(m-i, n-i, m-i, one, d_Q1, i, i, d_A, i, i, zero, d_A, i, i)
-      // d_Q = d_Q1 * d_Q
-      SgemmNN(m, m, m, one, d_Q1, 0, 0, d_Q, 0, 0, zero, d_Q, 0, 0)
+      // d_Q = d_Q * d_Q1
+      SgemmNN(m, m, m, one, d_Q, 0, 0, d_Q1, 0, 0, zero, d_Q, 0, 0)
       //SgemmNN(m-i, m-i, m-i, one, d_Q1, i, i, d_Q, i, i, zero, d_Q, i, i)
 
       if (i < n - 2) {
@@ -172,8 +173,8 @@ object CuSVD {
         // d_A = d_A * d_P1
         //SgemmNN(m, n, n, one, d_A, 0, 0, d_P1, 0, 0, zero, d_A, 0, 0)
         SgemmNN(m-i, n-i-1, n-i-1, one, d_A, i, i+1, d_P1, i+1, i+1, zero, d_A, i, i+1)
-        // d_P = d_P * d_P1
-        SgemmNN(n, n, n, one, d_P, 0, 0, d_P1, 0, 0, zero, d_P, 0, 0)
+        // d_P = d_P1 * d_P
+        SgemmNN(n, n, n, one, d_P1, 0, 0, d_P, 0, 0, zero, d_P, 0, 0)
         //SgemmNN(n-i-1, n -i-1, n-i-1, one, d_P, i+1, i+1, d_P1, i+1, i+1, zero, d_P, i+1, i+1)
       }
     }}
@@ -208,16 +209,17 @@ object CuSVD {
     val d_v = CuMatrix.create[Double](m, 1)  // here we will store the householder vectors
     val d_Q1 = CuMatrix.create[Double](m, m)
     val d_P1 = CuMatrix.create[Double](n, n)
-    val betaArr = Array(0.0)
 
-    cfor(0)(_ < n-1, _ + 1) { i => {
+    val steps = if (m == n) n-1 else n
+
+    cfor(0)(_ < steps, _ + 1) { i => {
       // eliminate a column:
       householderMatDouble(d_A, i, i, d_v, d_Q1)
 
       //d_A = d_Q1 * d_A
       DgemmNN(m-i, n-i, m-i, one, d_Q1, i, i, d_A, i, i, zero, d_A, i, i)
-      // d_Q = d_Q1 * d_Q
-      DgemmNN(m, m, m, one, d_Q1, 0, 0, d_Q, 0, 0, zero, d_Q, 0, 0)
+      // d_Q = d_Q * d_Q1
+      DgemmNN(m, m, m, one, d_Q, 0, 0, d_Q1, 0, 0, zero, d_Q, 0, 0)
 
       if (i < n - 2) {
         // eliminate a row:
@@ -225,8 +227,8 @@ object CuSVD {
 
         // d_A = d_A * d_P1
         DgemmNN(m-i, n-i-1, n-i-1, one, d_A, i, i+1, d_P1, i+1, i+1, zero, d_A, i, i+1)
-        // d_P = d_P * d_P1
-        DgemmNN(n, n, n, one, d_P, 0, 0, d_P1, 0, 0, zero, d_P, 0, 0)
+        // d_P = d_P1 * d_P
+        DgemmNN(n, n, n, one, d_P1, 0, 0, d_P, 0, 0, zero, d_P, 0, 0)
       }
     }}
 
