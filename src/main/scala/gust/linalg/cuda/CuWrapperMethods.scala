@@ -4,13 +4,13 @@ import gust.util.cuda
 import cuda._
 import jcuda.Sizeof
 import jcuda.jcublas.{cublasOperation, JCublas2, cublasHandle}
-import breeze.linalg.DenseMatrix
+import breeze.linalg.{DenseVector, DenseMatrix}
 import jcuda.jcusparse._
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
 import jcuda.driver.{CUfunction, CUmodule, JCudaDriver}
 import gust.util.cuda.{CuContext, CuDevice}
 import org.bridj.Pointer
-import spire.syntax.cfor
+import spire.syntax.cfor._
 
 import scala.reflect.ClassTag
 
@@ -658,6 +658,108 @@ object CuWrapperMethods {
     JCublas2.cublasDcopy(handle, diagLen, d_diag.offsetPointer, 1, A.offsetPointer, A.majorStride + 1)
   }
 
+  /**
+   * Performs an in-place transposition of the given part of the matrix A
+   * If m and n are not A.rows and A.cols, it's only useful for m == n
+   * @param m rows
+   * @param n cols
+   * @param A
+   * @param Aroff row-wise offset
+   * @param Acoff column-wise offset
+   */
+  def transposeInplaceFloat(m: Int, n: Int, A: CuMatrix[Float], Aroff: Int = 0, Acoff: Int = 0) {
+    implicit val handle = A.blas
+
+    val B = CuMatrix.create[Float](A.rows, A.cols)
+
+    val one = Pointer.pointerToFloat(1.0f).toCuPointer
+    val zero = Pointer.pointerToFloat(0.0f).toCuPointer
+
+    JCublas2.cublasSgeam(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, m, n,
+      one, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      zero, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      B.offsetPointer.withByteOffset(B.linearIndex(Aroff, Acoff) * B.elemSize), B.majorStride)
+
+    //copyFloat(n, m, A, Aroff, Acoff, B, Aroff, Acoff)
+    A := B
+  }
+
+  def transposeInplaceDouble(m: Int, n: Int, A: CuMatrix[Double], Aroff: Int = 0, Acoff: Int = 0) {
+
+    implicit val handle = A.blas
+    val B = CuMatrix.create[Double](A.rows, A.cols)
+    val one = Pointer.pointerToDouble(1.0).toCuPointer
+    val zero = Pointer.pointerToDouble(0.0).toCuPointer
+    JCublas2.cublasDgeam(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, n, m,
+      one, A.offsetPointer, A.majorStride,
+      zero, A.offsetPointer, A.majorStride,
+      B.offsetPointer, B.majorStride)
+
+    A := B
+  }
+
+  def  transposeFloat(m: Int, n: Int, At: CuMatrix[Float], Atroff: Int, Atcoff: Int, A: CuMatrix[Float], Aroff: Int, Acoff: Int) {
+    implicit val handle = A.blas
+    val one = Pointer.pointerToFloat(1.0f).toCuPointer
+    val zero = Pointer.pointerToFloat(0.0f).toCuPointer
+    JCublas2.cublasSgeam(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, m, n,
+      one, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      zero, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      At.offsetPointer.withByteOffset(At.linearIndex(Atroff, Atcoff) * At.elemSize), At.majorStride)
+  }
+
+  def transposeDouble(m: Int, n: Int, At: CuMatrix[Double], Atroff: Int, Atcoff: Int, A: CuMatrix[Double], Aroff: Int, Acoff: Int) {
+    implicit val handle = A.blas
+    val one = Pointer.pointerToDouble(1.0).toCuPointer
+    val zero = Pointer.pointerToDouble(0.0).toCuPointer
+    JCublas2.cublasDgeam(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, m, n,
+      one, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      zero, A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff) * A.elemSize), A.majorStride,
+      At.offsetPointer.withByteOffset(At.linearIndex(Atroff, Atcoff) * At.elemSize), At.majorStride)
+  }
+
+  def batchSwapFloat(batchSize: Int, n: Int, ipiv: Array[Int], ipiv_off: Int, A: CuMatrix[Float], Aroff: Int, Acoff: Int)(implicit handle: cublasHandle) {
+    if (n <= 0 || batchSize <= 0) return
+
+    val SWAPS_PER_RUN = 64
+    val VL = 64
+    val nPtr = Pointer.pointerToInt(n).toCuPointer
+    val ldaPtr = Pointer.pointerToInt(A.majorStride).toCuPointer
+
+    // load the kernel:
+    JCudaDriver.setExceptionsEnabled(true)
+    implicit val dev = CuDevice(0)
+    val ctx = CuContext.ensureContext
+    val module = new CUmodule()
+    val batchSwap = new CUfunction()
+    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/swap.ptx")
+
+    val funcName = "batch_sswap"
+    JCudaDriver.cuModuleGetFunction(batchSwap, module, funcName)
+
+
+    cfor(0)(_ < batchSize, _ + SWAPS_PER_RUN) { i => {
+      val nb = if (SWAPS_PER_RUN < batchSize - i) SWAPS_PER_RUN else batchSize - i
+      val cpu_ipiv = new DenseMatrix[Int](SWAPS_PER_RUN, 1)
+      cfor(0)(_ < nb, _ + 1 ) { j => {
+        cpu_ipiv(j, 0) = ipiv(i + j + ipiv_off) - i - 1
+      }}
+
+      val kernel_ipiv = CuMatrix.fromDense(cpu_ipiv)
+
+      val params = jcuda.Pointer.to(
+        Pointer.pointerToInt(nb).toCuPointer,
+        nPtr,
+        jcuda.Pointer.to(A.offsetPointer.withByteOffset(A.linearIndex(Aroff, Acoff + i) * A.elemSize)),
+        ldaPtr,
+        jcuda.Pointer.to(kernel_ipiv.offsetPointer)
+      )
+
+      JCudaDriver.cuLaunchKernel(batchSwap, (n+VL-1)/VL, 1, 1, VL, 1, 1, 0, null, params, null)
+      JCudaDriver.cuCtxSynchronize()
+    }}
+
+  }
 
   /**
    * Reduction with multiplication, based on the code from JCuda.org/Samples/JCudaReduction,

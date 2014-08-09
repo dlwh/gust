@@ -36,6 +36,7 @@ object CuQR extends UFunc {
     val d_R = CuMatrix.create[Float](m, n); d_R := A          // triangular factor
     val d_A = CuMatrix.create[Float](m, n); d_A := A          // copy of A
     val d_Q = CuMatrix.fromDense(DenseMatrix.eye[Float](m))   // orthogonal factor
+    val d_Q1 = CuMatrix.create[Float](m, m)
     val d_H = CuMatrix.create[Float](m, m)                    // placeholder for reflectors
     val d_diag = CuMatrix.ones[Float](m, 1)                   // we'll use it to set/update the diagonal
 
@@ -67,7 +68,8 @@ object CuQR extends UFunc {
       JCublas2.cublasSaxpy(handle, m, minusOne, d_diag.offsetPointer, 1, d_H.offsetPointer, d_H.majorStride+1)
 
       // d_Q *= d_H
-      SgemmNN(m, m, m, one, d_Q, 0, 0, d_H, 0, 0, zero, d_Q, 0, 0)
+      SgemmNN(m, m, m, one, d_Q, 0, 0, d_H, 0, 0, zero, d_Q1, 0, 0)
+      d_Q := d_Q1
     }}
 
     (d_Q, d_R)
@@ -86,6 +88,7 @@ object CuQR extends UFunc {
     val d_R = CuMatrix.create[Double](m, n); d_R := A               // triangular factor
     val d_A = CuMatrix.create[Double](m, n); d_A := A               // copy of A
     val d_Q = CuMatrix.fromDense(DenseMatrix.eye[Double](m))        // orthogonal factor
+    val d_Q1 = CuMatrix.create[Double](m, m)
     val d_H = CuMatrix.create[Double](m, m)                         // placeholder for reflectors
     val d_diag = CuMatrix.fromDense(DenseMatrix.ones[Double](m, 1)) // we'll use it to set/update the diagonal
 
@@ -117,7 +120,8 @@ object CuQR extends UFunc {
       JCublas2.cublasDaxpy(handle, m, minusOne, d_diag.offsetPointer, 1, d_H.offsetPointer, d_H.majorStride+1)
 
       // d_Q *= d_H
-      DgemmNN(m, m, m, one, d_Q, 0, 0, d_H, 0, 0, zero, d_Q, 0, 0)
+      DgemmNN(m, m, m, one, d_Q, 0, 0, d_H, 0, 0, zero, d_Q1, 0, 0)
+      d_Q := d_Q1
     }}
 
     (d_Q, d_R)

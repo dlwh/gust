@@ -52,8 +52,8 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   test("fromDense transpose and back") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand = convert(DenseMatrix.rand(12, 10), Float)
-    val cumat = CuMatrix.zeros[Float](10, 12)
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(12, 10), Float)
+    val cumat: CuMatrix[Float] = CuMatrix.zeros[Float](10, 12)
     cumat := rand.t
     val dense = cumat.toDense
     assert(dense.rows === rand.cols)
@@ -63,8 +63,8 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   test("fromDense transpose and back 2") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand = convert(DenseMatrix.rand(12, 10), Float)
-    val cumat = CuMatrix.zeros[Float](10, 12)
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(12, 10), Float)
+    val cumat: CuMatrix[Float] = CuMatrix.zeros[Float](10, 12)
 
     cumat.t := rand
     val dense2 = cumat.toDense
@@ -75,9 +75,9 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   test("copy transpose gpuside") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand = convert(DenseMatrix.rand(10, 12), Float)
-    val cumat = CuMatrix.zeros[Float](10, 12)
-    val cumat2 = CuMatrix.zeros[Float](12, 10)
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(10, 12), Float)
+    val cumat: CuMatrix[Float] = CuMatrix.zeros[Float](10, 12)
+    val cumat2: CuMatrix[Float] = CuMatrix.zeros[Float](12, 10)
     cumat := rand
     cumat2 := cumat.t
     val dense = cumat2.toDense
@@ -86,9 +86,9 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   test("copy transpose gpuside 2") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand = convert(DenseMatrix.rand(10, 12), Float)
-    val cumat = CuMatrix.zeros[Float](10, 12)
-    val cumat2 = CuMatrix.zeros[Float](12, 10)
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(10, 12), Float)
+    val cumat: CuMatrix[Float] = CuMatrix.zeros[Float](10, 12)
+    val cumat2: CuMatrix[Float] = CuMatrix.zeros[Float](12, 10)
     cumat := rand
     cumat2.t := cumat
     val dense = cumat2.toDense
@@ -125,8 +125,8 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   test("Reshape") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val dm = convert(DenseMatrix.rand(20, 30), Float)
-    val cu = CuMatrix.zeros[Float](20, 30)
+    val dm: DenseMatrix[Float] = convert(DenseMatrix.rand(20, 30), Float)
+    val cu: CuMatrix[Float] = CuMatrix.zeros[Float](20, 30)
     cu := dm
     assert(cu.reshape(10, 60).toDense ===  dm.reshape(10, 60))
   }
@@ -166,7 +166,7 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
   test("Basic mapping functions transpose") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
-    val cosdm = cos(dm)
+    val cosdm: DenseMatrix[Float] = cos(dm)
     val cu = CuMatrix.zeros[Float](30, 10)
     cu := dm
     assert(cu.toDense === dm)
@@ -273,7 +273,7 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
     val cumat = CuMatrix.fromDense(rand)
 
-    assert(Math.abs(trace(rand) - trace(cumat)) < 1e-10)
+    assert(Math.abs(trace(rand) - trace(cumat)) < 1e-5)
   }
 
   test("det") { (_handle: cublasHandle) =>
@@ -281,16 +281,14 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
     val cumat = CuMatrix.fromDense(rand)
 
-    assert(Math.abs(det(rand) - det(cumat)) < 1e-3)
+    assert(Math.abs(det(rand) - det(cumat)) < 1e-5)
   }
 
-  // the results for cond are not satisfying at all -- this because of the bidiagonalizations
-  // numerical properties are not very good -- this in turn causes the smaller singular values to inaccurate
   test("cond") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
     val cumat: CuMatrix[Double] = CuMatrix.fromDense(rand)
 
-    assert(Math.abs(cond(rand) - cond(cumat)) < 1e-3)
+    assert(Math.abs(cond(rand) - cond(cumat)) < 1e-5)
   }
 }

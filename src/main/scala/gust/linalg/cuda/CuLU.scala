@@ -83,14 +83,6 @@ object CuLU extends UFunc {
   def LUFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], CuMatrix[Float]) = {
     val (d_A, h_P) = LUFloatSimplePivot(A)
 
-    // the pivoting matrix is Float (and not Int), because right now gust doesn't support
-    // matrix multiplication other than Float*Float or Double*Double.
-    // Of course, the swapping of rows is quite bad performance-wise but returning the
-    // matrix and not a vector is a good thing, I guess
-
-    // transforming permutation vector into permutation matrix
-    // this could be done with a trick: cublasSetVector with incy = PM.majorStride + 1,
-    // but I can't get CuMatrix.ones to work right now
     val PM = CuMatrix.fromDense(DenseMatrix.eye[Float](A.rows))
 
     cfor(0)(_ < PM.rows - 1, _ + 1) { i => {
@@ -116,7 +108,7 @@ object CuLU extends UFunc {
     val P: Array[Int] = (0 until A.rows).toArray
     val d_A = CuMatrix.create[Float](A.rows, A.cols)
     d_A := A
-    val blockSize = 64
+    val blockSize = 32
     val es = d_A.elemSize
     val lda = A.rows
 
@@ -268,7 +260,7 @@ object CuLU extends UFunc {
     val P: Array[Int] = (0 until A.rows).toArray
     val d_A = CuMatrix.create[Double](A.rows, A.cols)
     d_A := A
-    val blockSize = 64
+    val blockSize = 32
     val es = d_A.elemSize
     val lda = A.rows
 
@@ -350,7 +342,7 @@ object CuLU extends UFunc {
         val mm = if (M < i + realBlockSize) M else i + realBlockSize
 
         cfor(i)(_ < mm - 1, _ + 1) { p => {
-          // P(p) = P(p) + i // ???
+          //P(p) = P(p) + i // ???
           if (P(p) != p) {
             JCublas2.cublasDswap(handle, i, ADataPointer.withByteOffset(d_A.linearIndex(p, 0) * es),
               lda, ADataPointer.withByteOffset(d_A.linearIndex(P(p), 0) * es), lda)
@@ -358,7 +350,6 @@ object CuLU extends UFunc {
             JCublas2.cublasDswap(handle, N - i - realBlockSize, ADataPointer.withByteOffset(d_A.linearIndex(p, i + realBlockSize) * es), lda,
               ADataPointer.withByteOffset(d_A.linearIndex(P(p), i + realBlockSize) * es), lda)
           }
-
         }
         }
 
@@ -592,4 +583,95 @@ object CuLU extends UFunc {
         CuMatrix.fromDense(denseCsrRowPtrA), CuMatrix.fromDense(denseCsrColIndA)).transpose)
   }
 
+
+  /**
+   * LU decomposition based on gpu_sgetrf code by V. Volkov.
+   * @param A
+   * @param handle
+   * @return
+   */
+  def LUSPFloat(A: CuMatrix[Float])(implicit handle: cublasHandle): (CuMatrix[Float], Array[Int]) = {
+    val nb = 64
+
+    val m = A.rows
+    val n = A.cols
+    val lda = A.majorStride
+
+    val one = Pointer.pointerToFloat(1.0f).toCuPointer
+    val zero = Pointer.pointerToFloat(0.0f).toCuPointer
+    val minusOne = Pointer.pointerToFloat(-1.0f).toCuPointer
+
+    val gpu_matrix = CuMatrix.zeros[Float](m, n); //gpu_matrix := A
+    val gpu_buff = CuMatrix.zeros[Float](n, nb)
+    val gpu_L = CuMatrix.zeros[Float](nb, nb)
+
+    val cpu_matrix = A.toDense
+    val cpu_L = new DenseMatrix[Float](nb, nb)
+    val cpu_p = new Array[Int](m)
+
+    val info = new intW(0)
+
+    uploadFloat(n, n-nb, gpu_matrix, 0, nb, cpu_matrix, 0, nb)
+    transposeInplaceFloat(n, n, gpu_matrix, 0, 0)
+
+    cfor(0)(_ < n, _ + nb) { i => {
+      val h = n - i
+      val w = if (h < nb) h else nb
+
+      if (i > 0) {
+        transposeFloat(h, w, gpu_buff, 0, 0, gpu_matrix, i, i) // !!
+        downloadFloat(h, w, cpu_matrix, i, i, gpu_buff, 0, 0)
+
+        JCublas2.cublasStrsm(handle, cublasSideMode.CUBLAS_SIDE_RIGHT, cublasFillMode.CUBLAS_FILL_MODE_UPPER,
+          cublasOperation.CUBLAS_OP_N, cublasDiagType.CUBLAS_DIAG_UNIT, h-nb, nb, one,
+          gpu_matrix.offsetPointer.withByteOffset(gpu_matrix.linearIndex(i-nb, i-nb) * gpu_matrix.elemSize), gpu_matrix.majorStride,
+          gpu_matrix.offsetPointer.withByteOffset(gpu_matrix.linearIndex(i+nb, i-nb) * gpu_matrix.elemSize), gpu_matrix.majorStride)
+
+        SgemmNN(h-nb, h, nb, minusOne, gpu_matrix, i+nb, i-nb, gpu_matrix, i-nb, i, one, gpu_matrix, i+nb, i)
+      }
+
+      println("majorStride: " + cpu_matrix.majorStride + "  i+i*cpu_matrix.majorStride: " + (i+i*cpu_matrix.majorStride))
+      lapack.sgetrf(h, w, cpu_matrix.data, cpu_matrix.linearIndex(i, i), cpu_matrix.majorStride, cpu_p, i, info)
+
+      batchSwapFloat(w, n, cpu_p, i, gpu_matrix, 0, i)
+      cfor(0)(_ < w, _ + 1) { j => {
+        cpu_p(i+j) += i
+      }}
+
+      uploadFloat(h, w, gpu_buff, 0, 0, cpu_matrix, i, i)
+      transposeFloat(w, h, gpu_matrix, i, i, gpu_buff, 0, 0)
+
+      if (h > nb) {
+        JCublas2.cublasStrsm(handle, cublasSideMode.CUBLAS_SIDE_RIGHT, cublasFillMode.CUBLAS_FILL_MODE_UPPER,
+          cublasOperation.CUBLAS_OP_N, cublasDiagType.CUBLAS_DIAG_UNIT, nb, nb, one,
+          gpu_matrix.offsetPointer.withByteOffset(gpu_matrix.linearIndex(i, i) * gpu_matrix.elemSize), gpu_matrix.majorStride,
+          gpu_matrix.offsetPointer.withByteOffset(gpu_matrix.linearIndex(i+nb, i) * gpu_matrix.elemSize), gpu_matrix.majorStride)
+
+        SgemmNN(nb, h-nb, nb, minusOne, gpu_matrix, i+nb, i, gpu_matrix, i, i+nb, one, gpu_matrix, i+nb, i+nb)
+      }
+
+    }}
+
+    transposeInplaceFloat(n, n, gpu_matrix, 0, 0)
+
+    (gpu_matrix, cpu_p map { _ - 1})
+  }
+
+  def pivotMatrixFloat(A: CuMatrix[Float], cpu_p: Array[Int])(implicit handle: cublasHandle) {
+    cfor(0)(_ < cpu_p.length, _ + 1) { i => {
+      if (i != cpu_p(i)) {
+        JCublas2.cublasSswap(handle, A.cols, A.offsetPointer.withByteOffset(A.linearIndex(i, 0) * A.elemSize), A.majorStride,
+          A.offsetPointer.withByteOffset(A.linearIndex(cpu_p(i), 0) * A.elemSize), A.majorStride)
+      }
+    }}
+  }
+
+  def pivotMatrixDouble(A: CuMatrix[Double], cpu_p: Array[Int])(implicit handle: cublasHandle) {
+    cfor(0)(_ < cpu_p.length, _ + 1) { i => {
+      if (i != cpu_p(i)) {
+        JCublas2.cublasDswap(handle, A.cols, A.offsetPointer.withByteOffset(A.linearIndex(i, 0) * A.elemSize), A.majorStride,
+          A.offsetPointer.withByteOffset(A.linearIndex(cpu_p(i), 0) * A.elemSize), A.majorStride)
+      }
+    }}
+  }
 }
