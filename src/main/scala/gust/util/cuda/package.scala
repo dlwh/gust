@@ -1,5 +1,7 @@
 package gust.util
 
+import breeze.util.SerializableLogging
+
 import scala.reflect.ClassTag
 import org.bridj.{PointerIO, Pointer}
 import jcuda.runtime.{cudaStream_t, JCuda}
@@ -13,15 +15,34 @@ import breeze.macros.arityize
  *
  * @author dlwh
  **/
-package object cuda {
+package object cuda extends SerializableLogging {
   type CuPointer = jcuda.Pointer
 
   def allocate[V:ClassTag](size: Long) = {
     val ptr = new CuPointer()
     val tpe = implicitly[ClassTag[V]].runtimeClass
     val io = PointerIO.getInstance[V](tpe)
+    val ok: Boolean = hasFreeMemory(size * io.getTargetSize)
+
+    if(!ok) {
+      throw new OutOfMemoryError(s"CUDA Memory")//: need $size bytes, but only have ${free(0)}. Tried running the GC to no avail.")
+    }
+
     JCuda.cudaMalloc(ptr, size * io.getTargetSize)
     Pointer.pointerToAddress(nativePtr(ptr), size, io, DeviceFreeReleaser)
+  }
+
+  def hasFreeMemory(size: Long): Boolean = {
+    val free, total = Array[Long](0)
+    JCudaDriver.cuMemGetInfo(free, total)
+    val ok = (free(0) >= size) || {
+      logger.debug("Running GC because we're running low on RAM!")
+      System.gc()
+      Runtime.getRuntime.runFinalization()
+      JCudaDriver.cuMemGetInfo(free, total)
+      free(0) >= size
+    }
+    ok
   }
 
   def allocateHost[V:ClassTag](size: Long) = {
@@ -44,6 +65,7 @@ package object cuda {
 
   implicit class enrichBridjPtr[T](val pointer: Pointer[T]) extends AnyVal {
     def toCuPointer = {
+      assert(pointer != null)
       fromNativePtr(pointer.getPeer)
     }
   }

@@ -24,7 +24,7 @@ object NMF {
       println(i)
       H :*= ((W.t * X) :/= (W.t * W * H))
       W :*= ((X * H.t) :/= (W * H * H.t))
-      System.gc()
+//      System.gc()
     }
 
     (W, H)
