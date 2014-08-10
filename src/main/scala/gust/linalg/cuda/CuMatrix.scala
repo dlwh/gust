@@ -31,7 +31,8 @@ class CuMatrix[V](val rows: Int,
                   val majorStride: Int,
                   val isTranspose: Boolean = false) extends NumericOps[CuMatrix[V]] {
   /** Creates a matrix with the specified data array, rows, and columns. Data must be column major */
-  def this(rows: Int, cols: Int, data: Pointer[V], offset: Int = 0) = this(rows, cols, data, offset, rows)
+  def this(rows: Int, cols: Int, data: Pointer[V], offset: Int) = this(rows, cols, data, offset, rows)
+  def this(rows: Int, cols: Int, data: Pointer[V]) = this(rows, cols, data, 0, rows)
   /** Creates a matrix with the specified data array, rows, and columns. */
   def this(rows: Int, cols: Int)(implicit ct: ClassTag[V]) = this(rows, cols, cuda.allocate[V](rows * cols))
 

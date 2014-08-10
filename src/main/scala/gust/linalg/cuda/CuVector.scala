@@ -6,7 +6,7 @@ import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
 import gust.util.cuda._
 import breeze.generic.UFunc
 import spire.algebra.VectorSpace
-import breeze.math.{Semiring, MutableInnerProductSpace, MutableCoordinateSpace, CoordinateSpace}
+import breeze.math.{Semiring, MutableInnerProductVectorSpace}
 import breeze.linalg.support.{CanSlice, CanSlice2, CanCopy, CanCreateZerosLike}
 import breeze.linalg.operators._
 import scala.reflect.ClassTag
@@ -208,11 +208,20 @@ object CuVector extends CuVectorFuns with CuVectorLowPrio {
   }
 
 
+  implicit def normImplFloat(implicit handle: cublasHandle): norm.Impl2[CuVector[Float], Double, Double] = new norm.Impl2[CuVector[Float], Double, Double] {
+    override def apply(v: CuVector[Float], v2: Double): Double = {
+      if(v2 == 2.0) {
+        math.sqrt(v dot v)
+      } else {
+        ???
+      }
+    }
+  }
 
 
 
-  implicit def vspaceFloat(implicit handle: cublasHandle): MutableInnerProductSpace[CuVector[Float], Float] = {
-    MutableInnerProductSpace.make[CuVector[Float], Float]
+  implicit def vspaceFloat(implicit handle: cublasHandle): MutableInnerProductVectorSpace[CuVector[Float], Float] = {
+    MutableInnerProductVectorSpace.make[CuVector[Float], Float]
   }
 
   // slicing
@@ -230,6 +239,9 @@ object CuVector extends CuVectorFuns with CuVectorLowPrio {
       }
     }
   }
+
+
+
 
 
 
@@ -335,13 +347,13 @@ trait CuVectorFuns extends CuVectorKernels { this: CuVector.type =>
   implicit def minIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[min.type]("min")
   implicit def powIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For[OpPow.type]("pow")
 
-  implicit def addIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpAdd.type]("add")
-  implicit def subIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpSub.type]("sub")
+  implicit def addIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[OpAdd.type, CuVector[T], T] =  broker.inPlaceImpl2For_v_s[OpAdd.type]("add")
+  implicit def subIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[OpSub.type, CuVector[T], T] =  broker.inPlaceImpl2For_v_s[OpSub.type]("sub")
   implicit def mulIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[OpMulScalar.type, CuVector[T], T] =  broker.inPlaceImpl2For_v_s[OpMulScalar.type]("mul")
   implicit def divIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[OpDiv.type, CuVector[T], T] =  broker.inPlaceImpl2For_v_s[OpDiv.type]("div")
-  implicit def modIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpMod.type]("mod")
+  implicit def modIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[OpMod.type, CuVector[T], T] =  broker.inPlaceImpl2For_v_s[OpMod.type]("mod")
   implicit def maxIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[max.type]("max")
-  implicit def minIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[min.type]("min")
+  implicit def minIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[min.type, CuVector[T], T] =  broker.inPlaceImpl2For_v_s[min.type]("min")
   implicit def powIntoImpl_S[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImpl2For_v_s[OpPow.type]("pow")
   implicit def setIntoImpl_S[T](implicit broker: KernelBroker[T]): InPlaceImpl2[OpSet.type, CuVector[T], T] =  broker.inPlaceImpl2For_v_s[OpSet.type]("set")
 
@@ -401,14 +413,32 @@ trait CuVectorFuns extends CuVectorKernels { this: CuVector.type =>
   }
 
 
+
+
 }
 
 trait CuVectorLowPrio { this: CuVector.type =>
   /** lbfgs wants a MIPS[T, Double], so this implicit allows us to fake it. */
-  implicit def vspaceFloatPretendsToBeDouble(implicit handle: cublasHandle): MutableInnerProductSpace[CuVector[Float], Double] = {
+  implicit def vspaceFloatPretendsToBeDouble(implicit handle: cublasHandle): MutableInnerProductVectorSpace[CuVector[Float], Double] = {
+
+    implicit object addVSDouble extends OpAdd.Impl2[CuVector[Float], Double, CuVector[Float]] {
+      override def apply(v: CuVector[Float], v2: Double): CuVector[Float] = v :+ v2.toFloat
+    }
+
+    implicit object subVSDouble extends OpSub.Impl2[CuVector[Float], Double, CuVector[Float]] {
+      override def apply(v: CuVector[Float], v2: Double): CuVector[Float] = v :- v2.toFloat
+    }
 
     implicit object mulVSDouble extends OpMulScalar.Impl2[CuVector[Float], Double, CuVector[Float]] {
-      override def apply(v: CuVector[Float], v2: Double): CuVector[Float] = v :* v2.toFloat
+      override def apply(v: CuVector[Float], v2: Double) = {v :* v2.toFloat}
+    }
+
+    implicit object addIntoVSDouble extends OpAdd.InPlaceImpl2[CuVector[Float], Double] {
+      override def apply(v: CuVector[Float], v2: Double) = { v :+= v2.toFloat}
+    }
+
+    implicit object subIntoVSDouble extends OpSub.InPlaceImpl2[CuVector[Float], Double] {
+      override def apply(v: CuVector[Float], v2: Double) = {v :-= v2.toFloat}
     }
 
 
@@ -437,7 +467,7 @@ trait CuVectorLowPrio { this: CuVector.type =>
         }
     }
 
-    MutableInnerProductSpace.make[CuVector[Float], Double]
+    MutableInnerProductVectorSpace.make[CuVector[Float], Double]
 
 
 
