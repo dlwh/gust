@@ -100,6 +100,21 @@ object CuMethodsTest
       }
     }
 
+    measure method "SVDFloat" in {
+      using(d_MsFloat) in {
+        d_M => {
+          CuSVD.SVDFloat(d_M)
+        }
+      }
+    }
+
+    measure method "SVDDouble" in {
+      using(d_MsDouble) in {
+        d_M => {
+          CuSVD.SVDDouble(d_M)
+        }
+      }
+    }
   }
 
   performance of "Breeze.linalg" in {
@@ -130,13 +145,6 @@ object CuMethodsTest
         }
       }
     }
-
-    // hmm, breeze doesn't have a Float implementation of QR it seems
-//    measure method "QRFloat" in {
-//      using(h_MsFloat) in {
-//        h_M => { qr(h_M) }
-//      }
-//    }
 
     measure method "QRDouble" in {
       using(h_MsDouble) in {

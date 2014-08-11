@@ -12,10 +12,7 @@ import gust.util.cuda._
  */
 object Residuals {
 
-  val zeroPtr = Pointer.pointerToDouble(0.0)
-  val zero = zeroPtr.toCuPointer
-  val onePtr = Pointer.pointerToDouble(1.0)
-  val one = onePtr.toCuPointer
+  val one = Pointer.pointerToDouble(1.0).toCuPointer
 
   def LUResiduals(implicit handle: cublasHandle) {
     val mats = getMatrices(32)
@@ -62,6 +59,21 @@ object Residuals {
       val r = CuWrapperMethods.residualDouble(mat, d_L, d_L.t, null)
       println("    " + mat.rows + "    " + r)
       d_L.release()
+      mat.release()
+    }}
+  }
+
+  def SVDResiduals(implicit handle: cublasHandle) {
+    val mats = getMatrices(32)
+    mats foreach { mat => {
+      val (d_U, d_E, d_V) = CuSVD.SVDDouble(mat)
+      val d_UE = d_U * d_E
+      val r = CuWrapperMethods.residualDouble(mat, d_UE, d_V, null)
+      println("    " + mat.rows + "    " + r)
+      d_U.release()
+      d_E.release()
+      d_UE.release()
+      d_V.release()
       mat.release()
     }}
   }

@@ -1095,6 +1095,9 @@ object CuWrapperMethods {
     val m = AS.rows
     val n = AS.cols // rows and cols of the original matrix (without the transpose)
 
+    require(b.cols == 1, "b must be a vector")
+    require(A.cols == b.rows, s"Dimension mismatch: A.rows = ${A.rows}, b.length = ${b.cols}")
+
     val res = CuMatrix.create[Float](m, 1)
     val zero = jcuda.Pointer.to(Array(0.0f))
     val one = jcuda.Pointer.to(Array(1.0f))
@@ -1113,6 +1116,9 @@ object CuWrapperMethods {
 
     val m = AS.rows
     val n = AS.cols // rows and cols of the original matrix (without the transpose)
+
+    require(b.cols == 1, "b must be a vector")
+    require(A.cols == b.rows, s"Dimension mismatch: A.rows = ${A.rows}, b.length = ${b.cols}")
 
     val res = CuMatrix.create[Double](m, 1)
     val zero = jcuda.Pointer.to(Array(0.0))

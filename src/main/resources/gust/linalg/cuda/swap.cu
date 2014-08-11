@@ -27,7 +27,7 @@ __global__ void batch_dswap(int nswaps, int n, double *A, int lda, int *ipiv)
 	for (int i = 0; i < nswaps; i++)
 	{
 		int j = ipiv[i];
-		double temp   = d_A[i*lda];
+		double temp = d_A[i*lda];
 		d_A[i*lda] = d_A[j*lda];
 		d_A[j*lda] = temp;
 	}
