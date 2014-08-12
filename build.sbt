@@ -4,26 +4,26 @@ name := "gust"
 
 version := "0.1-SNAPSHOT"
 
-scalaVersion := "2.10.3"
+scalaVersion := "2.11.1"
 
 libraryDependencies ++= Seq(
   "junit" % "junit" % "4.5" % "test",
-  "org.scalanlp" %% "breeze-macros" % "0.3" % "compile",
-  "org.scalanlp" %% "breeze" % "0.7",
-  "org.scalatest" %% "scalatest" % "2.0.M5b",
-  "com.nativelibs4java" % "bridj" % "0.6.2",
-  "com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
-  //"com.nativelibs4java" % "javacl-blas" % "1.0.0-RC3",
   "org.scalanlp" % "jcuda" % "0.5.5",
+  "org.scalanlp" %% "breeze-macros" % "0.3.1" % "compile",
+  "org.scalanlp" %% "breeze" % "0.9",
+  "org.scalatest" %% "scalatest" % "2.1.3" % "test",
+  "com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
+  "org.scalacheck" %% "scalacheck" % "1.11.3" % "test",
+  "org.scala-lang.modules" %% "scala-xml" % "1.0.2" % "test",
   "org.scalanlp" % "jcublas2" % "0.5.5",
   "org.scalanlp" % "jcurand" % "0.5.5",
   "org.scalanlp" % "jcusparse2" % "0.5.5",
-  "com.github.axel22" %% "scalameter" % "0.4"
+  "com.storm-enroute" %% "scalameter" % "0.6"
 )
 
-fork := true
+ fork := true
 
-javaOptions ++= Seq("-Xmx12g")
+javaOptions ++= Seq("-Xmx4g", "-Xrunhprof:cpu=samples,depth=12")
 
 resolvers ++= Seq(
   //"Scala Tools Snapshots" at "http://scala-tools.org/repo-snapshots/",
@@ -40,4 +40,4 @@ logBuffered := false
 testOptions in Test += Tests.Argument("-oDF")
 //testOptions in Test += Tests.Argument("-preJDK7")
 
-addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full)
+addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.0-M1" cross CrossVersion.full)

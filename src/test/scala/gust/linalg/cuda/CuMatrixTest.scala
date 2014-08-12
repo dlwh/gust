@@ -1,6 +1,6 @@
 package gust.linalg.cuda
 
-import org.scalatest.{BeforeAndAfterEach, FunSuite}
+import org.scalatest.{Outcome, BeforeAndAfterEach, FunSuite}
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import breeze.linalg._
 import jcuda.runtime.JCuda
@@ -17,7 +17,7 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   type FixtureParam = cublasHandle
 
-  def withFixture(test: OneArgTest) {
+  def withFixture(test: OneArgTest):Outcome = {
     val handle = new cublasHandle()
     JCuda.setExceptionsEnabled(true)
     JCublas2.setExceptionsEnabled(true)
@@ -137,12 +137,12 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     val cu = CuMatrix.zeros[Float](20, 30)
     cu := dm
 
-    assert(cu(0, ::).toDense === dm(0, ::))
-    assert(cu(0, 1 to 4).toDense === dm(0, 1 to 4), s"Full matrix: $dm")
+    assert(cu(0, ::).toDense === dm(0, ::).t.toDenseMatrix)
+    assert(cu(0, 1 to 4).toDense === dm(0, 1 to 4).t.toDenseMatrix, s"Full matrix: $dm")
     assert(cu(::, 0).toDense === dm(::, 0).toDenseMatrix.t, s"${dm(::, 0)}")
     assert(cu(1 to 4, 0).toDense === dm(1 to 4, 0).toDenseMatrix.t, s"Full matrix: $dm")
-    assert(cu.t(0, ::).toDense === dm.t(0, ::))
-    assert(cu.t(0, 1 to 4).toDense === dm.t(0, 1 to 4), s"Full matrix: $dm")
+    assert(cu.t(0, ::).toDense === dm.t(0, ::).t.toDenseMatrix)
+    assert(cu.t(0, 1 to 4).toDense === dm.t(0, 1 to 4).t.toDenseMatrix, s"Full matrix: $dm")
     assert(cu.t(::, 0).toDense === dm.t(::, 0).toDenseMatrix.t, s"${dm(::, 0)}")
     assert(cu.t(1 to 4, 0).toDense === dm.t(1 to 4, 0).toDenseMatrix.t, s"Full matrix: $dm")
 
@@ -192,10 +192,38 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert( max(abs((dm * 2.0f) - (cu * 2.0f).toDense)) < 1E-5)
   }
 
-  test("broadcast addition") { (_handle: cublasHandle) =>
+  test("addition") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
+    val dm2 : DenseMatrix[Float] = convert(DenseMatrix.rand(10, 30), Float)
     val cu = CuMatrix.zeros[Float](30, 10)
+    val cu2 = CuMatrix.zeros[Float](10, 30)
+    cu := dm
+    cu2 := dm2
+
+    assert((dm + dm) === (cu + cu).toDense)
+    assert((dm + dm2.t) === (cu + cu2.t).toDense)
+
+  }
+
+  test("transpose elemwise mul"){ (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rows = 300
+    val cols = 100
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(rows, cols), Float)
+    val dm2 : DenseMatrix[Float] = convert(DenseMatrix.rand(cols, rows), Float)
+    val cu = CuMatrix.zeros[Float](rows, cols)
+    val cu2 = CuMatrix.zeros[Float](cols, rows)
+    cu := dm
+    cu2 := dm2
+    assert((dm :* dm2.t) === (cu :* cu2.t).toDense)
+  }
+
+
+  test("broadcast addition") { (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(3, 3), Float)
+    val cu = CuMatrix.zeros[Float](3, 3)
     cu := dm
 
     val dmadd = dm(::, *) + dm(::, 1)
@@ -210,6 +238,7 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   }
 
+  /*
   test("inplace addition") {  (_handle: cublasHandle) =>
     implicit val handle = _handle
     val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
@@ -223,6 +252,7 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     dm += dmadd
     assert(cu.toDense === dm)
   }
+  */
 
   test("sum") { (_handle: cublasHandle) =>
     implicit val handle = _handle
@@ -268,6 +298,29 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     assert(min(cumat) === min(rand))
   }
 
+  test("softmax") { (_handle: cublasHandle) =>
+    val rand = convert(DenseMatrix.rand(40, 30), Float)
+    val cumat = CuMatrix.zeros[Float](40, 30)
+    cumat := rand
+    val cumax = softmax(cumat)
+    val dmax = softmax(convert(rand, Double))
+    assert(math.abs(cumax - dmax) < 1e-4)
+  }
+
+  test("softmax rows") { (_handle: cublasHandle) =>
+    val rand = DenseMatrix.rand(40, 30)
+    val cumat = CuMatrix.zeros[Float](40, 30)
+    cumat := convert(rand, Float)
+    val cumax = softmax(cumat(*, ::))
+    val dmax = softmax(rand(*, ::))
+
+    val dcumax = cumax.toDense.mapValues(_.toDouble).apply(::, 0)
+
+
+    assert(max(abs(dcumax - dmax)) < 1E-4)
+
+  }
+
   test("trace") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
@@ -280,9 +333,9 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
     implicit val handle = _handle
     val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
     val cumat = CuMatrix.fromDense(rand)
-
     assert(Math.abs(det(rand) - det(cumat)) < 1e-5)
   }
+
 
   test("cond") { (_handle: cublasHandle) =>
     implicit val handle = _handle

@@ -28,22 +28,21 @@ object CuWrapperMethods {
    * They may be moved to CuMatrix later
    * Hmm, there's a cublas function for the addition...
    */
-  def elemWiseProdFloat(A: CuMatrix[Float], B: CuMatrix[Float]): CuMatrix[Float] = elemWiseFloat('p', A, B)
+  def elemWiseProdFloat(A: CuMatrix[Float], B: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = elemWiseFloat('p', A, B)
 
-  def elemWiseProdDouble(A: CuMatrix[Double], B: CuMatrix[Double]): CuMatrix[Double] = elemWiseDouble('p', A, B)
+  def elemWiseProdDouble(A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = elemWiseDouble('p', A, B)
 
-  def elemWiseSumFloat(A: CuMatrix[Float], B: CuMatrix[Float]): CuMatrix[Float] = elemWiseFloat('s', A, B)
+  def elemWiseSumFloat(A: CuMatrix[Float], B: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = elemWiseFloat('s', A, B)
 
-  def elemWiseSumDouble(A: CuMatrix[Double], B: CuMatrix[Double]): CuMatrix[Double] = elemWiseDouble('s', A, B)
+  def elemWiseSumDouble(A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = elemWiseDouble('s', A, B)
 
 
-  private def elemWiseFloat(operation: Char, A: CuMatrix[Float], B: CuMatrix[Float]): CuMatrix[Float] = {
+  private def elemWiseFloat(operation: Char, A: CuMatrix[Float], B: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = {
     if (A.rows != B.rows || A.cols != B.cols) {
       println("Matrices have to be of the same dimensions")
       return null
     }
 
-    implicit val handle: cublasHandle = A.blas
     val C = CuMatrix.create[Float](A.rows, A.cols)
 
     JCudaDriver.setExceptionsEnabled(true)
@@ -85,13 +84,12 @@ object CuWrapperMethods {
     C
   }
 
-  private def elemWiseDouble(operation: Char, A: CuMatrix[Double], B: CuMatrix[Double]): CuMatrix[Double] = {
+  private def elemWiseDouble(operation: Char, A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = {
     if (A.rows != B.rows || A.cols != B.cols) {
       println("Matrices have to be of the same dimensions")
       return null
     }
 
-    implicit val handle: cublasHandle = A.blas
     val C = CuMatrix.create[Double](A.rows, A.cols)
 
     JCudaDriver.setExceptionsEnabled(true)
@@ -527,7 +525,7 @@ object CuWrapperMethods {
    *
    * It can also calculate the residual in case of the solve method, since we treat vectors as matrices
    */
-  def residualFloat(A: CuMatrix[Float], B: CuMatrix[Float], C: CuMatrix[Float], P: CuMatrix[Float] = null): Double = {
+  def residualFloat(A: CuMatrix[Float], B: CuMatrix[Float], C: CuMatrix[Float], P: CuMatrix[Float] = null)(implicit handle: cublasHandle): Double = {
     if (B.rows != C.cols) {
       println("Dimensions have to match (B.rows must equal C.cols)")
       return 0.0
@@ -547,8 +545,6 @@ object CuWrapperMethods {
       println("Wrong pivoting matrix")
       return 0.0
     }
-
-    implicit val handle = A.blas
 
     val d_A = CuMatrix.create[Float](A.rows, A.cols)
 
@@ -578,7 +574,7 @@ object CuWrapperMethods {
     d_A.norm
   }
 
-  def residualDouble(A: CuMatrix[Double], B: CuMatrix[Double], C: CuMatrix[Double], P: CuMatrix[Double] = null): Double = {
+  def residualDouble(A: CuMatrix[Double], B: CuMatrix[Double], C: CuMatrix[Double], P: CuMatrix[Double] = null)(implicit handle: cublasHandle): Double = {
     if (B.rows != C.cols) {
       println("Dimensions have to match (B.rows must equal C.cols)")
       return 0.0
@@ -598,8 +594,6 @@ object CuWrapperMethods {
       println("Wrong pivoting matrix")
       return 0.0
     }
-
-    implicit val handle = A.blas
 
     val d_A = CuMatrix.create[Double](A.rows, A.cols)
 
@@ -634,9 +628,7 @@ object CuWrapperMethods {
    * (and fills out the zeroes if A is not square)
    * @param A
    */
-  def eyeizeFloat(A: CuMatrix[Float]) {
-    implicit val handle = A.blas
-
+  def eyeizeFloat(A: CuMatrix[Float])(implicit handle: cublasHandle) {
     zeroOutFloat(A, 'U')
     zeroOutFloat(A, 'L')
 
@@ -646,9 +638,7 @@ object CuWrapperMethods {
     JCublas2.cublasScopy(handle, diagLen, d_diag.offsetPointer, 1, A.offsetPointer, A.majorStride + 1)
   }
 
-  def eyeizeDouble(A: CuMatrix[Double]) {
-    implicit val handle = A.blas
-
+  def eyeizeDouble(A: CuMatrix[Double])(implicit handle: cublasHandle) {
     zeroOutDouble(A, 'U')
     zeroOutDouble(A, 'L')
 
@@ -667,9 +657,7 @@ object CuWrapperMethods {
    * @param Aroff row-wise offset
    * @param Acoff column-wise offset
    */
-  def transposeInplaceFloat(m: Int, n: Int, A: CuMatrix[Float], Aroff: Int = 0, Acoff: Int = 0) {
-    implicit val handle = A.blas
-
+  def transposeInplaceFloat(m: Int, n: Int, A: CuMatrix[Float], Aroff: Int = 0, Acoff: Int = 0)(implicit handle: cublasHandle) {
     val B = CuMatrix.create[Float](A.rows, A.cols)
 
     val one = Pointer.pointerToFloat(1.0f).toCuPointer
@@ -684,9 +672,7 @@ object CuWrapperMethods {
     A := B
   }
 
-  def transposeInplaceDouble(m: Int, n: Int, A: CuMatrix[Double], Aroff: Int = 0, Acoff: Int = 0) {
-
-    implicit val handle = A.blas
+  def transposeInplaceDouble(m: Int, n: Int, A: CuMatrix[Double], Aroff: Int = 0, Acoff: Int = 0)(implicit handle: cublasHandle) {
     val B = CuMatrix.create[Double](A.rows, A.cols)
     val one = Pointer.pointerToDouble(1.0).toCuPointer
     val zero = Pointer.pointerToDouble(0.0).toCuPointer
@@ -698,8 +684,7 @@ object CuWrapperMethods {
     A := B
   }
 
-  def  transposeFloat(m: Int, n: Int, At: CuMatrix[Float], Atroff: Int, Atcoff: Int, A: CuMatrix[Float], Aroff: Int, Acoff: Int) {
-    implicit val handle = A.blas
+  def  transposeFloat(m: Int, n: Int, At: CuMatrix[Float], Atroff: Int, Atcoff: Int, A: CuMatrix[Float], Aroff: Int, Acoff: Int)(implicit handle: cublasHandle) {
     val one = Pointer.pointerToFloat(1.0f).toCuPointer
     val zero = Pointer.pointerToFloat(0.0f).toCuPointer
     JCublas2.cublasSgeam(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, m, n,
@@ -708,8 +693,7 @@ object CuWrapperMethods {
       At.offsetPointer.withByteOffset(At.linearIndex(Atroff, Atcoff) * At.elemSize), At.majorStride)
   }
 
-  def transposeDouble(m: Int, n: Int, At: CuMatrix[Double], Atroff: Int, Atcoff: Int, A: CuMatrix[Double], Aroff: Int, Acoff: Int) {
-    implicit val handle = A.blas
+  def transposeDouble(m: Int, n: Int, At: CuMatrix[Double], Atroff: Int, Atcoff: Int, A: CuMatrix[Double], Aroff: Int, Acoff: Int)(implicit handle: cublasHandle) {
     val one = Pointer.pointerToDouble(1.0).toCuPointer
     val zero = Pointer.pointerToDouble(0.0).toCuPointer
     JCublas2.cublasDgeam(handle, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, m, n,

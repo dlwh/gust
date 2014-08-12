@@ -1,7 +1,7 @@
 package gust.linalg.cuda
 
 import jcuda.jcusparse.{JCusparse2, cusparseHandle}
-import org.scalatest.{BeforeAndAfterEach, FunSuite}
+import org.scalatest.{Outcome, BeforeAndAfterEach, FunSuite}
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import breeze.linalg._
 import jcuda.runtime.JCuda
@@ -17,7 +17,7 @@ class CuSparseMatrixTest extends org.scalatest.fixture.FunSuite {
 
   type FixtureParam = (cublasHandle, cusparseHandle)
 
-  def withFixture(test: OneArgTest) {
+  def withFixture(test: OneArgTest): Outcome = {
     val handle = new cublasHandle()
     JCuda.setExceptionsEnabled(true)
     JCublas2.setExceptionsEnabled(true)
