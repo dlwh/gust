@@ -147,7 +147,7 @@ object CuWrapperMethods {
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
 
     // once again -- magnled names, I'll have try to figure something out
-    val funcName = if (fillMode == 'U') "_Z6zerosUiiPfii" else "_Z6zerosLiiPfii"
+    val funcName = if (fillMode == 'U') "zerosU" else "zerosL"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
     // kernel parameters:
@@ -189,7 +189,7 @@ object CuWrapperMethods {
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUDouble.ptx")
 
     val zero_out = new CUfunction()
-    val funcName = if (fillMode == 'U') "_Z6zerosUiiPdii" else "_Z6zerosLiiPdii"
+    val funcName = if (fillMode == 'U') "zerosU" else "zerosL"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
     // kernel parameters:
@@ -233,7 +233,7 @@ object CuWrapperMethods {
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
 
     // once again -- magnled names, I'll have try to figure something out
-    val funcName = if (fillMode == 'U') "_Z6zerosUiiPfii" else "_Z6zerosLiiPfii"
+    val funcName = if (fillMode == 'U') "zerosU" else "zerosL"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
     // kernel parameters:
@@ -275,7 +275,7 @@ object CuWrapperMethods {
     val zero_out = new CUfunction()
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUDouble.ptx")
 
-    val funcName = if (fillMode == 'U') "_Z6zerosUiiPdii" else "_Z6zerosLiiPdii"
+    val funcName = if (fillMode == 'U') "zerosU" else "zerosL"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
     // kernel parameters:

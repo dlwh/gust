@@ -218,7 +218,25 @@ object CuVector extends CuVectorFuns with CuVectorLowPrio {
     }
   }
 
+  implicit def canDiagFloat(implicit handle: cublasHandle): diag.Impl[CuVector[Float], CuMatrix[Float]] =
+    new diag.Impl[CuVector[Float], CuMatrix[Float]] {
+      def apply(v: CuVector[Float]) = {
+        val cm = CuMatrix.zeros[Float](v.size, v.size)
+        JCublas2.cublasScopy(handle, v.size, v.offsetPointer, v.stride, cm.offsetPointer, cm.majorStride + 1)
 
+        cm
+      }
+    }
+
+  implicit def canDiagDouble(implicit handle: cublasHandle): diag.Impl[CuVector[Double], CuMatrix[Double]] =
+    new diag.Impl[CuVector[Double], CuMatrix[Double]] {
+      def apply(v: CuVector[Double]) = {
+        val cm = CuMatrix.zeros[Double](v.size, v.size)
+        JCublas2.cublasDcopy(handle, v.size, v.offsetPointer, v.stride, cm.offsetPointer, cm.majorStride + 1)
+
+        cm
+      }
+    }
 
   implicit def vspaceFloat(implicit handle: cublasHandle): MutableInnerProductVectorSpace[CuVector[Float], Float] = {
     MutableInnerProductVectorSpace.make[CuVector[Float], Float]

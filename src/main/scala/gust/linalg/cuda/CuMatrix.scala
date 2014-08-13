@@ -238,7 +238,7 @@ class CuMatrix[V](val rows: Int,
 
         normArr(0)
 
-      case _ => println("[norm] :::Unsupported type " + ct.toString() + ":::"); 0.0
+      case _ => throw new UnsupportedOperationException("Can only calculate norm of Float or Double matrix")
     }
   }
 
@@ -267,7 +267,7 @@ class CuMatrix[V](val rows: Int,
 
         rv.norm < 1e-15
 
-      case _ => println("[isSymmetric] :::Unsupported type -- " + ct.toString() + ":::"); false
+      case _ => throw new UnsupportedOperationException("isSymmetric accepts only Floats and Double")
     }
 
 }
@@ -964,6 +964,20 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
         CuWrapperMethods.downloadDouble(1, 1, h_e, 1, 0, e, k, k)
 
         h_e(0, 0) / h_e(1, 0)
+      }
+    }
+
+  implicit def normImplFloat(implicit handle: cublasHandle): norm.Impl[CuMatrix[Float], Double] =
+    new norm.Impl[CuMatrix[Float], Double] {
+      def apply(_a: CuMatrix[Float]) = {
+        _a.norm
+      }
+    }
+
+  implicit def normImplDouble(implicit handle: cublasHandle): norm.Impl[CuMatrix[Double], Double] =
+    new norm.Impl[CuMatrix[Double], Double] {
+      def apply(_a: CuMatrix[Double]) = {
+        _a.norm
       }
     }
 
