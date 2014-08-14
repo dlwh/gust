@@ -208,6 +208,10 @@ class CuMatrix[V](val rows: Int,
     new DenseMatrix(rows, cols, arrayData.getArray.asInstanceOf[Array[V]], 0, _r, isTranspose)
   }
 
+  def toCuVector = {
+    new CuVector[V](data, offset, 1, size)
+  }
+
   def copy: CuMatrix[V] = ???
 
   /**
@@ -335,6 +339,15 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   def fromDense[V<:AnyVal](mat: DenseMatrix[V])(implicit ct: ClassTag[V]) = {
     val g = new CuMatrix[V](mat.rows, mat.cols)
     g := mat
+    g
+  }
+
+  def fromCuVector[V<:AnyVal](vec: CuVector[V])(implicit ct: ClassTag[V], handle: cublasHandle) = {
+    val g = new CuMatrix[V](vec.length, 1)
+    val cublasOp = if (g.elemSize == 8) JCublas2.cublasDcopy _ else if (g.elemSize == 4) JCublas2.cublasScopy _
+                   else throw new UnsupportedOperationException("Can only create a matrix with elem sizes 4 or 8")
+
+    cublasOp(handle, vec.length, vec.offsetPointer, vec.stride, g.offsetPointer, 1)
     g
   }
 

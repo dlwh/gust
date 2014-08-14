@@ -2,142 +2,27 @@ package gust.linalg.cuda
 
 import gust.util.cuda
 import cuda._
-import jcuda.Sizeof
 import jcuda.jcublas.{cublasOperation, JCublas2, cublasHandle}
-import breeze.linalg.{DenseVector, DenseMatrix}
+import breeze.linalg.DenseMatrix
 import jcuda.jcusparse._
 import jcuda.runtime.{cudaMemcpyKind, JCuda}
 import jcuda.driver.{CUfunction, CUmodule, JCudaDriver}
 import gust.util.cuda.{CuContext, CuDevice}
 import org.bridj.Pointer
 import spire.syntax.cfor._
-
 import scala.reflect.ClassTag
 
 
 /**
  * Created by piotrek on 16.06.2014.
- *
- * TODO using separate function names for Doubles and Floats starts to get
- * a little inconvenient. Should think of making more generic functions
  */
 object CuWrapperMethods {
-
-  /*
-   * Kernels for element-wise operations: product and sum
-   * They may be moved to CuMatrix later
-   * Hmm, there's a cublas function for the addition...
-   */
-  def elemWiseProdFloat(A: CuMatrix[Float], B: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = elemWiseFloat('p', A, B)
-
-  def elemWiseProdDouble(A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = elemWiseDouble('p', A, B)
-
-  def elemWiseSumFloat(A: CuMatrix[Float], B: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = elemWiseFloat('s', A, B)
-
-  def elemWiseSumDouble(A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = elemWiseDouble('s', A, B)
-
-
-  private def elemWiseFloat(operation: Char, A: CuMatrix[Float], B: CuMatrix[Float])(implicit handle: cublasHandle): CuMatrix[Float] = {
-    if (A.rows != B.rows || A.cols != B.cols) {
-      println("Matrices have to be of the same dimensions")
-      return null
-    }
-
-    val C = CuMatrix.create[Float](A.rows, A.cols)
-
-    JCudaDriver.setExceptionsEnabled(true)
-    implicit val dev = CuDevice(0)
-    val ctx = CuContext.ensureContext
-    val module = new CUmodule()
-    val function = new CUfunction()
-    val func_name = if (operation == 'p') "hadamard" else "matrix_sum"
-    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/elemWiseFloat.ptx")
-    JCudaDriver.cuModuleGetFunction(function, module, func_name)
-
-    // kernel parameters:
-    val ldaArr = Array(A.majorStride, B.majorStride, C.majorStride)
-    val lda = jcuda.Pointer.to(ldaArr)
-    val ldb = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT)
-    val ldc = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT * 2)
-    val dimsArr = Array(A.rows, A.cols)
-    val m = jcuda.Pointer.to(dimsArr)
-    val n = jcuda.Pointer.to(dimsArr).withByteOffset(jcuda.Sizeof.INT)
-
-    val params = jcuda.Pointer.to(
-      m, n,
-      jcuda.Pointer.to(A.offsetPointer), lda,
-      jcuda.Pointer.to(B.offsetPointer), ldb,
-      jcuda.Pointer.to(C.offsetPointer), ldc
-    )
-
-    val nb = 32
-    val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
-      A.cols / nb + (if (A.cols % nb == 0) 0 else 1),
-      1)
-    val blockDim = (nb, nb, 1)
-
-    JCudaDriver.cuLaunchKernel(function, gridDim._1, gridDim._2, gridDim._3,
-      blockDim._1, blockDim._2, blockDim._3,
-      0, null, params, null)
-    JCudaDriver.cuCtxSynchronize()
-
-    C
-  }
-
-  private def elemWiseDouble(operation: Char, A: CuMatrix[Double], B: CuMatrix[Double])(implicit handle: cublasHandle): CuMatrix[Double] = {
-    if (A.rows != B.rows || A.cols != B.cols) {
-      println("Matrices have to be of the same dimensions")
-      return null
-    }
-
-    val C = CuMatrix.create[Double](A.rows, A.cols)
-
-    JCudaDriver.setExceptionsEnabled(true)
-    implicit val dev = CuDevice(0)
-    val ctx = CuContext.ensureContext
-    val module = new CUmodule()
-    val function = new CUfunction()
-    val func_name = if (operation == 'p') "hadamard" else "matrix_sum"
-    JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/elemWiseDouble.ptx")
-    JCudaDriver.cuModuleGetFunction(function, module, func_name)
-
-    // kernel parameters:
-    val ldaArr = Array(A.majorStride, B.majorStride, C.majorStride)
-    val lda = jcuda.Pointer.to(ldaArr)
-    val ldb = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT)
-    val ldc = jcuda.Pointer.to(ldaArr).withByteOffset(jcuda.Sizeof.INT * 2)
-    val dimsArr = Array(A.rows, A.cols)
-    val m = jcuda.Pointer.to(dimsArr)
-    val n = jcuda.Pointer.to(dimsArr).withByteOffset(jcuda.Sizeof.INT)
-
-    val params = jcuda.Pointer.to(
-      m, n,
-      jcuda.Pointer.to(A.offsetPointer), lda,
-      jcuda.Pointer.to(B.offsetPointer), ldb,
-      jcuda.Pointer.to(C.offsetPointer), ldc
-    )
-
-    val nb = 32
-    val gridDim = (A.rows / nb + (if (A.rows % nb == 0) 0 else 1),
-      A.cols / nb + (if (A.cols % nb == 0) 0 else 1),
-      1)
-    val blockDim = (nb, nb, 1)
-
-    JCudaDriver.cuLaunchKernel(function, gridDim._1, gridDim._2, gridDim._3,
-      blockDim._1, blockDim._2, blockDim._3,
-      0, null, params, null)
-    JCudaDriver.cuCtxSynchronize()
-
-    C
-  }
-
-
 
   /*
    * wrapped calls to kernels for zeroing out some parts of matrices.
    */
   def zeroOutFloat(A: CuMatrix[Float], fillMode: Char, includeDiagonal: Boolean = false) {
-    val nb = 32     // most cards can go as high as 1024 (32**2) threads per block
+    val nb = 32
 
     JCudaDriver.setExceptionsEnabled(true)
     implicit val dev = CuDevice(0)
@@ -146,7 +31,6 @@ object CuWrapperMethods {
     val zero_out = new CUfunction()
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
 
-    // once again -- magnled names, I'll have try to figure something out
     val funcName = if (fillMode == 'U') "zerosU" else "zerosL"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
@@ -223,7 +107,7 @@ object CuWrapperMethods {
   }
 
   def zeroOutFloatOffset(A: CuMatrix[Float], Aroff: Int, Acoff: Int, fillMode: Char, includeDiagonal: Boolean = false) {
-    val nb = 32     // most cards can go as high as 1024 (32**2) threads per block
+    val nb = 32
 
     JCudaDriver.setExceptionsEnabled(true)
     implicit val dev = CuDevice(0)
@@ -232,7 +116,6 @@ object CuWrapperMethods {
     val zero_out = new CUfunction()
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
 
-    // once again -- magnled names, I'll have try to figure something out
     val funcName = if (fillMode == 'U') "zerosU" else "zerosL"
     JCudaDriver.cuModuleGetFunction(zero_out, module, funcName)
 
