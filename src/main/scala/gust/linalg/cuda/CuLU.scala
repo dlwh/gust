@@ -28,7 +28,8 @@ import CuWrapperMethods._
 import breeze.linalg._
 
 /**
- * Created by piotrek on 21.05.2014.
+ * Copyright 2014 Piotr Moczurad
+ *
  */
 object CuLU extends UFunc {
 

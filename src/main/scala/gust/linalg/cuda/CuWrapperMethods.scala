@@ -14,7 +14,8 @@ import scala.reflect.ClassTag
 
 
 /**
- * Created by piotrek on 16.06.2014.
+ * Copyright 2014 Piotr Moczurad
+ *
  */
 object CuWrapperMethods {
 

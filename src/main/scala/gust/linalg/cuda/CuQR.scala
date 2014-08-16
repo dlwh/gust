@@ -11,7 +11,8 @@ import gust.linalg.cuda.CuWrapperMethods._
 import com.github.fommil.netlib.LAPACK.{getInstance => lapack}
 
 /**
- * Created by piotrek on 28.06.2014.
+ * Copyright 2014 Piotr Moczurad
+ *
  */
 object CuQR extends UFunc {
 

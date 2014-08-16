@@ -9,7 +9,8 @@ import scala.annotation.tailrec
 
 
 /**
- * Created by piotrek on 05.07.2014.
+ * Copyright 2014 Piotr Moczurad
+ *
  */
 object CuSolve {
 

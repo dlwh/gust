@@ -17,7 +17,8 @@ import spire.syntax.cfor._
 import scala.collection.JavaConversions._
 
 /**
- * Created by Piotr on 2014-07-13.
+ * Copyright 2014 Piotr Moczurad
+ *
  */
 class CLMatrix(val rows: Int, val cols: Int,
                val majorStride: Int,

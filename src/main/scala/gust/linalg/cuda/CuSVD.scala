@@ -15,7 +15,7 @@ import gust.util.cuda
 import cuda._
 
 /**
- * Created by Piotr on 2014-07-07.
+ * Copyright 2014 Piotr Moczurad
  */
 object CuSVD {
 

@@ -11,7 +11,8 @@ import gust.util.cuda._
 import scala.reflect.ClassTag
 
 /**
- * Created by Piotr on 2014-08-14.
+ * Copyright 2014 Piotr Moczurad
+ *
  */
 class CuSparseVector[V](val length: Int,
                         val data: CuMatrix[V],

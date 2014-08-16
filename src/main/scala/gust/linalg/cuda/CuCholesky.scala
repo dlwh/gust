@@ -11,7 +11,8 @@ import com.github.fommil.netlib.LAPACK.{getInstance => lapack}
 import scala.reflect.ClassTag
 
 /**
- * Created by Piotr on 2014-07-16.
+ * Copyright 2014 Piotr Moczurad
+ *
  */
 object CuCholesky {
 

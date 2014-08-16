@@ -12,7 +12,7 @@ import spire.syntax.cfor
 import scala.reflect.ClassTag
 
 /**
- * Created by Piotr on 2014-07-18.
+ * Copyright 2014 Piotr Moczurad
  *
  * NOTE: Matrix is stored in CSC format (following Breeze), but the cusparse API
  * favours the CSR format. This is why the cusparse functions see the matrix as CSR,
