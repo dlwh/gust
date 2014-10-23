@@ -122,17 +122,7 @@ object CuLU extends UFunc {
     // passing the pointer instead of the whole matrix allows us to
     // do C-style pointer manipulation
     def LUSingleBlockFloat(M: Int, N: Int, ADataPointer: CuPointer, pOffset: Int): Unit = {
-      //      val d_A = CuMatrix.create[Float](A.rows, A.cols)
-      //      // creating a copy of the matrix
-      //      //    JCuda.cudaMemcpy2D(d_A.data.toCuPointer, A.majorStride * A.elemSize,
-      //      //      A.data.toCuPointer,
-      //      //      A.majorStride * A.elemSize, A.cols * A.elemSize, A.rows, cudaMemcpyKind.cudaMemcpyDeviceToDevice)
-      //      d_A := A
-
-      //      val M = A.rows
-      //      val N = A.cols
       val minDim = if (M < N) M else N
-      //val ADataPointer = d_A.offsetPointer
       val intRes = Array(0)
       val intResPtr = jcuda.Pointer.to(intRes)
       val A_ii = Array(0.0f)
@@ -145,24 +135,18 @@ object CuLU extends UFunc {
 
         val pivotRow = i + intRes(0) - 1 // -1 because of cublas' 1-based indexing
         val ip1 = i + 1
-        P(i + pOffset) = pivotRow + pOffset
+        P(i + pOffset) = pivotRow
 
         if (pivotRow != i) {
-          // If you put N instead of A.cols, you have to uncomment the lines in LUBlocked
           JCublas2.cublasSswap(handle, N, ADataPointer.withByteOffset(d_A.linearIndex(pivotRow, 0) * es),
             lda, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), lda)
         }
 
-        JCuda.cudaMemcpy2D(AiiPtr, d_A.majorStride * d_A.elemSize,
-          ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
-          d_A.majorStride * es, d_A.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
-        // this one works as well:
-        //      curesult =  JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
-        //                               1, AiiPtr, 1)
+        JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+                                 1, AiiPtr, 1)
 
         if (Math.abs(A_ii(0)) < 1e-20) {
-          println("Matrix is singular")
-          return
+          throw new MatrixSingularException
         }
 
         if (ip1 < M) {
@@ -190,20 +174,20 @@ object CuLU extends UFunc {
       val minSize = if (M < N) M else N
       val ADataPointer = d_A.offsetPointer
 
-      if (blockSize >= minSize) {
+      if (blockSize >= minSize || blockSize == 1) {
         LUSingleBlockFloat(M, N, ADataPointer, 0)
         return
       }
 
       cfor(0)(_ < minSize, _ + blockSize) { i => {
+
         val realBlockSize = if (minSize - i < blockSize) minSize - i else blockSize
         LUSingleBlockFloat(M - i, realBlockSize, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es), i)
 
-        // uncomment these lines if necessary
         val mm = if (M < i + realBlockSize) M else i + realBlockSize
 
-        cfor(i)(_ < mm - 1, _ + 1) { p => {
-          // P(p) = P(p) + i // ???
+        cfor(i)(_ < mm , _ + 1) { p => {
+          P(p) = P(p) + i // ???
           if (P(p) != p) {
             JCublas2.cublasSswap(handle, i, ADataPointer.withByteOffset(d_A.linearIndex(p, 0) * es),
               lda, ADataPointer.withByteOffset(d_A.linearIndex(P(p), 0) * es), lda)
@@ -286,7 +270,7 @@ object CuLU extends UFunc {
 
         val pivotRow = i + intRes(0) - 1 // -1 because of cublas' 1-based indexing
         val ip1 = i + 1
-        P(i + pOffset) = pivotRow + pOffset
+        P(i + pOffset) = pivotRow
 
         if (pivotRow != i) {
           // A.cols <-> N + uncomment in LUBlocked
@@ -294,16 +278,15 @@ object CuLU extends UFunc {
             lda, ADataPointer.withByteOffset(d_A.linearIndex(i, 0) * es), lda)
         }
 
-        JCuda.cudaMemcpy2D(AiiPtr, d_A.majorStride * d_A.elemSize,
-          ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
-          d_A.majorStride * es, d_A.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
-        // this one works as well:
-        //      curesult =  JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
-        //                               1, AiiPtr, 1)
+//        JCuda.cudaMemcpy2D(AiiPtr, d_A.majorStride * d_A.elemSize,
+//          ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+//          d_A.majorStride * es, d_A.elemSize, 1, cudaMemcpyKind.cudaMemcpyDeviceToHost)
+//        // this one works as well:
+        JCublas2.cublasGetVector(1, es.toInt, ADataPointer.withByteOffset(d_A.linearIndex(i, i) * es),
+                                       1, AiiPtr, 1)
 
         if (Math.abs(A_ii(0)) < 1e-20) {
-          println("Matrix is singular")
-          return
+          throw new MatrixSingularException
         }
 
         if (ip1 < M) {
@@ -331,7 +314,7 @@ object CuLU extends UFunc {
       val minSize = if (M < N) M else N
       val ADataPointer = d_A.offsetPointer
 
-      if (blockSize >= minSize) {
+      if (blockSize >= minSize || blockSize == 1) {
         LUSingleBlockDouble(M, N, ADataPointer, 0)
         return
       }
@@ -342,8 +325,8 @@ object CuLU extends UFunc {
 
         val mm = if (M < i + realBlockSize) M else i + realBlockSize
 
-        cfor(i)(_ < mm - 1, _ + 1) { p => {
-          //P(p) = P(p) + i // ???
+        cfor(i)(_ < mm , _ + 1) { p => {
+          P(p) = P(p) + i // ???
           if (P(p) != p) {
             JCublas2.cublasDswap(handle, i, ADataPointer.withByteOffset(d_A.linearIndex(p, 0) * es),
               lda, ADataPointer.withByteOffset(d_A.linearIndex(P(p), 0) * es), lda)
