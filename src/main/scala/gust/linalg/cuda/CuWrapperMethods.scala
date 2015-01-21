@@ -977,23 +977,25 @@ object CuWrapperMethods {
     res
   }
 
-  def sparseDgemv(AS: CuSparseMatrix[Double], b: CuMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
+  def sparseDgemv(A: CuSparseMatrix[Double], b: CuMatrix[Double])(implicit sparseHandle: cusparseHandle, blasHandle: cublasHandle) = {
     // we cannot do a vector*matrix instead of matrix*vector, so we have to transpose:
-    val transA = if (AS.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
-    val A = AS.transpose
+    // cusparse is CSR-based, while CuSparseMatrix is CSC.
+    val transA = if (!A.isTranspose) cusparseOperation.CUSPARSE_OPERATION_TRANSPOSE else cusparseOperation.CUSPARSE_OPERATION_NON_TRANSPOSE
 
-    val m = AS.rows
-    val n = AS.cols // rows and cols of the original matrix (without the transpose)
+    val _A = if(A.isTranspose) A else A.t
+
+    val m = _A.rows
+    val n = _A.cols // rows and cols of the original matrix (without the transpose)
 
     require(b.cols == 1, "b must be a vector")
-    require(A.cols == b.rows, s"Dimension mismatch: A.rows = ${A.rows}, b.length = ${b.cols}")
+    require(A.cols == b.rows, s"Dimension mismatch: A.cols = ${A.cols}, b.length = ${b.rows}")
 
     val res = CuMatrix.create[Double](m, 1)
     val zero = jcuda.Pointer.to(Array(0.0))
     val one = jcuda.Pointer.to(Array(1.0))
 
     JCusparse2.cusparseDcsrmv(sparseHandle, transA, m, n, A.nnz, one,
-      A.descr, A.cscVal.offsetPointer, A.cscColPtr.offsetPointer, A.cscRowInd.offsetPointer,
+      _A.descr, _A.cscVal.offsetPointer, _A.cscColPtr.offsetPointer, _A.cscRowInd.offsetPointer,
       b.offsetPointer, zero, res.offsetPointer)
 
     res

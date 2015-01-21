@@ -932,6 +932,7 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
         val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
         var acc = if (numExchangedRows % 2 == 1) -1.0f else 1.0f
         val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+        println(acc, diagProduct)
 
         acc * diagProduct
       }
@@ -942,11 +943,16 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
       def apply(_a: CuMatrix[Double]) = {
         val (m: CuMatrix[Double], ipiv: Array[Int]) = CuLU.LUDoubleSimplePivot(_a)
 
+
         val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
         var acc = if (numExchangedRows % 2 == 1) -1.0 else 1.0
         val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+        println(acc, diagProduct)
 
-        acc * diagProduct
+        val a = acc * diagProduct
+        val b = acc * product(diag(m.toDense))
+        println(a, b)
+        b
       }
     }
 

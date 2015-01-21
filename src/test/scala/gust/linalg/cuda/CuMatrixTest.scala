@@ -321,6 +321,17 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   }
 
+  test("lu") {  (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(60, 60), Float)
+    val cumat = CuMatrix.fromDense(rand)
+    val (p, l, u) = LU(cumat)
+    println("ZZZ" + max(abs((p * cumat) - (l * u))))
+
+
+
+  }
+
   test("trace") { (_handle: cublasHandle) =>
     implicit val handle = _handle
     val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
@@ -331,9 +342,15 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   test("det") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(60, 60), Float)
+    val lu: (DenseMatrix[Double], Array[Int]) = LU(rand)
+    val d1 = convert(lu._1, Float)
     val cumat = CuMatrix.fromDense(rand)
-    assert(Math.abs(det(rand) - det(cumat)) < 1e-5)
+    val lu2  =  CuLU.LUFloatSimplePivot(cumat)
+    val d2 = lu2._1.toDense
+    println(lu._2.deep + " " + lu2._2.deep)
+    println(max(abs(d1 - d2)))
+    assert(Math.abs(det(rand) - det(cumat)) < 1e-5, det(rand) + " " + det(cumat))
   }
 
 
