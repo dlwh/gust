@@ -18,7 +18,7 @@ import breeze.macros.arityize
 package object cuda extends SerializableLogging {
   type CuPointer = jcuda.Pointer
 
-  def allocate[V:ClassTag](size: Long) = {
+  def allocate[V:ClassTag](size: Long): Pointer[V] = {
     val ptr = new CuPointer()
     val tpe = implicitly[ClassTag[V]].runtimeClass
     val io = PointerIO.getInstance[V](tpe)
@@ -29,7 +29,7 @@ package object cuda extends SerializableLogging {
     }
 
     JCuda.cudaMalloc(ptr, size * io.getTargetSize)
-    Pointer.pointerToAddress(nativePtr(ptr), size, io, DeviceFreeReleaser)
+    Pointer.pointerToAddress(nativePtr(ptr), size, DeviceFreeReleaser).as(io)
   }
 
   def hasFreeMemory(size: Long): Boolean = {
@@ -45,12 +45,12 @@ package object cuda extends SerializableLogging {
     ok
   }
 
-  def allocateHost[V:ClassTag](size: Long) = {
+  def allocateHost[V:ClassTag](size: Long):Pointer[V] = {
     val ptr = new CuPointer()
     val tpe = implicitly[ClassTag[V]].runtimeClass
     val io = PointerIO.getInstance[V](tpe)
     JCuda.cudaMallocHost(ptr, size * io.getTargetSize)
-    Pointer.pointerToAddress(nativePtr(ptr), size * io.getTargetSize, io, HostFreeReleaser)
+    Pointer.pointerToAddress(nativePtr(ptr), size * io.getTargetSize, HostFreeReleaser).as(io)
   }
 
   def cuPointerToArray[T](array: Array[T]): jcuda.Pointer = array match {
@@ -91,7 +91,7 @@ package object cuda extends SerializableLogging {
 
 
   def cupointerToPointer[T](pointer: CuPointer, size: Int, io: PointerIO[T]):Pointer[T] = {
-    Pointer.pointerToAddress(nativePtr(pointer), size * io.getTargetSize, io, NoReleaser)
+    Pointer.pointerToAddress(nativePtr(pointer), size * io.getTargetSize, NoReleaser).as(io)
   }
 
 
