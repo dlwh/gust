@@ -4,7 +4,7 @@ name := "gust"
 
 version := "0.1-SNAPSHOT"
 
-scalaVersion := "2.11.1"
+scalaVersion := "2.11.4"
 
 libraryDependencies ++= Seq(
   "junit" % "junit" % "4.5" % "test",
@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.1.3" % "test",
   "com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
   "org.scalacheck" %% "scalacheck" % "1.11.3" % "test",
-   "org.scala-lang.modules" %% "scala-xml" % "1.0.2" % "test",
+   //"org.scala-lang.modules" %% "scala-xml" % "1.0.2" % "test",
   "org.scalanlp" % "jcublas2" % "0.5.5",
   "org.scalanlp" % "jcurand" % "0.5.5"
 )
