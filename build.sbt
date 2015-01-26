@@ -2,7 +2,7 @@ organization := "org.scalanlp"
 
 name := "gust"
 
-version := "0.1-SNAPSHOT"
+version := "0.1"
 
 scalaVersion := "2.11.5"
 
@@ -10,8 +10,8 @@ crossScalaVersions  := Seq("2.11.5", "2.10.4")
 
 libraryDependencies ++= Seq(
   "junit" % "junit" % "4.5" % "test",
-  "org.scalanlp" %% "breeze-macros" % "0.3.1" % "compile",
-  "org.scalanlp" %% "breeze" % "0.9",
+  "org.scalanlp" %% "breeze-macros" % "0.11-M0",
+  "org.scalanlp" %% "breeze" % "0.11-M0",
   "org.scalatest" %% "scalatest" % "2.1.3" % "test",
   //"com.nativelibs4java" % "javacl" % "1.0-SNAPSHOT",
    "com.nativelibs4java" % "bridj" % "0.6.2",
@@ -40,3 +40,37 @@ resolvers ++= Seq(
 testOptions in Test += Tests.Argument("-oDF")
 
 addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.0-M1" cross CrossVersion.full)
+
+publishMavenStyle := true
+
+publishTo <<= version { (v: String) =>
+  val nexus = "https://oss.sonatype.org/"
+  if (v.trim.endsWith("SNAPSHOT"))
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+}
+
+publishArtifact in Test := false
+
+pomExtra := (
+  <url>http://scalanlp.org/</url>
+  <licenses>
+    <license>
+      <name>Apache 2</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <url>git@github.com:dlwh/gust.git</url>
+    <connection>scm:git:git@github.com:dlwh/gust.git</connection>
+  </scm>
+  <developers>
+    <developer>
+      <id>dlwh</id>
+      <name>David Hall</name>
+      <url>http://www.dlwh.org/</url>
+    </developer>
+  </developers>)
+
