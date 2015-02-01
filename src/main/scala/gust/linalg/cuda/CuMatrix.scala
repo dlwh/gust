@@ -1004,6 +1004,7 @@ trait CuMatrixFuns extends CuMatrixKernels { this: CuMatrix.type =>
   implicit def sqrtImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[sqrt.type]("sqrt")
   implicit def rintImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[rint.type]("rint")
 //  implicit def truncImpl[T](implicit broker: CuMapKernels[T]) =  broker.implFor[trunc.type]("trunc")
+  implicit def sigmoidImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[sigmoid.type]("sigmoid")
 
   implicit def acosIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[acos.type]("acos")
   implicit def asinIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[asin.type]("asin")
