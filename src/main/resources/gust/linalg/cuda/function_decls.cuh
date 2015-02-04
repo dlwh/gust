@@ -1,4 +1,5 @@
 __device__ inline TYPE negate(TYPE a) { return -a;}
+__device__ inline TYPE sigmoid(TYPE a) { return 1.0f / (1.0f + exp(-a)); }
 
 MAP_FUN_1(negate, TYPE)
 MAP_FUN_1(acos, TYPE)
@@ -48,6 +49,7 @@ MAP_FUN_1(tgamma, TYPE)
 MAP_FUN_1(trunc, TYPE)
 MAP_FUN_1(y0, TYPE)
 MAP_FUN_1(y1, TYPE)
+MAP_FUN_1(sigmoid, TYPE)
 
 
 __device__ inline TYPE add(TYPE a, TYPE b) { return a + b; }
