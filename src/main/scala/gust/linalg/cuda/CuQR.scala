@@ -183,7 +183,7 @@ object CuQR extends UFunc {
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUFloat.ptx")
 
     val enfLU = new CUfunction()
-    JCudaDriver.cuModuleGetFunction(enfLU, module, "_Z9enforceLUPfi")
+    JCudaDriver.cuModuleGetFunction(enfLU, module, "enforceLU")
 
     // we don't need to upload anything onto the GPU -- it's already there
     // not really sure about the 'm' here
@@ -304,7 +304,7 @@ object CuQR extends UFunc {
     JCudaDriver.cuModuleLoad(module, "src/main/resources/gust/linalg/cuda/enforceLUDouble.ptx")
 
     val enfLU = new CUfunction()
-    JCudaDriver.cuModuleGetFunction(enfLU, module, "_Z9enforceLUPdi")
+    JCudaDriver.cuModuleGetFunction(enfLU, module, "enforceLU")
 
     // we don't need to upload anything onto the GPU -- it's already there
     cfor(0)(_ < n, _ + nb) { i => {

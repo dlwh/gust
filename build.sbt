@@ -11,8 +11,6 @@ crossScalaVersions  := Seq("2.11.5", "2.10.4")
 libraryDependencies ++= Seq(
   "junit" % "junit" % "4.5" % "test",
   "org.scalanlp" % "jcuda" % "0.5.5",
-  "org.scalanlp" %% "breeze-macros" % "0.3.1" % "compile",
-  "org.scalanlp" %% "breeze" % "0.9",
   "org.scalanlp" %% "breeze-macros" % "0.11-M0",
   "org.scalanlp" %% "breeze" % "0.11-M0",
   "org.scalatest" %% "scalatest" % "2.1.3" % "test",

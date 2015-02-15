@@ -8,7 +8,6 @@ import breeze.linalg.{DenseVector, DenseMatrix, LU, qr}
 
 /**
  * Created by piotrek on 31.05.2014.
- */
 
 object CuMethodsTest
   extends PerformanceTest.Quickbenchmark {
@@ -166,3 +165,4 @@ object CuMethodsTest
 //    }
 //  }
 }
+ */

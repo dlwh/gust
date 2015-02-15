@@ -1,5 +1,6 @@
 package gust.linalg.cuda
 
+import breeze.linalg.qr.QR
 import org.scalatest.{Outcome, BeforeAndAfterEach, FunSuite}
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import breeze.linalg._
@@ -333,44 +334,42 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   }
 
-  test("lu") {  (_handle: cublasHandle) =>
-    implicit val handle = _handle
-    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(60, 60), Float)
-    val cumat = CuMatrix.fromDense(rand)
-    val (p, l, u) = LU(cumat)
-    println("ZZZ" + max(abs((p * cumat) - (l * u))))
-
-
-
-  }
-
   test("trace") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(40, 40), Float)
     val cumat = CuMatrix.fromDense(rand)
 
     assert(Math.abs(trace(rand) - trace(cumat)) < 1e-5)
   }
 
-  test("det") { (_handle: cublasHandle) =>
-    implicit val handle = _handle
-    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(60, 60), Float)
-    val lu: (DenseMatrix[Double], Array[Int]) = LU(rand)
-    val d1 = convert(lu._1, Float)
-    val cumat = CuMatrix.fromDense(rand)
-    val lu2  =  CuLU.LUFloatSimplePivot(cumat)
-    val d2 = lu2._1.toDense
-    println(lu._2.deep + " " + lu2._2.deep)
-    println(max(abs(d1 - d2)))
-    assert(Math.abs(det(rand) - det(cumat)) < 1e-5, det(rand) + " " + det(cumat))
-  }
-
 
   test("cond") { (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val rand: DenseMatrix[Double] = convert(DenseMatrix.rand(40, 40), Double)
-    val cumat: CuMatrix[Double] = CuMatrix.fromDense(rand)
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(40, 40), Float)
+    val cumat: CuMatrix[Float] = CuMatrix.fromDense(rand)
 
-    assert(Math.abs(cond(rand) - cond(cumat)) < 1e-5)
+    val denseCond: Double = cond(convert(rand, Double))
+    assert(Math.abs(denseCond - cond(cumat)) < 1e-3 * denseCond.abs, s"${denseCond} ${cond(cumat)}")
   }
+
+  test("qr") {  (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(40, 40), Float)
+    val cumat: CuMatrix[Float] = CuMatrix.fromDense(rand)
+
+    val QR(q, r) = qr(cumat)
+    assert(max(abs(q * r - cumat)) < 1E-4)
+
+  }
+
+//  test("chol") {  (_handle: cublasHandle) =>
+//    implicit val handle = _handle
+//    val rand = convert(DenseMatrix.rand[Double](60, 60), Double)
+//    rand += rand.t
+//    diag(rand) += 1E-4f
+//    val cumat: CuMatrix[Double] = CuMatrix.fromDense(rand)
+//
+//    val c = cholesky(cumat).toDense
+//    assert(max(abs(c * c.t - cumat.toDense)) < 1E-4)
+//  }
 }

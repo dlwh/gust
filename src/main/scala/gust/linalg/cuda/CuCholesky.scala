@@ -110,7 +110,7 @@ object CuCholesky {
      * TODO perhaps it would be better to normalize the residuals using A's norm or something like that
      * this threshold is a first guess and may not make any sense at all
      */
-    if (residualFloat(A, d_L, d_L.t) > 1e-7)
+    if (residualFloat(A, d_L, d_L.t) > 1e-3)
       throw new NotConvergedException(NotConvergedException.Divergence, "Matrix is not positive-definite")
 
     d_L
@@ -192,7 +192,7 @@ object CuCholesky {
     val d_L = CuMatrix.fromDense(cpu_mat)
     zeroOutDouble(d_L, 'U')
 
-    if (residualDouble(A, d_L, d_L.t) > 1e-7)
+    if (residualDouble(A, d_L, d_L.t) > 1e-4)
       throw new NotConvergedException(NotConvergedException.Divergence, "Matrix is not positive-definite")
 
     d_L

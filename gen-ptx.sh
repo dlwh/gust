@@ -17,3 +17,4 @@ nvcc $NVCC_OPTS -D TYPE=float -I src/main/resources/gust/linalg/cuda/ --ptx src/
 
 nvcc $NVCC_OPTS -D TYPE=double -I src/main/resources/gust/linalg/cuda/ --ptx src/main/resources/gust/linalg/cuda/reduceFloat.cu -o src/main/resources/gust/linalg/cuda/reduceFloat.ptx
 nvcc $NVCC_OPTS -D TYPE=float -I src/main/resources/gust/linalg/cuda/ --ptx src/main/resources/gust/linalg/cuda/reduceDouble.cu -o src/main/resources/gust/linalg/cuda/reduceDouble.ptx
+

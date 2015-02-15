@@ -3,6 +3,7 @@ package gust.linalg.cuda
 
 import breeze.linalg.operators._
 import breeze.linalg._
+import breeze.linalg.qr.QR
 import breeze.linalg.support.{CanCopy, CanCollapseAxis, CanTranspose, CanSlice2}
 import org.bridj.Pointer
 
@@ -836,40 +837,43 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
   /**
    * LU factorization with pivoting: the returned matrices are (P, L, U) // in this order
    */
-  implicit def canLUFloat(implicit blas: cublasHandle): LU.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] =
-    new LU.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] {
-      def apply(_a: CuMatrix[Float]) = {
-        val (d_LU, d_P) = CuLU.LUFloat(_a)
-        val (d_L, d_U) = CuLU.LUFactorsFloat(d_LU)
-        (d_P, d_L, d_U)
-      }
-    }
+//  implicit def canLUFloat(implicit blas: cublasHandle): LU.Impl[CuMatrix[Float], (CuMatrix[Float], Array[Int])] =
+//    new LU.Impl[CuMatrix[Float], (CuMatrix[Float], Array[Int])] {
+//      def apply(_a: CuMatrix[Float]) = {
+//        val res@(d_LU, d_P) = CuLU.LUFloatSimplePivot(_a)
+//        val (d_L, d_U) = CuLU.LUFactorsFloat(d_LU)
+//        (d_P, d_L, d_U)
+//        res
+//      }
+//    }
 
-  implicit def canLUDouble(implicit blas: cublasHandle): LU.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] =
-    new LU.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
-      def apply(_a: CuMatrix[Double]) = {
-        val (d_LU, d_P) = CuLU.LUDouble(_a)
-        val (d_L, d_U) = CuLU.LUFactorsDouble(d_LU)
-        (d_P, d_L, d_U)
-      }
-    }
+//  implicit def canLUDouble(implicit blas: cublasHandle): LU.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] =
+//    new LU.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
+//      def apply(_a: CuMatrix[Double]) = {
+//        val (d_LU, d_P) = CuLU.LUDouble(_a)
+//        val (d_L, d_U) = CuLU.LUFactorsDouble(d_LU)
+//        (d_P, d_L, d_U)
+//      }
+//    }
 
   /**
    * QR factorization
    */
-  implicit def canQRDouble(implicit blas: cublasHandle): qr.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float])] =
-    new qr.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float])] {
+  implicit def canQRDouble(implicit blas: cublasHandle): qr.Impl[CuMatrix[Float], QR[CuMatrix[Float]]] =
+    new qr.Impl[CuMatrix[Float], QR[CuMatrix[Float]]] {
       def apply(_a: CuMatrix[Float]) = {
         val (d_A, tau) = CuQR.QRFloatMN(_a)
-        CuQR.QRFactorsFloat(d_A, tau)
+        val (q, r) = CuQR.QRFactorsFloat(d_A, tau)
+        QR(q, r)
       }
     }
 
-  implicit def canQRFloat(implicit blas: cublasHandle): qr.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double])] =
-    new qr.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double])]{
+  implicit def canQRFloat(implicit blas: cublasHandle): qr.Impl[CuMatrix[Double],  QR[CuMatrix[Double]]] =
+    new qr.Impl[CuMatrix[Double], QR[CuMatrix[Double]]] {
       def apply(_a: CuMatrix[Double]) = {
         val (d_A, tau) = CuQR.QRDoubleMN(_a)
-        CuQR.QRFactorsDouble(d_A, tau)
+        val (q, r) = CuQR.QRFactorsDouble(d_A, tau)
+        QR(q, r)
       }
     }
 
@@ -924,37 +928,38 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
       }
     }
 
-  implicit def canDetUsingLUFloat(implicit handle: cublasHandle): det.Impl[CuMatrix[Float], Float] =
-    new det.Impl[CuMatrix[Float], Float] {
-      def apply(_a: CuMatrix[Float]) = {
-        val (m: CuMatrix[Float], ipiv: Array[Int]) = CuLU.LUFloatSimplePivot(_a)
+//  implicit def canDetUsingLUFloat(implicit handle: cublasHandle): det.Impl[CuMatrix[Float], Float] =
+//    new det.Impl[CuMatrix[Float], Float] {
+//      def apply(_a: CuMatrix[Float]) = {
+//        val (m: CuMatrix[Float], ipiv: Array[Int]) = CuLU.LUFloatSimplePivot(_a)
+//        println(m.toDense, ipiv.toIndexedSeq)
+//
+//        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
+//        var acc = if (numExchangedRows % 2 == 1) -1.0f else 1.0f
+//        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+//        println(acc, diagProduct)
+//
+//        acc * diagProduct
+//      }
+//    }
 
-        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
-        var acc = if (numExchangedRows % 2 == 1) -1.0f else 1.0f
-        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
-        println(acc, diagProduct)
-
-        acc * diagProduct
-      }
-    }
-
-  implicit def canDetUsingLUDouble(implicit handle: cublasHandle): det.Impl[CuMatrix[Double], Double] =
-    new det.Impl[CuMatrix[Double], Double] {
-      def apply(_a: CuMatrix[Double]) = {
-        val (m: CuMatrix[Double], ipiv: Array[Int]) = CuLU.LUDoubleSimplePivot(_a)
-
-
-        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
-        var acc = if (numExchangedRows % 2 == 1) -1.0 else 1.0
-        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
-        println(acc, diagProduct)
-
-        val a = acc * diagProduct
-        val b = acc * product(diag(m.toDense))
-        println(a, b)
-        b
-      }
-    }
+//  implicit def canDetUsingLUDouble(implicit handle: cublasHandle): det.Impl[CuMatrix[Double], Double] =
+//    new det.Impl[CuMatrix[Double], Double] {
+//      def apply(_a: CuMatrix[Double]) = {
+//        val (m: CuMatrix[Double], ipiv: Array[Int]) = CuLU.LUDoubleSimplePivot(_a)
+//
+//
+//        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
+//        var acc = if (numExchangedRows % 2 == 1) -1.0 else 1.0
+//        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+//        println(acc, diagProduct)
+//
+//        val a = acc * diagProduct
+//        val b = acc * product(diag(m.toDense))
+//        println(a, b)
+//        b
+//      }
+//    }
 
   implicit def canCondUsingSVDFloat(implicit handle: cublasHandle): cond.Impl[CuMatrix[Float], Float] =
     new cond.Impl[CuMatrix[Float], Float] {

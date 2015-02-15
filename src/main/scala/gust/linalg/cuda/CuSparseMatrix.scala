@@ -3,7 +3,6 @@ package gust.linalg.cuda
 import breeze.linalg.operators.{OpSolveMatrixBy, OpMulMatrix, OpSub, OpAdd}
 import breeze.linalg.support.CanTranspose
 import breeze.linalg.{cholesky, LU, NumericOps, DenseMatrix}
-import com.nativelibs4java.opencl.{CLQueue, CLContext}
 import gust.util.cuda
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import jcuda.jcusparse._
