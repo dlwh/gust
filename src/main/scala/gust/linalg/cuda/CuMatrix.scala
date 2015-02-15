@@ -3,7 +3,7 @@ package gust.linalg.cuda
 
 import breeze.linalg.operators._
 import breeze.linalg._
-import breeze.linalg.support.{CanCollapseAxis, CanTranspose, CanSlice2}
+import breeze.linalg.support.{CanCopy, CanCollapseAxis, CanTranspose, CanSlice2}
 import org.bridj.Pointer
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
@@ -15,7 +15,7 @@ import jcuda.jcurand.{curandRngType, curandGenerator}
 import breeze.math.{Semiring, Ring}
 import breeze.numerics._
 import breeze.generic.UFunc
-import breeze.generic.UFunc.InPlaceImpl2
+import breeze.generic.UFunc.{UImpl2, InPlaceImpl2}
 import breeze.stats.distributions.{Rand, RandBasis}
 import scala.reflect._
 
@@ -109,7 +109,7 @@ class CuMatrix[V](val rows: Int,
     require(b.cols == this.cols, "Matrices must have same number of columns")
 
     val aPtr = data.toCuPointer.withByteOffset(offset * elemSize)
-    val bPtr = b.data.toCuPointer.withByteOffset(offset * elemSize)
+    val bPtr = b.data.toCuPointer.withByteOffset(b.offset * elemSize)
 
     val (width, height) = if(isTranspose) (cols, rows) else (rows, cols)
 
@@ -1002,13 +1002,13 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
 
   implicit def CuMatrixFAddCuMatrixF(implicit blas: cublasHandle): OpAdd.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] = new OpAdd.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
     def apply(a : CuMatrix[Float], b : CuMatrix[Float]): CuMatrix[Float] = {
+      require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
       if(a.majorStride < math.max(if(a.isTranspose) a.cols else a.rows, 1)
         || b.majorStride < math.max(if(b.isTranspose) b.cols else b.rows, 1))  {
-        addImpl[Float].apply(a, b)
+        addImpl[Float](kernelsFloat).apply(a, b)
       } else {
 
-        require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
-        require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
         val rv = CuMatrix.zeros[Float](a.rows, b.cols)
 
         if(a.rows == 0 || b.rows == 0 || a.cols == 0 || b.cols == 0) return rv
@@ -1028,14 +1028,12 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
 
   implicit def CuMatrixFSubCuMatrixF(implicit blas: cublasHandle): OpSub.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] = new OpSub.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
     def apply(a : CuMatrix[Float], b : CuMatrix[Float]): CuMatrix[Float] = {
+      require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
       if(a.majorStride < math.max(if(a.isTranspose) a.cols else a.rows, 1)
         || b.majorStride < math.max(if(b.isTranspose) b.cols else b.rows, 1))  {
         subImpl[Float].apply(a, b)
       } else {
-
-
-        require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
-        require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
         val rv = CuMatrix.zeros[Float](a.rows, b.cols)
 
         JCublas2.cublasSgeam(blas, transposeOp(a), transposeOp(b),
@@ -1050,40 +1048,54 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
   }
 
   implicit def CuMatrixFAddCuMatrixFInPlace(implicit blas: cublasHandle): OpAdd.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] = new OpAdd.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] {
-    def apply(_a : CuMatrix[Float], _b : CuMatrix[Float]):Unit = {
-      if(_a.isTranspose) apply(_a.t, _b.t)
-      else {
-        require(_a.rows == _b.rows, s"Row dimension mismatch for addition: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
-        require(_a.cols == _b.cols, s"Column dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
-        require(!_a.isTranspose)
-        if (_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return
+    def apply(a : CuMatrix[Float], b : CuMatrix[Float]):Unit = {
+      require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      if(a.isTranspose) {
+        apply(a.t, b.t)
+      } else if(a.majorStride < math.max(if(a.isTranspose) a.cols else a.rows, 1)
+        || b.majorStride < math.max(if(b.isTranspose) b.cols else b.rows, 1))  {
+        addIntoImpl[Float].apply(a, b)
+      } else {
+        require(!a.isTranspose)
+        if (a.rows == 0 || b.rows == 0 || a.cols == 0 || b.cols == 0) return
 
-        JCublas2.cublasSgeam(blas, cublasOperation.CUBLAS_OP_N, transposeOp(_b),
-          _a.rows, _a.cols,
-          hostOne, _a.data.toCuPointer.withByteOffset(_a.offset * _a.elemSize), _a.majorStride,
+        JCublas2.cublasSgeam(blas, cublasOperation.CUBLAS_OP_N, transposeOp(b),
+          a.rows, a.cols,
+          hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
           hostOne,
-          _b.data.toCuPointer.withByteOffset(_b.offset * _b.elemSize), _b.majorStride,
-          _a.data.toCuPointer, _a.rows)
+          b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
+          a.data.toCuPointer, a.rows)
       }
     }
   }
 
   implicit def CuMatrixFSubCuMatrixFInPlace(implicit blas: cublasHandle): OpSub.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] = new OpSub.InPlaceImpl2[CuMatrix[Float], CuMatrix[Float]] {
-    def apply(_a : CuMatrix[Float], _b : CuMatrix[Float]):Unit = {
-      if(_a.isTranspose) apply(_a.t, _b.t)
-      else {
-        require(_a.rows == _b.rows, s"Row dimension mismatch for addition: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
-        require(_a.cols == _b.cols, s"Column dimension mismatch: ${(_a.rows, _a.cols)} ${(_b.rows, _b.cols)}")
-        require(!_a.isTranspose)
-        if (_a.rows == 0 || _b.rows == 0 || _a.cols == 0 || _b.cols == 0) return
+    def apply(a : CuMatrix[Float], b : CuMatrix[Float]):Unit = {
+      require(a.rows == b.rows, s"Row dimension mismatch for addition: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      require(a.cols == b.cols, s"Column dimension mismatch: ${(a.rows, a.cols)} ${(b.rows, b.cols)}")
+      if(a.isTranspose)  {
+        apply(a.t, b.t)
+      } else if(a.majorStride < math.max(if(a.isTranspose) a.cols else a.rows, 1)
+          || b.majorStride < math.max(if(b.isTranspose) b.cols else b.rows, 1))  {
+          addIntoImpl[Float].apply(a, b)
+      } else {
+        require(!a.isTranspose)
+        if (a.rows == 0 || b.rows == 0 || a.cols == 0 || b.cols == 0) return
 
-        JCublas2.cublasSgeam(blas, cublasOperation.CUBLAS_OP_N, transposeOp(_b),
-          _a.rows, _a.cols,
-          hostOne, _a.data.toCuPointer.withByteOffset(_a.offset * _a.elemSize), _a.majorStride,
+        JCublas2.cublasSgeam(blas, cublasOperation.CUBLAS_OP_N, transposeOp(b),
+          a.rows, a.cols,
+          hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
           hostNegativeOne,
-          _b.data.toCuPointer.withByteOffset(_b.offset * _b.elemSize), _b.majorStride,
-          _a.data.toCuPointer, _a.rows)
+          b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
+          a.data.toCuPointer, a.rows)
       }
+    }
+  }
+
+  implicit def canCopy[T](implicit ct: ClassTag[T], op: OpSet.InPlaceImpl2[CuMatrix[T],CuMatrix[T]]):CanCopy[CuMatrix[T]] = new CanCopy[CuMatrix[T]] {
+    override def apply(t: CuMatrix[T]): CuMatrix[T] = {
+      CuMatrix.zeros[T](t.rows, t.cols) := t
     }
   }
 }
@@ -1296,6 +1308,7 @@ trait CuMatrixFuns extends CuMatrixKernels { this: CuMatrix.type =>
   implicit def sqrtImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[sqrt.type]("sqrt")
   implicit def rintImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[rint.type]("rint")
 //  implicit def truncImpl[T](implicit broker: CuMapKernels[T]) =  broker.implFor[trunc.type]("trunc")
+  implicit def sigmoidImpl[T](implicit broker: KernelBroker[T]) =  broker.implFor[sigmoid.type]("sigmoid")
 
   implicit def acosIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[acos.type]("acos")
   implicit def asinIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[asin.type]("asin")
@@ -1336,7 +1349,7 @@ trait CuMatrixFuns extends CuMatrixKernels { this: CuMatrix.type =>
   implicit def rintIntoImpl[T](implicit broker: KernelBroker[T]) =  broker.inPlaceImplFor[rint.type]("rint")
 
 
-  implicit def addImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpAdd.type]("add")
+  implicit def addImpl[T](implicit broker: KernelBroker[T]): UImpl2[OpAdd.type, CuMatrix[T], CuMatrix[T], CuMatrix[T]] =  broker.impl2For[OpAdd.type]("add")
   implicit def subImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpSub.type]("sub")
   implicit def mulImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpMulScalar.type]("mul")
   implicit def divImpl[T](implicit broker: KernelBroker[T]) =  broker.impl2For[OpDiv.type]("div")
@@ -1421,6 +1434,20 @@ trait CuMatrixFuns extends CuMatrixKernels { this: CuMatrix.type =>
 
         // trick: if the major stride is 0, then we iterate over the same column over and over again
         op(new CuMatrix(v.rows, v.cols, v2.data, v2.offset, 0, v2.isTranspose), v)
+      }
+    }
+  }
+
+  implicit def broadcastLHSColUpdateOpFromBinOp[Func, T](implicit op: UFunc.InPlaceImpl2[Func, CuMatrix[T], CuMatrix[T]]):UFunc.InPlaceImpl2[Func, BroadcastedColumns[CuMatrix[T], CuMatrix[T]], CuMatrix[T]] = {
+    new UFunc.InPlaceImpl2[Func, BroadcastedColumns[CuMatrix[T], CuMatrix[T]], CuMatrix[T]] {
+      override def apply(vb: BroadcastedColumns[CuMatrix[T], CuMatrix[T]], v2: CuMatrix[T]) = {
+        val v = vb.underlying
+        require(v2.cols == 1)
+        require(!v2.isTranspose)
+        require(v.rows == v2.rows)
+
+        // trick: if the major stride is 0, then we iterate over the same column over and over again
+        op(v, new CuMatrix(v.rows, v.cols, v2.data, v2.offset, 0, v2.isTranspose))
       }
     }
   }

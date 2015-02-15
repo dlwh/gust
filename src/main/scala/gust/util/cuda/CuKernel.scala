@@ -1,5 +1,6 @@
 package gust.util.cuda
 
+import jcuda.CudaException
 import jcuda.driver.{CUstream, CUfunction, CUcontext}
 import jcuda.driver.JCudaDriver._
 import org.bridj.Pointer

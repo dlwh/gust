@@ -238,21 +238,33 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
   }
 
-  /*
-  test("inplace addition") {  (_handle: cublasHandle) =>
+  test("inplace broadcast multiplication") {  (_handle: cublasHandle) =>
     implicit val handle = _handle
-    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(30, 10), Float)
-    val cu = CuMatrix.zeros[Float](30, 10)
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(3, 3), Float)
+    val cu = CuMatrix.zeros[Float](3, 3)
     cu := dm
 
-    val dmadd = dm(::, *) + dm(::, 1)
-    val cuadd = cu(::, *) + cu(::, 1)
+    val dm1 = copy(dm(::, 1))
+    val cu1 = copy(cu(::, 1))
+    dm(::, *) :*= dm1
+    cu(::, *) :*= cu1
 
-    cu += cuadd
-    dm += dmadd
-    assert(cu.toDense === dm)
+    assert(max(abs(cu.toDense - dm)) < 1E-4, (cu.toDense, dm))
   }
-  */
+
+  test("inplace broadcast addition") {  (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val dm : DenseMatrix[Float] = convert(DenseMatrix.rand(3, 3), Float)
+    val cu = CuMatrix.zeros[Float](3, 3)
+    cu := dm
+
+    val dm1 = copy(dm(::, 1))
+    val cu1 = copy(cu(::, 1))
+    dm(::, *) :+= dm1
+    cu(::, *) :+= cu1
+
+    assert(max(abs(cu.toDense - dm)) < 1E-4, (cu.toDense, dm))
+  }
 
   test("sum") { (_handle: cublasHandle) =>
     implicit val handle = _handle
