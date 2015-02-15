@@ -3,9 +3,9 @@ package gust.linalg.cuda
 
 import breeze.linalg.operators._
 import breeze.linalg._
+import breeze.linalg.qr.QR
 import breeze.linalg.support.{CanCopy, CanCollapseAxis, CanTranspose, CanSlice2}
 import org.bridj.Pointer
-import scala.reflect.ClassTag
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
 import gust.util.cuda
@@ -18,6 +18,7 @@ import breeze.numerics._
 import breeze.generic.UFunc
 import breeze.generic.UFunc.{UImpl2, InPlaceImpl2}
 import breeze.stats.distributions.{Rand, RandBasis}
+import scala.reflect._
 
 /**
  * TODO
@@ -208,8 +209,11 @@ class CuMatrix[V](val rows: Int,
     new DenseMatrix(rows, cols, arrayData.getArray.asInstanceOf[Array[V]], 0, _r, isTranspose)
   }
 
-  def copy: CuMatrix[V] = ???
+  def toCuVector = {
+    new CuVector[V](data, offset, 1, size)
+  }
 
+  def copy: CuMatrix[V] = ???
 
   /**
    * Method for slicing that is tuned for Matrices.
@@ -219,6 +223,57 @@ class CuMatrix[V](val rows: Int,
     canSlice(repr, slice1, slice2)
   }
 
+  // to make life easier when debugging
+  override def toString = this.toDense.toString + "\nPointer: " + data.toString + "\n"
+
+  /**
+   * A Frobenius norm of a matrix
+   */
+  def norm(implicit handle: cublasHandle, ct: ClassTag[V]): Double = {
+    ct.toString() match {    // it doesn't feel like the right way to use the class tag but it works for now...
+      case "Float" =>
+        val normArr = Array(0.0f)
+        JCublas2.cublasSnrm2(handle, size, offsetPointer, 1, jcuda.Pointer.to(normArr))
+
+        normArr(0)
+
+      case "Double" =>
+        val normArr = Array(0.0)
+        JCublas2.cublasDnrm2(handle, size, offsetPointer, 1, jcuda.Pointer.to(normArr))
+
+        normArr(0)
+
+      case _ => throw new UnsupportedOperationException("Can only calculate norm of Float or Double matrix")
+    }
+  }
+
+  def isSymmetric(implicit handle: cublasHandle, ct: ClassTag[V]): Boolean =  if (rows != cols) false else ct.toString() match {
+      case "Float" =>
+        val hostOne = jcuda.Pointer.to(Array(1.0f))
+        val hostMinusOne = jcuda.Pointer.to(Array(-1.0f))
+        val rv = CuMatrix.create[Float](rows, cols)
+
+        JCublas2.cublasSgeam(handle, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T,
+          rows, cols, hostOne,
+          offsetPointer, majorStride, hostMinusOne, offsetPointer, majorStride,
+          rv.offsetPointer, rv.majorStride)
+
+        rv.norm < 1e-15
+
+      case "Double" =>
+        val hostOne = jcuda.Pointer.to(Array(1.0))
+        val hostMinusOne = jcuda.Pointer.to(Array(-1.0))
+        val rv = CuMatrix.create[Double](rows, cols)
+
+        JCublas2.cublasDgeam(handle, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T,
+          rows, cols, hostOne,
+          offsetPointer, majorStride, hostMinusOne, offsetPointer, majorStride,
+          rv.offsetPointer, rv.majorStride)
+
+        rv.norm < 1e-15
+
+      case _ => throw new UnsupportedOperationException("isSymmetric accepts only Floats and Double")
+    }
 
 }
 
@@ -245,6 +300,15 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
     mat := semiring.one
 
 
+    mat
+  }
+
+  def eye[V](size: Int)(implicit ct: ClassTag[V], blas: cublasHandle, semiring: Semiring[V]): CuMatrix[V] = {
+    val mat = CuMatrix.zeros[V](size, size)
+    val diag = DenseVector.ones[V](size)
+    val p = Pointer.pointerToArray(diag.data).as(ct.runtimeClass)
+
+    JCublas2.cublasSetVector(size, mat.elemSize.toInt, p.toCuPointer, 1, mat.offsetPointer, mat.majorStride+1)
     mat
   }
 
@@ -279,6 +343,14 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
     g
   }
 
+  def fromCuVector[V<:AnyVal](vec: CuVector[V])(implicit ct: ClassTag[V], handle: cublasHandle) = {
+    val g = new CuMatrix[V](vec.length, 1)
+    val cublasOp = if (g.elemSize == 8) JCublas2.cublasDcopy _ else if (g.elemSize == 4) JCublas2.cublasScopy _
+                   else throw new UnsupportedOperationException("Can only create a matrix with elem sizes 4 or 8")
+
+    cublasOp(handle, vec.length, vec.offsetPointer, vec.stride, g.offsetPointer, 1)
+    g
+  }
 
   /*
 
@@ -496,7 +568,7 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   */
 
 
-  /**
+  /*
    * Maps the columns into a new dense matrix
    * @tparam V
    * @tparam R
@@ -519,10 +591,9 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
     }
   }
 
-  /**
+  /*
    * Returns a numRows CuMatrix
    * @tparam V
-   * @tparam R
    * @return
    */
   implicit def canMapCols[V:ClassTag:DefaultArrayValue] = new CanCollapseAxis[CuMatrix[V], Axis._1.type, CuMatrix[V], CuMatrix[V], CuMatrix[V]] {
@@ -587,10 +658,16 @@ object CuMatrix extends LowPriorityNativeMatrix with CuMatrixOps with CuMatrixSl
   protected val hostOne = hostOnePtr.toCuPointer
   protected val hostNegativeOne = hostNegativeOnePtr.toCuPointer
 
-
   protected val hostZeroPtr = Pointer.pointerToFloat(0)
-
   protected val hostZero = hostZeroPtr.toCuPointer
+
+  // Things go wrong if cublasDgemm is passed a float value (don't know why)
+  protected val hostOnePtrDouble = Pointer.pointerToDouble(1.0)
+  protected val hostOneDouble = hostOnePtrDouble.toCuPointer
+
+  protected val hostZeroPtrDouble = Pointer.pointerToDouble(0.0)
+  protected val hostZeroDouble = hostOnePtrDouble.toCuPointer
+
 }
 
 trait LowPriorityNativeMatrix1 {
@@ -680,9 +757,9 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
 
       JCublas2.cublasDgemm(blas, transposeOp(a), transposeOp(b),
         rv.rows, rv.cols, a.cols,
-        hostOne, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
+        hostOneDouble, a.data.toCuPointer.withByteOffset(a.offset * a.elemSize), a.majorStride,
         b.data.toCuPointer.withByteOffset(b.offset * b.elemSize), b.majorStride,
-        hostZero, rv.data.toCuPointer, rv.rows)
+        hostZeroDouble, rv.data.toCuPointer, rv.rows)
       rv
     }
   }
@@ -707,6 +784,226 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
       rv
     }
   }
+
+  implicit def CuMatrixFMulScalarF(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuMatrix[Float], Float, CuMatrix[Float]] =
+    new OpMulMatrix.Impl2[CuMatrix[Float], Float, CuMatrix[Float]] {
+      def apply(_a: CuMatrix[Float], k: Float) = {
+        val rv = CuMatrix.create[Float](_a.rows, _a.cols)
+
+        rv := _a
+        val kArr = Array(k)
+        JCublas2.cublasSscal(blas, rv.size, jcuda.Pointer.to(kArr), rv.offsetPointer, 1)
+        rv
+      }
+    }
+
+  implicit def CuMatrixDMulScalarD(implicit blas: cublasHandle): OpMulMatrix.Impl2[CuMatrix[Double], Double, CuMatrix[Double]] =
+    new OpMulMatrix.Impl2[CuMatrix[Double], Double, CuMatrix[Double]] {
+      def apply(_a: CuMatrix[Double], k: Double) = {
+        val rv = CuMatrix.create[Double](_a.rows, _a.cols)
+
+        rv := _a
+        val kArr = Array(k)
+        JCublas2.cublasDscal(blas, rv.size, jcuda.Pointer.to(kArr), rv.offsetPointer, 1)
+        rv
+      }
+    }
+
+
+  implicit def canSolveCuMatrixDouble(implicit blas: cublasHandle): OpSolveMatrixBy.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] =
+    new OpSolveMatrixBy.Impl2[CuMatrix[Double], CuMatrix[Double], CuMatrix[Double]] {
+      def apply(_a: CuMatrix[Double], _b: CuMatrix[Double]) = {
+        require(_a.rows >= _a.cols, "No of rows of the matrix has to be >= than no of cols")
+
+        if (_a.rows == _a.cols)
+          CuSolve.LUSolveDouble(_a, _b)
+        else
+          CuSolve.QRSolveDouble(_a, _b)
+      }
+    }
+
+  implicit def canSolveCuMatrixFloat(implicit blas: cublasHandle): OpSolveMatrixBy.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] =
+    new OpSolveMatrixBy.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
+      def apply(_a: CuMatrix[Float], _b: CuMatrix[Float]) = {
+        require(_a.rows >= _a.cols, "No of rows of the matrix has to be >= than no of cols")
+
+        if (_a.rows == _a.cols)
+          CuSolve.LUSolveFloat(_a, _b)
+        else
+          CuSolve.QRSolveFloat(_a, _b)
+      }
+    }
+
+  /**
+   * LU factorization with pivoting: the returned matrices are (P, L, U) // in this order
+   */
+//  implicit def canLUFloat(implicit blas: cublasHandle): LU.Impl[CuMatrix[Float], (CuMatrix[Float], Array[Int])] =
+//    new LU.Impl[CuMatrix[Float], (CuMatrix[Float], Array[Int])] {
+//      def apply(_a: CuMatrix[Float]) = {
+//        val res@(d_LU, d_P) = CuLU.LUFloatSimplePivot(_a)
+//        val (d_L, d_U) = CuLU.LUFactorsFloat(d_LU)
+//        (d_P, d_L, d_U)
+//        res
+//      }
+//    }
+
+//  implicit def canLUDouble(implicit blas: cublasHandle): LU.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] =
+//    new LU.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
+//      def apply(_a: CuMatrix[Double]) = {
+//        val (d_LU, d_P) = CuLU.LUDouble(_a)
+//        val (d_L, d_U) = CuLU.LUFactorsDouble(d_LU)
+//        (d_P, d_L, d_U)
+//      }
+//    }
+
+  /**
+   * QR factorization
+   */
+  implicit def canQRDouble(implicit blas: cublasHandle): qr.Impl[CuMatrix[Float], QR[CuMatrix[Float]]] =
+    new qr.Impl[CuMatrix[Float], QR[CuMatrix[Float]]] {
+      def apply(_a: CuMatrix[Float]) = {
+        val (d_A, tau) = CuQR.QRFloatMN(_a)
+        val (q, r) = CuQR.QRFactorsFloat(d_A, tau)
+        QR(q, r)
+      }
+    }
+
+  implicit def canQRFloat(implicit blas: cublasHandle): qr.Impl[CuMatrix[Double],  QR[CuMatrix[Double]]] =
+    new qr.Impl[CuMatrix[Double], QR[CuMatrix[Double]]] {
+      def apply(_a: CuMatrix[Double]) = {
+        val (d_A, tau) = CuQR.QRDoubleMN(_a)
+        val (q, r) = CuQR.QRFactorsDouble(d_A, tau)
+        QR(q, r)
+      }
+    }
+
+  /**
+   * Singular Value Decomposition. Returns (U, E, VT) (unlike matlab, which
+   * returns the V without the transpose)
+   */
+  implicit def canSVDFloat(implicit blas: cublasHandle): svd.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] =
+    new svd.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] {
+      def apply(_a: CuMatrix[Float]) = {
+        CuSVD.SVDFloat(_a)
+      }
+    }
+
+  implicit def canSVDDouble(implicit blas: cublasHandle): svd.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] =
+    new svd.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
+      def apply(_a: CuMatrix[Double]) = {
+        CuSVD.SVDDouble(_a)
+      }
+    }
+
+  /*
+   * Cholesky decomposition, returns only L (such that A = L * L')
+   */
+  implicit def canCholeskyFloat(implicit blas: cublasHandle): cholesky.Impl[CuMatrix[Float], CuMatrix[Float]] =
+    new cholesky.Impl[CuMatrix[Float], CuMatrix[Float]] {
+      def apply(_a: CuMatrix[Float]) = {
+        CuCholesky.choleskyFloat(_a)
+      }
+    }
+
+  implicit def canCholeskyDouble(implicit blas: cublasHandle): cholesky.Impl[CuMatrix[Double], CuMatrix[Double]] =
+    new cholesky.Impl[CuMatrix[Double], CuMatrix[Double]] {
+      def apply(_a: CuMatrix[Double]) = {
+        CuCholesky.choleskyDouble(_a)
+      }
+    }
+
+  /* trace of a matrix */
+  implicit def canTrace[V](implicit blas: cublasHandle, ct: ClassTag[V]): trace.Impl[CuMatrix[V], V] =
+    new trace.Impl[CuMatrix[V], V] {
+      def apply(_a: CuMatrix[V]) = {
+        val diagSize = if (_a.rows < _a.cols) _a.rows else _a.cols
+        val tracePtr = Pointer.allocateArray(_a.data.getIO, 1)
+
+        val cublasOp = if (_a.elemSize == 4) JCublas2.cublasSasum _
+                       else if (_a.elemSize == 8) JCublas2.cublasDasum _
+                       else throw new UnsupportedOperationException("Can only compute trace of a matrix with elem sizes 4 or 8")
+
+        cublasOp(blas, diagSize, _a.offsetPointer, _a.majorStride+1, tracePtr.toCuPointer)
+        tracePtr(0)
+      }
+    }
+
+//  implicit def canDetUsingLUFloat(implicit handle: cublasHandle): det.Impl[CuMatrix[Float], Float] =
+//    new det.Impl[CuMatrix[Float], Float] {
+//      def apply(_a: CuMatrix[Float]) = {
+//        val (m: CuMatrix[Float], ipiv: Array[Int]) = CuLU.LUFloatSimplePivot(_a)
+//        println(m.toDense, ipiv.toIndexedSeq)
+//
+//        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
+//        var acc = if (numExchangedRows % 2 == 1) -1.0f else 1.0f
+//        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+//        println(acc, diagProduct)
+//
+//        acc * diagProduct
+//      }
+//    }
+
+//  implicit def canDetUsingLUDouble(implicit handle: cublasHandle): det.Impl[CuMatrix[Double], Double] =
+//    new det.Impl[CuMatrix[Double], Double] {
+//      def apply(_a: CuMatrix[Double]) = {
+//        val (m: CuMatrix[Double], ipiv: Array[Int]) = CuLU.LUDoubleSimplePivot(_a)
+//
+//
+//        val numExchangedRows = ipiv.zipWithIndex.count { piv => piv._1 != piv._2 }
+//        var acc = if (numExchangedRows % 2 == 1) -1.0 else 1.0
+//        val diagProduct = CuWrapperMethods.reduceMult(m, 0, 0, m.majorStride+1, m.rows)
+//        println(acc, diagProduct)
+//
+//        val a = acc * diagProduct
+//        val b = acc * product(diag(m.toDense))
+//        println(a, b)
+//        b
+//      }
+//    }
+
+  implicit def canCondUsingSVDFloat(implicit handle: cublasHandle): cond.Impl[CuMatrix[Float], Float] =
+    new cond.Impl[CuMatrix[Float], Float] {
+      def apply(_a: CuMatrix[Float]) = {
+        val (_, e, _) = CuSVD.SVDFloat(_a)
+
+        val h_e = DenseMatrix.zeros[Float](2, 1)
+        val k = Math.min(_a.rows, _a.cols) - 1
+
+        CuWrapperMethods.downloadFloat(1, 1, h_e, 0, 0, e, 0, 0)
+        CuWrapperMethods.downloadFloat(1, 1, h_e, 1, 0, e, k, k)
+
+        h_e(0, 0) / h_e(1, 0)
+      }
+    }
+
+  implicit def canCondUsingSVDDouble(implicit handle: cublasHandle): cond.Impl[CuMatrix[Double], Double] =
+    new cond.Impl[CuMatrix[Double], Double] {
+      def apply(_a: CuMatrix[Double]) = {
+        val (_, e, _) = CuSVD.SVDDouble(_a)
+
+        val h_e = DenseMatrix.zeros[Double](2, 1)
+        val k = Math.min(_a.rows, _a.cols) - 1
+
+        CuWrapperMethods.downloadDouble(1, 1, h_e, 0, 0, e, 0, 0)
+        CuWrapperMethods.downloadDouble(1, 1, h_e, 1, 0, e, k, k)
+
+        h_e(0, 0) / h_e(1, 0)
+      }
+    }
+
+  implicit def normImplFloat(implicit handle: cublasHandle): norm.Impl[CuMatrix[Float], Double] =
+    new norm.Impl[CuMatrix[Float], Double] {
+      def apply(_a: CuMatrix[Float]) = {
+        _a.norm
+      }
+    }
+
+  implicit def normImplDouble(implicit handle: cublasHandle): norm.Impl[CuMatrix[Double], Double] =
+    new norm.Impl[CuMatrix[Double], Double] {
+      def apply(_a: CuMatrix[Double]) = {
+        _a.norm
+      }
+    }
 
   implicit def CuMatrixFAddCuMatrixF(implicit blas: cublasHandle): OpAdd.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] = new OpAdd.Impl2[CuMatrix[Float], CuMatrix[Float], CuMatrix[Float]] {
     def apply(a : CuMatrix[Float], b : CuMatrix[Float]): CuMatrix[Float] = {

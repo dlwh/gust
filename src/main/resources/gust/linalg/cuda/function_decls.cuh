@@ -1,3 +1,7 @@
+#ifndef INFINITY
+#define INFINITY __int_as_float(0x7f800000)
+#endif
+
 __device__ inline TYPE negate(TYPE a) { return -a;}
 __device__ inline TYPE sigmoid(TYPE a) { return 1.0f / (1.0f + exp(-a)); }
 

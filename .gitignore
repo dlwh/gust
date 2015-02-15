@@ -16,3 +16,6 @@ project/plugins/project/
 *.iml
 
 .idea
+*.dll
+*.jar
+*.ptx

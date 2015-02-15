@@ -16,17 +16,17 @@ import jcuda.{CudaException, Pointer}
 class CuModule(val module: CUmodule) {
 
   @arityize(10)
-  def getKernel[@arityize.replicate T](name: String): (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel)) = {
+  def getKernel[@arityize.replicate T](name: String): (CuKernel[T@arityize.replicate]@arityize.relative(getKernel)) = {
     val fn = new CUfunction
     try {
-    cuModuleGetFunction(fn, module, name)
+      cuModuleGetFunction(fn, module, name)
     } catch {
-      case ex:CudaException if ex.getMessage == "CUDA_ERROR_NOT_FOUND" =>
+      case ex: CudaException if ex.getMessage == "CUDA_ERROR_NOT_FOUND" =>
         throw new RuntimeException(s"couldn't load $name", ex)
       case ex: CudaException =>
         throw new RuntimeException(s"while loading $name", ex)
     }
-    new (CuKernel[T @arityize.replicate ] @arityize.relative(getKernel))(this, fn)
+    new (CuKernel[T@arityize.replicate]@arityize.relative(getKernel))(this, fn)
   }
 
 
@@ -38,7 +38,7 @@ class CuModule(val module: CUmodule) {
   }
 
   def release() {
-    if(!released) {
+    if (!released) {
       released = true
       cuModuleUnload(module)
     }
@@ -47,7 +47,7 @@ class CuModule(val module: CUmodule) {
 }
 
 object CuModule {
-  def apply(ptx: InputStream)(implicit ctxt: CuContext = CuContext.ensureContext):CuModule = {
+  def apply(ptx: InputStream)(implicit ctxt: CuContext = CuContext.ensureContext): CuModule = {
     val data = loadData(ptx)
     val module = new CUmodule()
     cuModuleLoadDataEx(module, Pointer.to(data),

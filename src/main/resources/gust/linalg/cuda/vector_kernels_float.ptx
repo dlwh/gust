@@ -8,8 +8,8 @@
 .target sm_30
 .address_size 64
 
-	.file	1 "/Users/jda/Code/gust/src/main/resources/gust/linalg/cuda/vector_kernels_float.cu", 1422753444, 2936
-	.file	2 "/Users/jda/Code/gust/src/main/resources/gust/linalg/cuda/function_decls.cuh", 1422755156, 1903
+	.file	1 "/Users/dlwh/src/gust/src/main/resources/gust/linalg/cuda/vector_kernels_float.cu", 1404413295, 2936
+	.file	2 "/Users/dlwh/src/gust/src/main/resources/gust/linalg/cuda/function_decls.cuh", 1423959180, 1972
 	.file	3 "/Developer/NVIDIA/CUDA-5.5/bin//../include/math_functions.h", 1378419394, 390673
 	.file	4 "/Developer/NVIDIA/CUDA-5.5/bin//../include/device_functions.h", 1378419394, 185228
 	.file	5 "/Developer/NVIDIA/CUDA-5.5/bin//../include/sm_30_intrinsics.h", 1378419394, 6616
@@ -37,40 +37,40 @@
 	ld.param.u32 	%r8, [map_negate_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 4 1
+	.loc 2 8 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 4 1
+	.loc 2 8 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB0_3;
 
-	.loc 2 4 22
+	.loc 2 8 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB0_2:
-	.loc 2 4 1
+	.loc 2 8 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 4 1
+	.loc 2 8 1
 	ld.global.f32 	%f1, [%rd6];
 	neg.f32 	%f2, %f1;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 4 1
+	.loc 2 8 1
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 4 22
+	.loc 2 8 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 4 1
+	.loc 2 8 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB0_2;
 
 BB0_3:
-	.loc 2 4 2
+	.loc 2 8 2
 	ret;
 }
 
@@ -95,25 +95,25 @@ BB0_3:
 	ld.param.u32 	%r8, [map_acos_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 5 1
+	.loc 2 9 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 5 1
+	.loc 2 9 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB1_3;
 
-	.loc 2 5 22
+	.loc 2 9 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB1_2:
-	.loc 2 5 1
+	.loc 2 9 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 5 1
+	.loc 2 9 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8464 10
 	abs.f32 	%f2, %f1;
@@ -150,20 +150,20 @@ BB1_2:
 	.loc 3 8464 10
 	sub.f32 	%f25, %f24, %f23;
 	selp.f32	%f26, %f25, %f23, %p3;
-	.loc 2 5 69
+	.loc 2 9 69
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 5 69
+	.loc 2 9 69
 	st.global.f32 	[%rd8], %f26;
-	.loc 2 5 22
+	.loc 2 9 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 5 1
+	.loc 2 9 1
 	setp.lt.s32	%p4, %r14, %r6;
 	@%p4 bra 	BB1_2;
 
 BB1_3:
-	.loc 2 5 2
+	.loc 2 9 2
 	ret;
 }
 
@@ -188,25 +188,25 @@ BB1_3:
 	ld.param.u32 	%r8, [map_acosh_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 6 1
+	.loc 2 10 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r22, %r1, %r9, %r10;
-	.loc 2 6 1
+	.loc 2 10 1
 	setp.ge.s32	%p1, %r22, %r6;
 	@%p1 bra 	BB2_13;
 
-	.loc 2 6 22
+	.loc 2 10 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB2_2:
-	.loc 2 6 1
+	.loc 2 10 1
 	mul.lo.s32 	%r12, %r22, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 6 1
+	.loc 2 10 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8492 10
 	add.f32 	%f2, %f1, 0fBF800000;
@@ -351,20 +351,20 @@ BB2_11:
 	add.f32 	%f85, %f84, 0f3F317218;
 
 BB2_12:
-	.loc 2 6 61
+	.loc 2 10 61
 	mul.lo.s32 	%r21, %r22, %r7;
 	mul.wide.s32 	%rd7, %r21, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 6 61
+	.loc 2 10 61
 	st.global.f32 	[%rd8], %f85;
-	.loc 2 6 22
+	.loc 2 10 22
 	add.s32 	%r22, %r3, %r22;
-	.loc 2 6 1
+	.loc 2 10 1
 	setp.lt.s32	%p16, %r22, %r6;
 	@%p16 bra 	BB2_2;
 
 BB2_13:
-	.loc 2 6 2
+	.loc 2 10 2
 	ret;
 }
 
@@ -389,25 +389,25 @@ BB2_13:
 	ld.param.u32 	%r8, [map_asin_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 7 1
+	.loc 2 11 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r18, %r1, %r9, %r10;
-	.loc 2 7 1
+	.loc 2 11 1
 	setp.ge.s32	%p1, %r18, %r6;
 	@%p1 bra 	BB3_3;
 
-	.loc 2 7 22
+	.loc 2 11 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB3_2:
-	.loc 2 7 1
+	.loc 2 11 1
 	mul.lo.s32 	%r12, %r18, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 7 1
+	.loc 2 11 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8459 10
 	abs.f32 	%f2, %f1;
@@ -446,20 +446,20 @@ BB3_2:
 	or.b32  	%r16, %r13, %r15;
 	mov.b32 	 %f24, %r16;
 	selp.f32	%f25, %f23, %f24, %p3;
-	.loc 2 7 69
+	.loc 2 11 69
 	mul.lo.s32 	%r17, %r18, %r7;
 	mul.wide.s32 	%rd7, %r17, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 7 69
+	.loc 2 11 69
 	st.global.f32 	[%rd8], %f25;
-	.loc 2 7 22
+	.loc 2 11 22
 	add.s32 	%r18, %r3, %r18;
-	.loc 2 7 1
+	.loc 2 11 1
 	setp.lt.s32	%p4, %r18, %r6;
 	@%p4 bra 	BB3_2;
 
 BB3_3:
-	.loc 2 7 2
+	.loc 2 11 2
 	ret;
 }
 
@@ -484,25 +484,25 @@ BB3_3:
 	ld.param.u32 	%r8, [map_asinh_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 8 1
+	.loc 2 12 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r22, %r1, %r9, %r10;
-	.loc 2 8 1
+	.loc 2 12 1
 	setp.ge.s32	%p1, %r22, %r6;
 	@%p1 bra 	BB4_10;
 
-	.loc 2 8 22
+	.loc 2 12 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB4_2:
-	.loc 2 8 1
+	.loc 2 12 1
 	mul.lo.s32 	%r12, %r22, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 8 1
+	.loc 2 12 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8497 10
 	abs.f32 	%f2, %f1;
@@ -612,20 +612,20 @@ BB4_9:
 	mov.b32 	 %f59, %r20;
 	setp.gtu.f32	%p11, %f2, 0f7F800000;
 	selp.f32	%f60, %f61, %f59, %p11;
-	.loc 2 8 61
+	.loc 2 12 61
 	mul.lo.s32 	%r21, %r22, %r7;
 	mul.wide.s32 	%rd7, %r21, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 8 61
+	.loc 2 12 61
 	st.global.f32 	[%rd8], %f60;
-	.loc 2 8 22
+	.loc 2 12 22
 	add.s32 	%r22, %r3, %r22;
-	.loc 2 8 1
+	.loc 2 12 1
 	setp.lt.s32	%p12, %r22, %r6;
 	@%p12 bra 	BB4_2;
 
 BB4_10:
-	.loc 2 8 2
+	.loc 2 12 2
 	ret;
 }
 
@@ -650,25 +650,25 @@ BB4_10:
 	ld.param.u32 	%r8, [map_atan_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 9 1
+	.loc 2 13 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r18, %r1, %r9, %r10;
-	.loc 2 9 1
+	.loc 2 13 1
 	setp.ge.s32	%p1, %r18, %r6;
 	@%p1 bra 	BB5_5;
 
-	.loc 2 9 22
+	.loc 2 13 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB5_2:
-	.loc 2 9 1
+	.loc 2 13 1
 	mul.lo.s32 	%r12, %r18, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 9 1
+	.loc 2 13 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8454 10
 	abs.f32 	%f2, %f1;
@@ -714,20 +714,20 @@ BB5_4:
 	mov.b32 	 %f23, %r16;
 	setp.gtu.f32	%p4, %f2, 0f7F800000;
 	selp.f32	%f24, %f22, %f23, %p4;
-	.loc 2 9 69
+	.loc 2 13 69
 	mul.lo.s32 	%r17, %r18, %r7;
 	mul.wide.s32 	%rd7, %r17, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 9 69
+	.loc 2 13 69
 	st.global.f32 	[%rd8], %f24;
-	.loc 2 9 22
+	.loc 2 13 22
 	add.s32 	%r18, %r3, %r18;
-	.loc 2 9 1
+	.loc 2 13 1
 	setp.lt.s32	%p5, %r18, %r6;
 	@%p5 bra 	BB5_2;
 
 BB5_5:
-	.loc 2 9 2
+	.loc 2 13 2
 	ret;
 }
 
@@ -752,25 +752,25 @@ BB5_5:
 	ld.param.u32 	%r8, [map_atanh_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 10 1
+	.loc 2 14 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r22, %r1, %r9, %r10;
-	.loc 2 10 1
+	.loc 2 14 1
 	setp.ge.s32	%p1, %r22, %r6;
 	@%p1 bra 	BB6_8;
 
-	.loc 2 10 22
+	.loc 2 14 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB6_2:
-	.loc 2 10 1
+	.loc 2 14 1
 	mul.lo.s32 	%r12, %r22, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 10 1
+	.loc 2 14 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8502 10
 	abs.f32 	%f8, %f1;
@@ -865,20 +865,20 @@ BB6_7:
 	or.b32  	%r20, %r17, %r19;
 	mov.b32 	 %f54, %r20;
 	selp.f32	%f55, %f52, %f54, %p10;
-	.loc 2 10 61
+	.loc 2 14 61
 	mul.lo.s32 	%r21, %r22, %r7;
 	mul.wide.s32 	%rd7, %r21, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 10 61
+	.loc 2 14 61
 	st.global.f32 	[%rd8], %f55;
-	.loc 2 10 22
+	.loc 2 14 22
 	add.s32 	%r22, %r3, %r22;
-	.loc 2 10 1
+	.loc 2 14 1
 	setp.lt.s32	%p11, %r22, %r6;
 	@%p11 bra 	BB6_2;
 
 BB6_8:
-	.loc 2 10 2
+	.loc 2 14 2
 	ret;
 }
 
@@ -903,25 +903,25 @@ BB6_8:
 	ld.param.u32 	%r8, [map_cbrt_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 11 1
+	.loc 2 15 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r15, %r1, %r9, %r10;
-	.loc 2 11 1
+	.loc 2 15 1
 	setp.ge.s32	%p1, %r15, %r6;
 	@%p1 bra 	BB7_3;
 
-	.loc 2 11 22
+	.loc 2 15 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB7_2:
-	.loc 2 11 1
+	.loc 2 15 1
 	mul.lo.s32 	%r12, %r15, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 11 1
+	.loc 2 15 1
 	ld.global.f32 	%f5, [%rd6];
 	.loc 3 8517 10
 	abs.f32 	%f6, %f5;
@@ -946,20 +946,20 @@ BB7_2:
 	add.f32 	%f14, %f5, %f5;
 	setp.eq.f32	%p3, %f14, %f5;
 	selp.f32	%f15, %f14, %f13, %p3;
-	.loc 2 11 61
+	.loc 2 15 61
 	mul.lo.s32 	%r14, %r15, %r7;
 	mul.wide.s32 	%rd7, %r14, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 11 61
+	.loc 2 15 61
 	st.global.f32 	[%rd8], %f15;
-	.loc 2 11 22
+	.loc 2 15 22
 	add.s32 	%r15, %r3, %r15;
-	.loc 2 11 1
+	.loc 2 15 1
 	setp.lt.s32	%p4, %r15, %r6;
 	@%p4 bra 	BB7_2;
 
 BB7_3:
-	.loc 2 11 2
+	.loc 2 15 2
 	ret;
 }
 
@@ -984,42 +984,42 @@ BB7_3:
 	ld.param.u32 	%r8, [map_ceil_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 12 1
+	.loc 2 16 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 12 1
+	.loc 2 16 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB8_3;
 
-	.loc 2 12 22
+	.loc 2 16 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB8_2:
-	.loc 2 12 1
+	.loc 2 16 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 12 1
+	.loc 2 16 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 4 2815 10
 	cvt.rpi.f32.f32	%f2, %f1;
-	.loc 2 12 69
+	.loc 2 16 69
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 12 69
+	.loc 2 16 69
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 12 22
+	.loc 2 16 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 12 1
+	.loc 2 16 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB8_2;
 
 BB8_3:
-	.loc 2 12 2
+	.loc 2 16 2
 	ret;
 }
 
@@ -1049,27 +1049,27 @@ BB8_3:
 	ld.param.u32 	%r37, [map_cos_float_param_4];
 	add.u64 	%rd9, %SP, 0;
 	cvta.to.local.u64 	%rd1, %rd9;
-	.loc 2 13 1
+	.loc 2 17 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r38, %ctaid.x;
 	mov.u32 	%r39, %tid.x;
 	mad.lo.s32 	%r96, %r1, %r38, %r39;
-	.loc 2 13 1
+	.loc 2 17 1
 	setp.ge.s32	%p1, %r96, %r35;
 	@%p1 bra 	BB9_23;
 
-	.loc 2 13 22
+	.loc 2 17 22
 	mov.u32 	%r40, %nctaid.x;
 	mul.lo.s32 	%r3, %r40, %r1;
 	cvta.to.global.u64 	%rd10, %rd8;
 	cvta.to.global.u64 	%rd17, %rd7;
 
 BB9_2:
-	.loc 2 13 1
+	.loc 2 17 1
 	mul.lo.s32 	%r41, %r96, %r37;
 	mul.wide.s32 	%rd11, %r41, 4;
 	add.s64 	%rd12, %rd10, %rd11;
-	.loc 2 13 1
+	.loc 2 17 1
 	ld.global.f32 	%f43, [%rd12];
 	.loc 3 8368 10
 	abs.f32 	%f19, %f43;
@@ -1272,20 +1272,20 @@ BB9_20:
 	fma.rn.f32 	%f47, %f47, %f42, %f41;
 
 BB9_22:
-	.loc 2 13 69
+	.loc 2 17 69
 	mul.lo.s32 	%r95, %r96, %r36;
 	mul.wide.s32 	%rd18, %r95, 4;
 	add.s64 	%rd19, %rd17, %rd18;
-	.loc 2 13 69
+	.loc 2 17 69
 	st.global.f32 	[%rd19], %f47;
-	.loc 2 13 22
+	.loc 2 17 22
 	add.s32 	%r96, %r3, %r96;
-	.loc 2 13 1
+	.loc 2 17 1
 	setp.lt.s32	%p15, %r96, %r35;
 	@%p15 bra 	BB9_2;
 
 BB9_23:
-	.loc 2 13 2
+	.loc 2 17 2
 	ret;
 }
 
@@ -1310,25 +1310,25 @@ BB9_23:
 	ld.param.u32 	%r8, [map_cosh_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 14 1
+	.loc 2 18 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 14 1
+	.loc 2 18 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB10_3;
 
-	.loc 2 14 22
+	.loc 2 18 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB10_2:
-	.loc 2 14 1
+	.loc 2 18 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 14 1
+	.loc 2 18 1
 	ld.global.f32 	%f3, [%rd6];
 	.loc 3 8434 10
 	abs.f32 	%f4, %f3;
@@ -1355,20 +1355,20 @@ BB10_2:
 	fma.rn.f32 	%f17, %f16, %f13, %f15;
 	setp.ltu.f32	%p2, %f4, 0f42B40000;
 	selp.f32	%f18, %f17, 0f7F800000, %p2;
-	.loc 2 14 69
+	.loc 2 18 69
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 14 69
+	.loc 2 18 69
 	st.global.f32 	[%rd8], %f18;
-	.loc 2 14 22
+	.loc 2 18 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 14 1
+	.loc 2 18 1
 	setp.lt.s32	%p3, %r14, %r6;
 	@%p3 bra 	BB10_2;
 
 BB10_3:
-	.loc 2 14 2
+	.loc 2 18 2
 	ret;
 }
 
@@ -1393,25 +1393,25 @@ BB10_3:
 	ld.param.u32 	%r10, [map_cospi_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 15 1
+	.loc 2 19 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r11, %ctaid.x;
 	mov.u32 	%r12, %tid.x;
 	mad.lo.s32 	%r18, %r1, %r11, %r12;
-	.loc 2 15 1
+	.loc 2 19 1
 	setp.ge.s32	%p1, %r18, %r8;
 	@%p1 bra 	BB11_15;
 
-	.loc 2 15 22
+	.loc 2 19 22
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r3, %r13, %r1;
 
 BB11_2:
-	.loc 2 15 1
+	.loc 2 19 1
 	mul.lo.s32 	%r14, %r18, %r10;
 	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 15 1
+	.loc 2 19 1
 	ld.global.f32 	%f39, [%rd6];
 	.loc 3 8388 10
 	abs.f32 	%f17, %f39;
@@ -1490,20 +1490,20 @@ BB11_12:
 	fma.rn.f32 	%f42, %f42, %f38, %f37;
 
 BB11_14:
-	.loc 2 15 62
+	.loc 2 19 62
 	mul.lo.s32 	%r17, %r18, %r9;
 	mul.wide.s32 	%rd7, %r17, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 15 62
+	.loc 2 19 62
 	st.global.f32 	[%rd8], %f42;
-	.loc 2 15 22
+	.loc 2 19 22
 	add.s32 	%r18, %r3, %r18;
-	.loc 2 15 1
+	.loc 2 19 1
 	setp.lt.s32	%p7, %r18, %r8;
 	@%p7 bra 	BB11_2;
 
 BB11_15:
-	.loc 2 15 2
+	.loc 2 19 2
 	ret;
 }
 
@@ -1528,25 +1528,25 @@ BB11_15:
 	ld.param.u32 	%r8, [map_erfc_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 16 1
+	.loc 2 20 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 16 1
+	.loc 2 20 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB12_3;
 
-	.loc 2 16 22
+	.loc 2 20 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB12_2:
-	.loc 2 16 1
+	.loc 2 20 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 16 1
+	.loc 2 20 1
 	ld.global.f32 	%f7, [%rd6];
 	.loc 3 8584 10
 	abs.f32 	%f8, %f7;
@@ -1633,20 +1633,20 @@ BB12_2:
 	setp.lt.f32	%p3, %f7, 0f00000000;
 	sub.f32 	%f61, %f39, %f60;
 	selp.f32	%f62, %f61, %f60, %p3;
-	.loc 2 16 62
+	.loc 2 20 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 16 62
+	.loc 2 20 62
 	st.global.f32 	[%rd8], %f62;
-	.loc 2 16 22
+	.loc 2 20 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 16 1
+	.loc 2 20 1
 	setp.lt.s32	%p4, %r14, %r6;
 	@%p4 bra 	BB12_2;
 
 BB12_3:
-	.loc 2 16 2
+	.loc 2 20 2
 	ret;
 }
 
@@ -1671,25 +1671,25 @@ BB12_3:
 	ld.param.u32 	%r8, [map_erfcinv_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 17 1
+	.loc 2 21 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 17 1
+	.loc 2 21 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB13_6;
 
-	.loc 2 17 22
+	.loc 2 21 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB13_2:
-	.loc 2 17 1
+	.loc 2 21 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 17 1
+	.loc 2 21 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8594 10
 	neg.f32 	%f2, %f1;
@@ -1779,20 +1779,20 @@ BB13_4:
 	fma.rn.f32 	%f55, %f54, %f2, %f54;
 
 BB13_5:
-	.loc 2 17 62
+	.loc 2 21 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 17 62
+	.loc 2 21 62
 	st.global.f32 	[%rd8], %f55;
-	.loc 2 17 22
+	.loc 2 21 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 17 1
+	.loc 2 21 1
 	setp.lt.s32	%p6, %r14, %r6;
 	@%p6 bra 	BB13_2;
 
 BB13_6:
-	.loc 2 17 2
+	.loc 2 21 2
 	ret;
 }
 
@@ -1817,25 +1817,25 @@ BB13_6:
 	ld.param.u32 	%r8, [map_erfcx_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 18 1
+	.loc 2 22 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 18 1
+	.loc 2 22 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB14_8;
 
-	.loc 2 18 22
+	.loc 2 22 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB14_2:
-	.loc 2 18 1
+	.loc 2 22 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 18 1
+	.loc 2 22 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8589 10
 	abs.f32 	%f2, %f1;
@@ -1957,20 +1957,20 @@ BB14_5:
 	selp.f32	%f80, %f77, %f79, %p6;
 
 BB14_7:
-	.loc 2 18 62
+	.loc 2 22 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 18 62
+	.loc 2 22 62
 	st.global.f32 	[%rd8], %f80;
-	.loc 2 18 22
+	.loc 2 22 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 18 1
+	.loc 2 22 1
 	setp.lt.s32	%p7, %r14, %r6;
 	@%p7 bra 	BB14_2;
 
 BB14_8:
-	.loc 2 18 2
+	.loc 2 22 2
 	ret;
 }
 
@@ -1995,25 +1995,25 @@ BB14_8:
 	ld.param.u32 	%r8, [map_erf_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 19 1
+	.loc 2 23 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r19, %r1, %r9, %r10;
-	.loc 2 19 1
+	.loc 2 23 1
 	setp.ge.s32	%p1, %r19, %r6;
 	@%p1 bra 	BB15_6;
 
-	.loc 2 19 22
+	.loc 2 23 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB15_2:
-	.loc 2 19 1
+	.loc 2 23 1
 	mul.lo.s32 	%r12, %r19, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 19 1
+	.loc 2 23 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8557 10
 	abs.f32 	%f2, %f1;
@@ -2079,20 +2079,20 @@ BB15_4:
 	mul.f32 	%f36, %f1, %f35;
 
 BB15_5:
-	.loc 2 19 62
+	.loc 2 23 62
 	mul.lo.s32 	%r18, %r19, %r7;
 	mul.wide.s32 	%rd7, %r18, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 19 62
+	.loc 2 23 62
 	st.global.f32 	[%rd8], %f36;
-	.loc 2 19 22
+	.loc 2 23 22
 	add.s32 	%r19, %r3, %r19;
-	.loc 2 19 1
+	.loc 2 23 1
 	setp.lt.s32	%p4, %r19, %r6;
 	@%p4 bra 	BB15_2;
 
 BB15_6:
-	.loc 2 19 2
+	.loc 2 23 2
 	ret;
 }
 
@@ -2117,25 +2117,25 @@ BB15_6:
 	ld.param.u32 	%r8, [map_erfinv_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 20 1
+	.loc 2 24 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 20 1
+	.loc 2 24 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB16_6;
 
-	.loc 2 20 22
+	.loc 2 24 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB16_2:
-	.loc 2 20 1
+	.loc 2 24 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 20 1
+	.loc 2 24 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8579 10
 	neg.f32 	%f8, %f1;
@@ -2208,20 +2208,20 @@ BB16_4:
 	selp.f32	%f45, %f44, %f43, %p3;
 
 BB16_5:
-	.loc 2 20 62
+	.loc 2 24 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 20 62
+	.loc 2 24 62
 	st.global.f32 	[%rd8], %f45;
-	.loc 2 20 22
+	.loc 2 24 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 20 1
+	.loc 2 24 1
 	setp.lt.s32	%p4, %r14, %r6;
 	@%p4 bra 	BB16_2;
 
 BB16_6:
-	.loc 2 20 2
+	.loc 2 24 2
 	ret;
 }
 
@@ -2246,25 +2246,25 @@ BB16_6:
 	ld.param.u32 	%r8, [map_exp10_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 21 1
+	.loc 2 25 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 21 1
+	.loc 2 25 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB17_3;
 
-	.loc 2 21 22
+	.loc 2 25 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB17_2:
-	.loc 2 21 1
+	.loc 2 25 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 21 1
+	.loc 2 25 1
 	ld.global.f32 	%f3, [%rd6];
 	.loc 3 8428 10
 	mul.f32 	%f4, %f3, 0f40549A78;
@@ -2285,20 +2285,20 @@ BB17_2:
 	selp.f32	%f12, 0f00000000, %f11, %p2;
 	setp.gt.f32	%p3, %f3, 0f42380000;
 	selp.f32	%f13, 0f7F800000, %f12, %p3;
-	.loc 2 21 62
+	.loc 2 25 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 21 62
+	.loc 2 25 62
 	st.global.f32 	[%rd8], %f13;
-	.loc 2 21 22
+	.loc 2 25 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 21 1
+	.loc 2 25 1
 	setp.lt.s32	%p4, %r14, %r6;
 	@%p4 bra 	BB17_2;
 
 BB17_3:
-	.loc 2 21 2
+	.loc 2 25 2
 	ret;
 }
 
@@ -2323,42 +2323,42 @@ BB17_3:
 	ld.param.u32 	%r8, [map_exp2_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 22 1
+	.loc 2 26 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 22 1
+	.loc 2 26 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB18_3;
 
-	.loc 2 22 22
+	.loc 2 26 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB18_2:
-	.loc 2 22 1
+	.loc 2 26 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 22 1
+	.loc 2 26 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 4 2805 10
 	ex2.approx.f32 	%f2, %f1;
-	.loc 2 22 62
+	.loc 2 26 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 22 62
+	.loc 2 26 62
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 22 22
+	.loc 2 26 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 22 1
+	.loc 2 26 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB18_2;
 
 BB18_3:
-	.loc 2 22 2
+	.loc 2 26 2
 	ret;
 }
 
@@ -2383,25 +2383,25 @@ BB18_3:
 	ld.param.u32 	%r8, [map_exp_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 23 1
+	.loc 2 27 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 23 1
+	.loc 2 27 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB19_3;
 
-	.loc 2 23 22
+	.loc 2 27 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB19_2:
-	.loc 2 23 1
+	.loc 2 27 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 23 1
+	.loc 2 27 1
 	ld.global.f32 	%f3, [%rd6];
 	.loc 3 8419 10
 	mul.f32 	%f4, %f3, 0f3FB8AA3B;
@@ -2423,20 +2423,20 @@ BB19_2:
 	selp.f32	%f13, 0f00000000, %f12, %p2;
 	setp.gt.f32	%p3, %f3, 0f42D20000;
 	selp.f32	%f14, 0f7F800000, %f13, %p3;
-	.loc 2 23 70
+	.loc 2 27 70
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 23 70
+	.loc 2 27 70
 	st.global.f32 	[%rd8], %f14;
-	.loc 2 23 22
+	.loc 2 27 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 23 1
+	.loc 2 27 1
 	setp.lt.s32	%p4, %r14, %r6;
 	@%p4 bra 	BB19_2;
 
 BB19_3:
-	.loc 2 23 2
+	.loc 2 27 2
 	ret;
 }
 
@@ -2461,25 +2461,25 @@ BB19_3:
 	ld.param.u32 	%r8, [map_expm1_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 24 1
+	.loc 2 28 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 24 1
+	.loc 2 28 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB20_3;
 
-	.loc 2 24 22
+	.loc 2 28 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB20_2:
-	.loc 2 24 1
+	.loc 2 28 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 24 1
+	.loc 2 28 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8507 10
 	mul.f32 	%f2, %f1, 0f3FB8AA3B;
@@ -2524,20 +2524,20 @@ BB20_2:
 	setp.eq.f32	%p6, %f1, 0f00000000;
 	add.f32 	%f31, %f1, %f1;
 	selp.f32	%f32, %f31, %f30, %p6;
-	.loc 2 24 62
+	.loc 2 28 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 24 62
+	.loc 2 28 62
 	st.global.f32 	[%rd8], %f32;
-	.loc 2 24 22
+	.loc 2 28 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 24 1
+	.loc 2 28 1
 	setp.lt.s32	%p7, %r14, %r6;
 	@%p7 bra 	BB20_2;
 
 BB20_3:
-	.loc 2 24 2
+	.loc 2 28 2
 	ret;
 }
 
@@ -2562,42 +2562,42 @@ BB20_3:
 	ld.param.u32 	%r8, [map_fabs_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 25 1
+	.loc 2 29 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 25 1
+	.loc 2 29 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB21_3;
 
-	.loc 2 25 22
+	.loc 2 29 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB21_2:
-	.loc 2 25 1
+	.loc 2 29 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 25 1
+	.loc 2 29 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 4 2750 10
 	abs.f32 	%f2, %f1;
-	.loc 2 25 70
+	.loc 2 29 70
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 25 70
+	.loc 2 29 70
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 25 22
+	.loc 2 29 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 25 1
+	.loc 2 29 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB21_2;
 
 BB21_3:
-	.loc 2 25 2
+	.loc 2 29 2
 	ret;
 }
 
@@ -2622,42 +2622,42 @@ BB21_3:
 	ld.param.u32 	%r8, [map_floor_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 26 1
+	.loc 2 30 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 26 1
+	.loc 2 30 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB22_3;
 
-	.loc 2 26 22
+	.loc 2 30 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB22_2:
-	.loc 2 26 1
+	.loc 2 30 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 26 1
+	.loc 2 30 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 4 2740 10
 	cvt.rmi.f32.f32	%f2, %f1;
-	.loc 2 26 70
+	.loc 2 30 70
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 26 70
+	.loc 2 30 70
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 26 22
+	.loc 2 30 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 26 1
+	.loc 2 30 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB22_2;
 
 BB22_3:
-	.loc 2 26 2
+	.loc 2 30 2
 	ret;
 }
 
@@ -2685,27 +2685,27 @@ BB22_3:
 	ld.param.u32 	%r63, [map_j0_float_param_2];
 	ld.param.u64 	%rd14, [map_j0_float_param_3];
 	ld.param.u32 	%r64, [map_j0_float_param_4];
-	.loc 2 27 1
+	.loc 2 31 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r65, %ctaid.x;
 	mov.u32 	%r66, %tid.x;
 	mad.lo.s32 	%r176, %r1, %r65, %r66;
-	.loc 2 27 1
+	.loc 2 31 1
 	setp.ge.s32	%p1, %r176, %r62;
 	@%p1 bra 	BB23_36;
 
-	.loc 2 27 22
+	.loc 2 31 22
 	mov.u32 	%r67, %nctaid.x;
 	mul.lo.s32 	%r3, %r67, %r1;
 	cvta.to.global.u64 	%rd15, %rd14;
 	cvta.to.global.u64 	%rd28, %rd13;
 
 BB23_2:
-	.loc 2 27 1
+	.loc 2 31 1
 	mul.lo.s32 	%r68, %r176, %r64;
 	mul.wide.s32 	%rd16, %r68, 4;
 	add.s64 	%rd17, %rd15, %rd16;
-	.loc 2 27 1
+	.loc 2 31 1
 	ld.global.f32 	%f28, [%rd17];
 	.loc 3 8527 10
 	abs.f32 	%f1, %f28;
@@ -3139,20 +3139,20 @@ BB23_34:
 	mul.f32 	%f128, %f4, %f127;
 
 BB23_35:
-	.loc 2 27 62
+	.loc 2 31 62
 	mul.lo.s32 	%r175, %r176, %r63;
 	mul.wide.s32 	%rd29, %r175, 4;
 	add.s64 	%rd30, %rd28, %rd29;
-	.loc 2 27 62
+	.loc 2 31 62
 	st.global.f32 	[%rd30], %f128;
-	.loc 2 27 22
+	.loc 2 31 22
 	add.s32 	%r176, %r3, %r176;
-	.loc 2 27 1
+	.loc 2 31 1
 	setp.lt.s32	%p25, %r176, %r62;
 	@%p25 bra 	BB23_2;
 
 BB23_36:
-	.loc 2 27 2
+	.loc 2 31 2
 	ret;
 }
 
@@ -3180,12 +3180,12 @@ BB23_36:
 	ld.param.u32 	%r61, [map_j1_float_param_2];
 	ld.param.u64 	%rd14, [map_j1_float_param_3];
 	ld.param.u32 	%r62, [map_j1_float_param_4];
-	.loc 2 28 1
+	.loc 2 32 1
 	mov.u32 	%r63, %ntid.x;
 	mov.u32 	%r64, %ctaid.x;
 	mov.u32 	%r65, %tid.x;
 	mad.lo.s32 	%r181, %r63, %r64, %r65;
-	.loc 2 28 1
+	.loc 2 32 1
 	setp.ge.s32	%p1, %r181, %r60;
 	@%p1 bra 	BB24_36;
 
@@ -3193,11 +3193,11 @@ BB23_36:
 	cvta.to.global.u64 	%rd28, %rd13;
 
 BB24_2:
-	.loc 2 28 1
+	.loc 2 32 1
 	mul.lo.s32 	%r66, %r181, %r62;
 	mul.wide.s32 	%rd16, %r66, 4;
 	add.s64 	%rd17, %rd15, %rd16;
-	.loc 2 28 1
+	.loc 2 32 1
 	ld.global.f32 	%f1, [%rd17];
 	.loc 3 8532 10
 	abs.f32 	%f2, %f1;
@@ -3637,21 +3637,21 @@ BB24_35:
 	mov.b32 	 %f120, %r177;
 	setp.lt.f32	%p26, %f2, 0f0DA24260;
 	selp.f32	%f121, %f120, %f119, %p26;
-	.loc 2 28 62
+	.loc 2 32 62
 	mul.lo.s32 	%r178, %r181, %r61;
 	mul.wide.s32 	%rd29, %r178, 4;
 	add.s64 	%rd30, %rd28, %rd29;
-	.loc 2 28 62
+	.loc 2 32 62
 	st.global.f32 	[%rd30], %f121;
-	.loc 2 28 22
+	.loc 2 32 22
 	mov.u32 	%r180, %nctaid.x;
 	mad.lo.s32 	%r181, %r180, %r63, %r181;
-	.loc 2 28 1
+	.loc 2 32 1
 	setp.lt.s32	%p27, %r181, %r60;
 	@%p27 bra 	BB24_2;
 
 BB24_36:
-	.loc 2 28 2
+	.loc 2 32 2
 	ret;
 }
 
@@ -3674,27 +3674,27 @@ BB24_36:
 	ld.param.u32 	%r9, [map_lgamma_float_param_2];
 	ld.param.u64 	%rd2, [map_lgamma_float_param_3];
 	ld.param.u32 	%r10, [map_lgamma_float_param_4];
-	.loc 2 29 1
+	.loc 2 33 1
 	mov.u32 	%r11, %tid.x;
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r12, %ctaid.x;
 	mad.lo.s32 	%r33, %r1, %r12, %r11;
-	.loc 2 29 1
+	.loc 2 33 1
 	setp.ge.s32	%p1, %r33, %r8;
 	@%p1 bra 	BB25_40;
 
-	.loc 2 29 22
+	.loc 2 33 22
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r3, %r13, %r1;
 	cvta.to.global.u64 	%rd3, %rd2;
 	cvta.to.global.u64 	%rd6, %rd1;
 
 BB25_2:
-	.loc 2 29 1
+	.loc 2 33 1
 	mul.lo.s32 	%r14, %r33, %r10;
 	mul.wide.s32 	%rd4, %r14, 4;
 	add.s64 	%rd5, %rd3, %rd4;
-	.loc 2 29 1
+	.loc 2 33 1
 	ld.global.f32 	%f1, [%rd5];
 	.loc 3 8613 10
 	abs.f32 	%f2, %f1;
@@ -4159,20 +4159,20 @@ BB25_38:
 	neg.f32 	%f268, %f267;
 
 BB25_39:
-	.loc 2 29 62
+	.loc 2 33 62
 	mul.lo.s32 	%r32, %r33, %r9;
 	mul.wide.s32 	%rd7, %r32, 4;
 	add.s64 	%rd8, %rd6, %rd7;
-	.loc 2 29 62
+	.loc 2 33 62
 	st.global.f32 	[%rd8], %f268;
-	.loc 2 29 22
+	.loc 2 33 22
 	add.s32 	%r33, %r3, %r33;
-	.loc 2 29 1
+	.loc 2 33 1
 	setp.lt.s32	%p34, %r33, %r8;
 	@%p34 bra 	BB25_2;
 
 BB25_40:
-	.loc 2 29 2
+	.loc 2 33 2
 	ret;
 }
 
@@ -4197,25 +4197,25 @@ BB25_40:
 	ld.param.u32 	%r8, [map_log10_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 30 1
+	.loc 2 34 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r18, %r1, %r9, %r10;
-	.loc 2 30 1
+	.loc 2 34 1
 	setp.ge.s32	%p1, %r18, %r6;
 	@%p1 bra 	BB26_6;
 
-	.loc 2 30 22
+	.loc 2 34 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB26_2:
-	.loc 2 30 1
+	.loc 2 34 1
 	mul.lo.s32 	%r12, %r18, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 30 1
+	.loc 2 34 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8481 10
 	setp.gt.f32	%p2, %f1, 0f00000000;
@@ -4269,22 +4269,22 @@ BB26_4:
 	fma.rn.f32 	%f33, %f16, %f31, %f30;
 
 BB26_5:
-	.loc 2 30 70
+	.loc 2 34 70
 	mul.lo.s32 	%r17, %r18, %r7;
 	mul.wide.s32 	%rd7, %r17, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	.loc 3 8481 10
 	mul.f32 	%f32, %f33, 0f3EDE5BD9;
-	.loc 2 30 70
+	.loc 2 34 70
 	st.global.f32 	[%rd8], %f32;
-	.loc 2 30 22
+	.loc 2 34 22
 	add.s32 	%r18, %r3, %r18;
-	.loc 2 30 1
+	.loc 2 34 1
 	setp.lt.s32	%p7, %r18, %r6;
 	@%p7 bra 	BB26_2;
 
 BB26_6:
-	.loc 2 30 2
+	.loc 2 34 2
 	ret;
 }
 
@@ -4309,25 +4309,25 @@ BB26_6:
 	ld.param.u32 	%r8, [map_log1p_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 31 1
+	.loc 2 35 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r18, %r1, %r9, %r10;
-	.loc 2 31 1
+	.loc 2 35 1
 	setp.ge.s32	%p1, %r18, %r6;
 	@%p1 bra 	BB27_8;
 
-	.loc 2 31 22
+	.loc 2 35 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB27_2:
-	.loc 2 31 1
+	.loc 2 35 1
 	mul.lo.s32 	%r12, %r18, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 31 1
+	.loc 2 35 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8487 10
 	setp.le.f32	%p2, %f1, 0f3F266666;
@@ -4407,20 +4407,20 @@ BB27_6:
 	add.f32 	%f47, %f46, %f1;
 
 BB27_7:
-	.loc 2 31 62
+	.loc 2 35 62
 	mul.lo.s32 	%r17, %r18, %r7;
 	mul.wide.s32 	%rd7, %r17, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 31 62
+	.loc 2 35 62
 	st.global.f32 	[%rd8], %f47;
-	.loc 2 31 22
+	.loc 2 35 22
 	add.s32 	%r18, %r3, %r18;
-	.loc 2 31 1
+	.loc 2 35 1
 	setp.lt.s32	%p10, %r18, %r6;
 	@%p10 bra 	BB27_2;
 
 BB27_8:
-	.loc 2 31 2
+	.loc 2 35 2
 	ret;
 }
 
@@ -4445,25 +4445,25 @@ BB27_8:
 	ld.param.u32 	%r8, [map_log2_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 32 1
+	.loc 2 36 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r18, %r1, %r9, %r10;
-	.loc 2 32 1
+	.loc 2 36 1
 	setp.ge.s32	%p1, %r18, %r6;
 	@%p1 bra 	BB28_6;
 
-	.loc 2 32 22
+	.loc 2 36 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB28_2:
-	.loc 2 32 1
+	.loc 2 36 1
 	mul.lo.s32 	%r12, %r18, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 32 1
+	.loc 2 36 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8410 10
 	setp.gt.f32	%p2, %f1, 0f00000000;
@@ -4517,22 +4517,22 @@ BB28_4:
 	fma.rn.f32 	%f33, %f16, %f31, %f30;
 
 BB28_5:
-	.loc 2 32 62
+	.loc 2 36 62
 	mul.lo.s32 	%r17, %r18, %r7;
 	mul.wide.s32 	%rd7, %r17, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	.loc 3 8410 10
 	mul.f32 	%f32, %f33, 0f3FB8AA3B;
-	.loc 2 32 62
+	.loc 2 36 62
 	st.global.f32 	[%rd8], %f32;
-	.loc 2 32 22
+	.loc 2 36 22
 	add.s32 	%r18, %r3, %r18;
-	.loc 2 32 1
+	.loc 2 36 1
 	setp.lt.s32	%p7, %r18, %r6;
 	@%p7 bra 	BB28_2;
 
 BB28_6:
-	.loc 2 32 2
+	.loc 2 36 2
 	ret;
 }
 
@@ -4557,25 +4557,25 @@ BB28_6:
 	ld.param.u32 	%r9, [map_logb_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 33 1
+	.loc 2 37 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r21, %r1, %r10, %r11;
-	.loc 2 33 1
+	.loc 2 37 1
 	setp.ge.s32	%p1, %r21, %r7;
 	@%p1 bra 	BB29_6;
 
-	.loc 2 33 22
+	.loc 2 37 22
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB29_2:
-	.loc 2 33 1
+	.loc 2 37 1
 	mul.lo.s32 	%r13, %r21, %r9;
 	mul.wide.s32 	%rd5, %r13, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 33 1
+	.loc 2 37 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8728 10
 	abs.f32 	%f5, %f1;
@@ -4603,20 +4603,20 @@ BB29_4:
 	selp.f32	%f9, 0fFF800000, %f8, %p4;
 
 BB29_5:
-	.loc 2 33 62
+	.loc 2 37 62
 	mul.lo.s32 	%r20, %r21, %r8;
 	mul.wide.s32 	%rd7, %r20, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 33 62
+	.loc 2 37 62
 	st.global.f32 	[%rd8], %f9;
-	.loc 2 33 22
+	.loc 2 37 22
 	add.s32 	%r21, %r3, %r21;
-	.loc 2 33 1
+	.loc 2 37 1
 	setp.lt.s32	%p5, %r21, %r7;
 	@%p5 bra 	BB29_2;
 
 BB29_6:
-	.loc 2 33 2
+	.loc 2 37 2
 	ret;
 }
 
@@ -4641,25 +4641,25 @@ BB29_6:
 	ld.param.u32 	%r8, [map_log_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 34 1
+	.loc 2 38 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r18, %r1, %r9, %r10;
-	.loc 2 34 1
+	.loc 2 38 1
 	setp.ge.s32	%p1, %r18, %r6;
 	@%p1 bra 	BB30_6;
 
-	.loc 2 34 22
+	.loc 2 38 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB30_2:
-	.loc 2 34 1
+	.loc 2 38 1
 	mul.lo.s32 	%r12, %r18, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 34 1
+	.loc 2 38 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8472 10
 	setp.gt.f32	%p2, %f1, 0f00000000;
@@ -4713,20 +4713,20 @@ BB30_4:
 	fma.rn.f32 	%f32, %f16, %f31, %f30;
 
 BB30_5:
-	.loc 2 34 70
+	.loc 2 38 70
 	mul.lo.s32 	%r17, %r18, %r7;
 	mul.wide.s32 	%rd7, %r17, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 34 70
+	.loc 2 38 70
 	st.global.f32 	[%rd8], %f32;
-	.loc 2 34 22
+	.loc 2 38 22
 	add.s32 	%r18, %r3, %r18;
-	.loc 2 34 1
+	.loc 2 38 1
 	setp.lt.s32	%p7, %r18, %r6;
 	@%p7 bra 	BB30_2;
 
 BB30_6:
-	.loc 2 34 2
+	.loc 2 38 2
 	ret;
 }
 
@@ -4751,42 +4751,42 @@ BB30_6:
 	ld.param.u32 	%r8, [map_nearbyint_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 35 1
+	.loc 2 39 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 35 1
+	.loc 2 39 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB31_3;
 
-	.loc 2 35 22
+	.loc 2 39 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB31_2:
-	.loc 2 35 1
+	.loc 2 39 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 35 1
+	.loc 2 39 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8292 10
 	cvt.rni.f32.f32	%f2, %f1;
-	.loc 2 35 62
+	.loc 2 39 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 35 62
+	.loc 2 39 62
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 35 22
+	.loc 2 39 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 35 1
+	.loc 2 39 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB31_2;
 
 BB31_3:
-	.loc 2 35 2
+	.loc 2 39 2
 	ret;
 }
 
@@ -4811,25 +4811,25 @@ BB31_3:
 	ld.param.u32 	%r8, [map_normcdf_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 36 1
+	.loc 2 40 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r17, %r1, %r9, %r10;
-	.loc 2 36 1
+	.loc 2 40 1
 	setp.ge.s32	%p1, %r17, %r6;
 	@%p1 bra 	BB32_5;
 
-	.loc 2 36 22
+	.loc 2 40 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB32_2:
-	.loc 2 36 1
+	.loc 2 40 1
 	mul.lo.s32 	%r12, %r17, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 36 1
+	.loc 2 40 1
 	ld.global.f32 	%f13, [%rd6];
 	.loc 3 8608 10
 	abs.f32 	%f14, %f13;
@@ -4942,22 +4942,22 @@ BB32_2:
 	fma.rn.f32 	%f80, %f78, %f76, %f80;
 
 BB32_4:
-	.loc 2 36 62
+	.loc 2 40 62
 	mul.lo.s32 	%r16, %r17, %r7;
 	mul.wide.s32 	%rd7, %r16, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	.loc 3 8608 10
 	mul.f32 	%f79, %f80, 0f3F000000;
-	.loc 2 36 62
+	.loc 2 40 62
 	st.global.f32 	[%rd8], %f79;
-	.loc 2 36 22
+	.loc 2 40 22
 	add.s32 	%r17, %r3, %r17;
-	.loc 2 36 1
+	.loc 2 40 1
 	setp.lt.s32	%p6, %r17, %r6;
 	@%p6 bra 	BB32_2;
 
 BB32_5:
-	.loc 2 36 2
+	.loc 2 40 2
 	ret;
 }
 
@@ -4982,25 +4982,25 @@ BB32_5:
 	ld.param.u32 	%r8, [map_normcdfinv_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 37 1
+	.loc 2 41 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 37 1
+	.loc 2 41 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB33_6;
 
-	.loc 2 37 22
+	.loc 2 41 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB33_2:
-	.loc 2 37 1
+	.loc 2 41 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 37 1
+	.loc 2 41 1
 	ld.global.f32 	%f7, [%rd6];
 	.loc 3 8599 10
 	add.f32 	%f1, %f7, %f7;
@@ -5091,22 +5091,22 @@ BB33_4:
 	fma.rn.f32 	%f57, %f55, %f2, %f55;
 
 BB33_5:
-	.loc 2 37 62
+	.loc 2 41 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	.loc 3 8599 10
 	mul.f32 	%f56, %f57, 0fBFB504F3;
-	.loc 2 37 62
+	.loc 2 41 62
 	st.global.f32 	[%rd8], %f56;
-	.loc 2 37 22
+	.loc 2 41 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 37 1
+	.loc 2 41 1
 	setp.lt.s32	%p6, %r14, %r6;
 	@%p6 bra 	BB33_2;
 
 BB33_6:
-	.loc 2 37 2
+	.loc 2 41 2
 	ret;
 }
 
@@ -5131,25 +5131,25 @@ BB33_6:
 	ld.param.u32 	%r8, [map_rcbrt_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 38 1
+	.loc 2 42 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r15, %r1, %r9, %r10;
-	.loc 2 38 1
+	.loc 2 42 1
 	setp.ge.s32	%p1, %r15, %r6;
 	@%p1 bra 	BB34_5;
 
-	.loc 2 38 22
+	.loc 2 42 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB34_2:
-	.loc 2 38 1
+	.loc 2 42 1
 	mul.lo.s32 	%r12, %r15, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 38 1
+	.loc 2 42 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8522 10
 	abs.f32 	%f7, %f1;
@@ -5180,20 +5180,20 @@ BB34_2:
 	mov.f32 	%f20, %f18;
 
 BB34_4:
-	.loc 2 38 62
+	.loc 2 42 62
 	mul.lo.s32 	%r14, %r15, %r7;
 	mul.wide.s32 	%rd7, %r14, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 38 62
+	.loc 2 42 62
 	st.global.f32 	[%rd8], %f20;
-	.loc 2 38 22
+	.loc 2 42 22
 	add.s32 	%r15, %r3, %r15;
-	.loc 2 38 1
+	.loc 2 42 1
 	setp.lt.s32	%p4, %r15, %r6;
 	@%p4 bra 	BB34_2;
 
 BB34_5:
-	.loc 2 38 2
+	.loc 2 42 2
 	ret;
 }
 
@@ -5218,42 +5218,42 @@ BB34_5:
 	ld.param.u32 	%r8, [map_rint_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 39 1
+	.loc 2 43 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 39 1
+	.loc 2 43 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB35_3;
 
-	.loc 2 39 22
+	.loc 2 43 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB35_2:
-	.loc 2 39 1
+	.loc 2 43 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 39 1
+	.loc 2 43 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8273 10
 	cvt.rni.f32.f32	%f2, %f1;
-	.loc 2 39 62
+	.loc 2 43 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 39 62
+	.loc 2 43 62
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 39 22
+	.loc 2 43 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 39 1
+	.loc 2 43 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB35_2;
 
 BB35_3:
-	.loc 2 39 2
+	.loc 2 43 2
 	ret;
 }
 
@@ -5278,25 +5278,25 @@ BB35_3:
 	ld.param.u32 	%r8, [map_round_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 40 1
+	.loc 2 44 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r17, %r1, %r9, %r10;
-	.loc 2 40 1
+	.loc 2 44 1
 	setp.ge.s32	%p1, %r17, %r6;
 	@%p1 bra 	BB36_5;
 
-	.loc 2 40 22
+	.loc 2 44 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB36_2:
-	.loc 2 40 1
+	.loc 2 44 1
 	mul.lo.s32 	%r12, %r17, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 40 1
+	.loc 2 44 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8699 10
 	abs.f32 	%f5, %f1;
@@ -5314,20 +5314,20 @@ BB36_2:
 	cvt.rzi.f32.f32	%f9, %f1;
 
 BB36_4:
-	.loc 2 40 62
+	.loc 2 44 62
 	mul.lo.s32 	%r16, %r17, %r7;
 	mul.wide.s32 	%rd7, %r16, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 40 62
+	.loc 2 44 62
 	st.global.f32 	[%rd8], %f9;
-	.loc 2 40 22
+	.loc 2 44 22
 	add.s32 	%r17, %r3, %r17;
-	.loc 2 40 1
+	.loc 2 44 1
 	setp.lt.s32	%p4, %r17, %r6;
 	@%p4 bra 	BB36_2;
 
 BB36_5:
-	.loc 2 40 2
+	.loc 2 44 2
 	ret;
 }
 
@@ -5352,42 +5352,42 @@ BB36_5:
 	ld.param.u32 	%r8, [map_rsqrt_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 41 1
+	.loc 2 45 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 41 1
+	.loc 2 45 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB37_3;
 
-	.loc 2 41 22
+	.loc 2 45 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB37_2:
-	.loc 2 41 1
+	.loc 2 45 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 41 1
+	.loc 2 45 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 4 2775 10
 	rsqrt.approx.f32 	%f2, %f1;
-	.loc 2 41 62
+	.loc 2 45 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 41 62
+	.loc 2 45 62
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 41 22
+	.loc 2 45 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 41 1
+	.loc 2 45 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB37_2;
 
 BB37_3:
-	.loc 2 41 2
+	.loc 2 45 2
 	ret;
 }
 
@@ -5417,27 +5417,27 @@ BB37_3:
 	ld.param.u32 	%r36, [map_sin_float_param_4];
 	add.u64 	%rd9, %SP, 0;
 	cvta.to.local.u64 	%rd1, %rd9;
-	.loc 2 42 1
+	.loc 2 46 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r37, %ctaid.x;
 	mov.u32 	%r38, %tid.x;
 	mad.lo.s32 	%r95, %r1, %r37, %r38;
-	.loc 2 42 1
+	.loc 2 46 1
 	setp.ge.s32	%p1, %r95, %r34;
 	@%p1 bra 	BB38_23;
 
-	.loc 2 42 22
+	.loc 2 46 22
 	mov.u32 	%r39, %nctaid.x;
 	mul.lo.s32 	%r3, %r39, %r1;
 	cvta.to.global.u64 	%rd10, %rd8;
 	cvta.to.global.u64 	%rd17, %rd7;
 
 BB38_2:
-	.loc 2 42 1
+	.loc 2 46 1
 	mul.lo.s32 	%r40, %r95, %r36;
 	mul.wide.s32 	%rd11, %r40, 4;
 	add.s64 	%rd12, %rd10, %rd11;
-	.loc 2 42 1
+	.loc 2 46 1
 	ld.global.f32 	%f43, [%rd12];
 	.loc 3 8359 10
 	abs.f32 	%f19, %f43;
@@ -5639,20 +5639,20 @@ BB38_20:
 	fma.rn.f32 	%f47, %f47, %f42, %f41;
 
 BB38_22:
-	.loc 2 42 70
+	.loc 2 46 70
 	mul.lo.s32 	%r94, %r95, %r35;
 	mul.wide.s32 	%rd18, %r94, 4;
 	add.s64 	%rd19, %rd17, %rd18;
-	.loc 2 42 70
+	.loc 2 46 70
 	st.global.f32 	[%rd19], %f47;
-	.loc 2 42 22
+	.loc 2 46 22
 	add.s32 	%r95, %r3, %r95;
-	.loc 2 42 1
+	.loc 2 46 1
 	setp.lt.s32	%p15, %r95, %r34;
 	@%p15 bra 	BB38_2;
 
 BB38_23:
-	.loc 2 42 2
+	.loc 2 46 2
 	ret;
 }
 
@@ -5677,25 +5677,25 @@ BB38_23:
 	ld.param.u32 	%r8, [map_sinh_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 43 1
+	.loc 2 47 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r19, %r1, %r9, %r10;
-	.loc 2 43 1
+	.loc 2 47 1
 	setp.ge.s32	%p1, %r19, %r6;
 	@%p1 bra 	BB39_6;
 
-	.loc 2 43 22
+	.loc 2 47 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB39_2:
-	.loc 2 43 1
+	.loc 2 47 1
 	mul.lo.s32 	%r12, %r19, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 43 1
+	.loc 2 47 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8439 10
 	abs.f32 	%f2, %f1;
@@ -5750,20 +5750,20 @@ BB39_4:
 	fma.rn.f32 	%f31, %f30, %f1, %f1;
 
 BB39_5:
-	.loc 2 43 70
+	.loc 2 47 70
 	mul.lo.s32 	%r18, %r19, %r7;
 	mul.wide.s32 	%rd7, %r18, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 43 70
+	.loc 2 47 70
 	st.global.f32 	[%rd8], %f31;
-	.loc 2 43 22
+	.loc 2 47 22
 	add.s32 	%r19, %r3, %r19;
-	.loc 2 43 1
+	.loc 2 47 1
 	setp.lt.s32	%p4, %r19, %r6;
 	@%p4 bra 	BB39_2;
 
 BB39_6:
-	.loc 2 43 2
+	.loc 2 47 2
 	ret;
 }
 
@@ -5786,27 +5786,27 @@ BB39_6:
 	ld.param.u32 	%r9, [map_sinpi_float_param_2];
 	ld.param.u64 	%rd2, [map_sinpi_float_param_3];
 	ld.param.u32 	%r10, [map_sinpi_float_param_4];
-	.loc 2 44 1
+	.loc 2 48 1
 	mov.u32 	%r11, %tid.x;
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r12, %ctaid.x;
 	mad.lo.s32 	%r17, %r1, %r12, %r11;
-	.loc 2 44 1
+	.loc 2 48 1
 	setp.ge.s32	%p1, %r17, %r8;
 	@%p1 bra 	BB40_15;
 
-	.loc 2 44 22
+	.loc 2 48 22
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r3, %r13, %r1;
 	cvta.to.global.u64 	%rd3, %rd2;
 	cvta.to.global.u64 	%rd6, %rd1;
 
 BB40_2:
-	.loc 2 44 1
+	.loc 2 48 1
 	mul.lo.s32 	%r14, %r17, %r10;
 	mul.wide.s32 	%rd4, %r14, 4;
 	add.s64 	%rd5, %rd3, %rd4;
-	.loc 2 44 1
+	.loc 2 48 1
 	ld.global.f32 	%f1, [%rd5];
 	.loc 3 8383 10
 	add.f32 	%f17, %f1, %f1;
@@ -5884,20 +5884,20 @@ BB40_12:
 	mul.rn.f32 	%f41, %f1, %f38;
 
 BB40_14:
-	.loc 2 44 62
+	.loc 2 48 62
 	mul.lo.s32 	%r16, %r17, %r9;
 	mul.wide.s32 	%rd7, %r16, 4;
 	add.s64 	%rd8, %rd6, %rd7;
-	.loc 2 44 62
+	.loc 2 48 62
 	st.global.f32 	[%rd8], %f41;
-	.loc 2 44 22
+	.loc 2 48 22
 	add.s32 	%r17, %r3, %r17;
-	.loc 2 44 1
+	.loc 2 48 1
 	setp.lt.s32	%p7, %r17, %r8;
 	@%p7 bra 	BB40_2;
 
 BB40_15:
-	.loc 2 44 2
+	.loc 2 48 2
 	ret;
 }
 
@@ -5922,42 +5922,42 @@ BB40_15:
 	ld.param.u32 	%r8, [map_sqrt_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 45 1
+	.loc 2 49 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 45 1
+	.loc 2 49 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB41_3;
 
-	.loc 2 45 22
+	.loc 2 49 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB41_2:
-	.loc 2 45 1
+	.loc 2 49 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 45 1
+	.loc 2 49 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 4 3055 10
 	sqrt.rn.f32 	%f2, %f1;
-	.loc 2 45 70
+	.loc 2 49 70
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 45 70
+	.loc 2 49 70
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 45 22
+	.loc 2 49 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 45 1
+	.loc 2 49 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB41_2;
 
 BB41_3:
-	.loc 2 45 2
+	.loc 2 49 2
 	ret;
 }
 
@@ -5985,27 +5985,27 @@ BB41_3:
 	ld.param.u64 	%rd9, [map_tan_float_param_3];
 	ld.param.u32 	%r35, [map_tan_float_param_4];
 	add.u64 	%rd10, %SPL, 0;
-	.loc 2 46 1
+	.loc 2 50 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r36, %ctaid.x;
 	mov.u32 	%r37, %tid.x;
 	mad.lo.s32 	%r94, %r1, %r36, %r37;
-	.loc 2 46 1
+	.loc 2 50 1
 	setp.ge.s32	%p1, %r94, %r33;
 	@%p1 bra 	BB42_15;
 
-	.loc 2 46 22
+	.loc 2 50 22
 	mov.u32 	%r38, %nctaid.x;
 	mul.lo.s32 	%r3, %r38, %r1;
 	cvta.to.global.u64 	%rd11, %rd9;
 	cvta.to.global.u64 	%rd16, %rd8;
 
 BB42_2:
-	.loc 2 46 1
+	.loc 2 50 1
 	mul.lo.s32 	%r39, %r94, %r35;
 	mul.wide.s32 	%rd12, %r39, 4;
 	add.s64 	%rd13, %rd11, %rd12;
-	.loc 2 46 1
+	.loc 2 50 1
 	ld.global.f32 	%f30, [%rd13];
 	.loc 3 8401 10
 	abs.f32 	%f10, %f30;
@@ -6171,20 +6171,20 @@ BB42_13:
 	div.rn.f32 	%f32, %f29, %f32;
 
 BB42_14:
-	.loc 2 46 70
+	.loc 2 50 70
 	mul.lo.s32 	%r93, %r94, %r34;
 	mul.wide.s32 	%rd17, %r93, 4;
 	add.s64 	%rd18, %rd16, %rd17;
-	.loc 2 46 70
+	.loc 2 50 70
 	st.global.f32 	[%rd18], %f32;
-	.loc 2 46 22
+	.loc 2 50 22
 	add.s32 	%r94, %r3, %r94;
-	.loc 2 46 1
+	.loc 2 50 1
 	setp.lt.s32	%p12, %r94, %r33;
 	@%p12 bra 	BB42_2;
 
 BB42_15:
-	.loc 2 46 2
+	.loc 2 50 2
 	ret;
 }
 
@@ -6209,25 +6209,25 @@ BB42_15:
 	ld.param.u32 	%r8, [map_tanh_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 47 1
+	.loc 2 51 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r19, %r1, %r9, %r10;
-	.loc 2 47 1
+	.loc 2 51 1
 	setp.ge.s32	%p1, %r19, %r6;
 	@%p1 bra 	BB43_6;
 
-	.loc 2 47 22
+	.loc 2 51 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB43_2:
-	.loc 2 47 1
+	.loc 2 51 1
 	mul.lo.s32 	%r12, %r19, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 47 1
+	.loc 2 51 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8444 10
 	abs.f32 	%f2, %f1;
@@ -6286,20 +6286,20 @@ BB43_4:
 	selp.f32	%f32, %f31, %f30, %p4;
 
 BB43_5:
-	.loc 2 47 70
+	.loc 2 51 70
 	mul.lo.s32 	%r18, %r19, %r7;
 	mul.wide.s32 	%rd7, %r18, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 47 70
+	.loc 2 51 70
 	st.global.f32 	[%rd8], %f32;
-	.loc 2 47 22
+	.loc 2 51 22
 	add.s32 	%r19, %r3, %r19;
-	.loc 2 47 1
+	.loc 2 51 1
 	setp.lt.s32	%p5, %r19, %r6;
 	@%p5 bra 	BB43_2;
 
 BB43_6:
-	.loc 2 47 2
+	.loc 2 51 2
 	ret;
 }
 
@@ -6324,25 +6324,25 @@ BB43_6:
 	ld.param.u32 	%r8, [map_tgamma_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 48 1
+	.loc 2 52 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r16, %r1, %r9, %r10;
-	.loc 2 48 1
+	.loc 2 52 1
 	setp.ge.s32	%p1, %r16, %r6;
 	@%p1 bra 	BB44_13;
 
-	.loc 2 48 22
+	.loc 2 52 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB44_2:
-	.loc 2 48 1
+	.loc 2 52 1
 	mul.lo.s32 	%r12, %r16, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 48 1
+	.loc 2 52 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8694 10
 	setp.ltu.f32	%p2, %f1, 0f00000000;
@@ -6480,20 +6480,20 @@ BB44_8:
 	mov.f32 	%f92, 0f80000000;
 
 BB44_12:
-	.loc 2 48 62
+	.loc 2 52 62
 	mul.lo.s32 	%r15, %r16, %r7;
 	mul.wide.s32 	%rd7, %r15, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 48 62
+	.loc 2 52 62
 	st.global.f32 	[%rd8], %f92;
-	.loc 2 48 22
+	.loc 2 52 22
 	add.s32 	%r16, %r3, %r16;
-	.loc 2 48 1
+	.loc 2 52 1
 	setp.lt.s32	%p18, %r16, %r6;
 	@%p18 bra 	BB44_2;
 
 BB44_13:
-	.loc 2 48 2
+	.loc 2 52 2
 	ret;
 }
 
@@ -6518,42 +6518,42 @@ BB44_13:
 	ld.param.u32 	%r8, [map_trunc_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 49 1
+	.loc 2 53 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 49 1
+	.loc 2 53 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB45_3;
 
-	.loc 2 49 22
+	.loc 2 53 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB45_2:
-	.loc 2 49 1
+	.loc 2 53 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 49 1
+	.loc 2 53 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 4 2810 10
 	cvt.rzi.f32.f32	%f2, %f1;
-	.loc 2 49 62
+	.loc 2 53 62
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 49 62
+	.loc 2 53 62
 	st.global.f32 	[%rd8], %f2;
-	.loc 2 49 22
+	.loc 2 53 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 49 1
+	.loc 2 53 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB45_2;
 
 BB45_3:
-	.loc 2 49 2
+	.loc 2 53 2
 	ret;
 }
 
@@ -6581,12 +6581,12 @@ BB45_3:
 	ld.param.u32 	%r117, [map_y0_float_param_2];
 	ld.param.u64 	%rd26, [map_y0_float_param_3];
 	ld.param.u32 	%r118, [map_y0_float_param_4];
-	.loc 2 50 1
+	.loc 2 54 1
 	mov.u32 	%r119, %ntid.x;
 	mov.u32 	%r120, %ctaid.x;
 	mov.u32 	%r121, %tid.x;
 	mad.lo.s32 	%r342, %r119, %r120, %r121;
-	.loc 2 50 1
+	.loc 2 54 1
 	setp.ge.s32	%p1, %r342, %r116;
 	@%p1 bra 	BB46_79;
 
@@ -6594,11 +6594,11 @@ BB45_3:
 	cvta.to.global.u64 	%rd50, %rd25;
 
 BB46_2:
-	.loc 2 50 1
+	.loc 2 54 1
 	mul.lo.s32 	%r122, %r342, %r118;
 	mul.wide.s32 	%rd28, %r122, 4;
 	add.s64 	%rd29, %rd27, %rd28;
-	.loc 2 50 1
+	.loc 2 54 1
 	ld.global.f32 	%f1, [%rd29];
 	.loc 3 8537 10
 	abs.f32 	%f2, %f1;
@@ -7610,21 +7610,21 @@ BB46_76:
 	sqrt.rn.f32 	%f340, %f320;
 
 BB46_78:
-	.loc 2 50 62
+	.loc 2 54 62
 	mul.lo.s32 	%r339, %r342, %r117;
 	mul.wide.s32 	%rd51, %r339, 4;
 	add.s64 	%rd52, %rd50, %rd51;
-	.loc 2 50 62
+	.loc 2 54 62
 	st.global.f32 	[%rd52], %f340;
-	.loc 2 50 22
+	.loc 2 54 22
 	mov.u32 	%r341, %nctaid.x;
 	mad.lo.s32 	%r342, %r341, %r119, %r342;
-	.loc 2 50 1
+	.loc 2 54 1
 	setp.lt.s32	%p57, %r342, %r116;
 	@%p57 bra 	BB46_2;
 
 BB46_79:
-	.loc 2 50 2
+	.loc 2 54 2
 	ret;
 }
 
@@ -7652,12 +7652,12 @@ BB46_79:
 	ld.param.u32 	%r117, [map_y1_float_param_2];
 	ld.param.u64 	%rd26, [map_y1_float_param_3];
 	ld.param.u32 	%r118, [map_y1_float_param_4];
-	.loc 2 51 1
+	.loc 2 55 1
 	mov.u32 	%r119, %ntid.x;
 	mov.u32 	%r120, %ctaid.x;
 	mov.u32 	%r121, %tid.x;
 	mad.lo.s32 	%r347, %r119, %r120, %r121;
-	.loc 2 51 1
+	.loc 2 55 1
 	setp.ge.s32	%p1, %r347, %r116;
 	@%p1 bra 	BB47_82;
 
@@ -7665,11 +7665,11 @@ BB46_79:
 	cvta.to.global.u64 	%rd50, %rd25;
 
 BB47_2:
-	.loc 2 51 1
+	.loc 2 55 1
 	mul.lo.s32 	%r122, %r347, %r118;
 	mul.wide.s32 	%rd28, %r122, 4;
 	add.s64 	%rd29, %rd27, %rd28;
-	.loc 2 51 1
+	.loc 2 55 1
 	ld.global.f32 	%f1, [%rd29];
 	.loc 3 8542 10
 	abs.f32 	%f2, %f1;
@@ -8686,21 +8686,21 @@ BB47_79:
 	sqrt.rn.f32 	%f331, %f316;
 
 BB47_81:
-	.loc 2 51 62
+	.loc 2 55 62
 	mul.lo.s32 	%r344, %r347, %r117;
 	mul.wide.s32 	%rd51, %r344, 4;
 	add.s64 	%rd52, %rd50, %rd51;
-	.loc 2 51 62
+	.loc 2 55 62
 	st.global.f32 	[%rd52], %f331;
-	.loc 2 51 22
+	.loc 2 55 22
 	mov.u32 	%r346, %nctaid.x;
 	mad.lo.s32 	%r347, %r346, %r119, %r347;
-	.loc 2 51 1
+	.loc 2 55 1
 	setp.lt.s32	%p59, %r347, %r116;
 	@%p59 bra 	BB47_2;
 
 BB47_82:
-	.loc 2 51 2
+	.loc 2 55 2
 	ret;
 }
 
@@ -8725,25 +8725,25 @@ BB47_82:
 	ld.param.u32 	%r8, [map_sigmoid_float_param_4];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 52 1
+	.loc 2 56 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 52 1
+	.loc 2 56 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB48_3;
 
-	.loc 2 52 22
+	.loc 2 56 22
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB48_2:
-	.loc 2 52 1
+	.loc 2 56 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 52 1
+	.loc 2 56 1
 	ld.global.f32 	%f3, [%rd6];
 	neg.f32 	%f4, %f3;
 	.loc 3 8419 10
@@ -8766,22 +8766,22 @@ BB48_2:
 	selp.f32	%f14, 0f00000000, %f13, %p2;
 	setp.lt.f32	%p3, %f3, 0fC2D20000;
 	selp.f32	%f15, 0f7F800000, %f14, %p3;
-	.loc 2 52 114
+	.loc 2 56 114
 	add.f32 	%f16, %f15, 0f3F800000;
 	rcp.rn.f32 	%f17, %f16;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 52 114
+	.loc 2 56 114
 	st.global.f32 	[%rd8], %f17;
-	.loc 2 52 22
+	.loc 2 56 22
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 52 1
+	.loc 2 56 1
 	setp.lt.s32	%p4, %r14, %r6;
 	@%p4 bra 	BB48_2;
 
 BB48_3:
-	.loc 2 52 2
+	.loc 2 56 2
 	ret;
 }
 
@@ -8811,45 +8811,45 @@ BB48_3:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 62 1
+	.loc 2 66 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r16, %r1, %r10, %r11;
-	.loc 2 62 1
+	.loc 2 66 1
 	setp.ge.s32	%p1, %r16, %r6;
 	@%p1 bra 	BB49_3;
 
-	.loc 2 62 24
+	.loc 2 66 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB49_2:
-	.loc 2 62 1
+	.loc 2 66 1
 	mul.lo.s32 	%r13, %r16, %r8;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 62 1
+	.loc 2 66 1
 	mul.lo.s32 	%r14, %r16, %r9;
 	mul.wide.s32 	%rd9, %r14, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 62 1
+	.loc 2 66 1
 	ld.global.f32 	%f1, [%rd10];
 	ld.global.f32 	%f2, [%rd8];
 	add.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r15, %r16, %r7;
 	mul.wide.s32 	%rd11, %r15, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 62 1
+	.loc 2 66 1
 	st.global.f32 	[%rd12], %f3;
-	.loc 2 62 24
+	.loc 2 66 24
 	add.s32 	%r16, %r3, %r16;
-	.loc 2 62 1
+	.loc 2 66 1
 	setp.lt.s32	%p2, %r16, %r6;
 	@%p2 bra 	BB49_2;
 
 BB49_3:
-	.loc 2 62 2
+	.loc 2 66 2
 	ret;
 }
 
@@ -8876,40 +8876,40 @@ BB49_3:
 	ld.param.f32 	%f1, [map2_v_s_add_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 62 1
+	.loc 2 66 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 62 1
+	.loc 2 66 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB50_3;
 
-	.loc 2 62 24
+	.loc 2 66 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB50_2:
-	.loc 2 62 1
+	.loc 2 66 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 62 1
+	.loc 2 66 1
 	ld.global.f32 	%f2, [%rd6];
 	add.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 62 1
+	.loc 2 66 1
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 62 24
+	.loc 2 66 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 62 1
+	.loc 2 66 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB50_2;
 
 BB50_3:
-	.loc 2 62 2
+	.loc 2 66 2
 	ret;
 }
 
@@ -8936,40 +8936,40 @@ BB50_3:
 	ld.param.u32 	%r8, [map2_s_v_add_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 62 1
+	.loc 2 66 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 62 1
+	.loc 2 66 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB51_3;
 
-	.loc 2 62 24
+	.loc 2 66 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB51_2:
-	.loc 2 62 1
+	.loc 2 66 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 62 1
+	.loc 2 66 1
 	ld.global.f32 	%f2, [%rd6];
 	add.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 62 1
+	.loc 2 66 1
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 62 24
+	.loc 2 66 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 62 1
+	.loc 2 66 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB51_2;
 
 BB51_3:
-	.loc 2 62 2
+	.loc 2 66 2
 	ret;
 }
 
@@ -8999,45 +8999,45 @@ BB51_3:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 63 1
+	.loc 2 67 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r16, %r1, %r10, %r11;
-	.loc 2 63 1
+	.loc 2 67 1
 	setp.ge.s32	%p1, %r16, %r6;
 	@%p1 bra 	BB52_3;
 
-	.loc 2 63 24
+	.loc 2 67 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB52_2:
-	.loc 2 63 1
+	.loc 2 67 1
 	mul.lo.s32 	%r13, %r16, %r8;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 63 1
+	.loc 2 67 1
 	mul.lo.s32 	%r14, %r16, %r9;
 	mul.wide.s32 	%rd9, %r14, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 63 1
+	.loc 2 67 1
 	ld.global.f32 	%f1, [%rd10];
 	ld.global.f32 	%f2, [%rd8];
 	sub.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r15, %r16, %r7;
 	mul.wide.s32 	%rd11, %r15, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 63 1
+	.loc 2 67 1
 	st.global.f32 	[%rd12], %f3;
-	.loc 2 63 24
+	.loc 2 67 24
 	add.s32 	%r16, %r3, %r16;
-	.loc 2 63 1
+	.loc 2 67 1
 	setp.lt.s32	%p2, %r16, %r6;
 	@%p2 bra 	BB52_2;
 
 BB52_3:
-	.loc 2 63 2
+	.loc 2 67 2
 	ret;
 }
 
@@ -9064,40 +9064,40 @@ BB52_3:
 	ld.param.f32 	%f1, [map2_v_s_sub_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 63 1
+	.loc 2 67 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 63 1
+	.loc 2 67 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB53_3;
 
-	.loc 2 63 24
+	.loc 2 67 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB53_2:
-	.loc 2 63 1
+	.loc 2 67 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 63 1
+	.loc 2 67 1
 	ld.global.f32 	%f2, [%rd6];
 	sub.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 63 1
+	.loc 2 67 1
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 63 24
+	.loc 2 67 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 63 1
+	.loc 2 67 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB53_2;
 
 BB53_3:
-	.loc 2 63 2
+	.loc 2 67 2
 	ret;
 }
 
@@ -9124,40 +9124,40 @@ BB53_3:
 	ld.param.u32 	%r8, [map2_s_v_sub_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 63 1
+	.loc 2 67 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 63 1
+	.loc 2 67 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB54_3;
 
-	.loc 2 63 24
+	.loc 2 67 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB54_2:
-	.loc 2 63 1
+	.loc 2 67 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 63 1
+	.loc 2 67 1
 	ld.global.f32 	%f2, [%rd6];
 	sub.f32 	%f3, %f1, %f2;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 63 1
+	.loc 2 67 1
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 63 24
+	.loc 2 67 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 63 1
+	.loc 2 67 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB54_2;
 
 BB54_3:
-	.loc 2 63 2
+	.loc 2 67 2
 	ret;
 }
 
@@ -9187,45 +9187,45 @@ BB54_3:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 64 1
+	.loc 2 68 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r16, %r1, %r10, %r11;
-	.loc 2 64 1
+	.loc 2 68 1
 	setp.ge.s32	%p1, %r16, %r6;
 	@%p1 bra 	BB55_3;
 
-	.loc 2 64 24
+	.loc 2 68 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB55_2:
-	.loc 2 64 1
+	.loc 2 68 1
 	mul.lo.s32 	%r13, %r16, %r8;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 64 1
+	.loc 2 68 1
 	mul.lo.s32 	%r14, %r16, %r9;
 	mul.wide.s32 	%rd9, %r14, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 64 1
+	.loc 2 68 1
 	ld.global.f32 	%f1, [%rd10];
 	ld.global.f32 	%f2, [%rd8];
 	mul.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r15, %r16, %r7;
 	mul.wide.s32 	%rd11, %r15, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 64 1
+	.loc 2 68 1
 	st.global.f32 	[%rd12], %f3;
-	.loc 2 64 24
+	.loc 2 68 24
 	add.s32 	%r16, %r3, %r16;
-	.loc 2 64 1
+	.loc 2 68 1
 	setp.lt.s32	%p2, %r16, %r6;
 	@%p2 bra 	BB55_2;
 
 BB55_3:
-	.loc 2 64 2
+	.loc 2 68 2
 	ret;
 }
 
@@ -9252,40 +9252,40 @@ BB55_3:
 	ld.param.f32 	%f1, [map2_v_s_mul_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 64 1
+	.loc 2 68 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 64 1
+	.loc 2 68 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB56_3;
 
-	.loc 2 64 24
+	.loc 2 68 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB56_2:
-	.loc 2 64 1
+	.loc 2 68 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 64 1
+	.loc 2 68 1
 	ld.global.f32 	%f2, [%rd6];
 	mul.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 64 1
+	.loc 2 68 1
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 64 24
+	.loc 2 68 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 64 1
+	.loc 2 68 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB56_2;
 
 BB56_3:
-	.loc 2 64 2
+	.loc 2 68 2
 	ret;
 }
 
@@ -9312,40 +9312,40 @@ BB56_3:
 	ld.param.u32 	%r8, [map2_s_v_mul_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 64 1
+	.loc 2 68 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 64 1
+	.loc 2 68 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB57_3;
 
-	.loc 2 64 24
+	.loc 2 68 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB57_2:
-	.loc 2 64 1
+	.loc 2 68 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 64 1
+	.loc 2 68 1
 	ld.global.f32 	%f2, [%rd6];
 	mul.f32 	%f3, %f2, %f1;
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 64 1
+	.loc 2 68 1
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 64 24
+	.loc 2 68 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 64 1
+	.loc 2 68 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB57_2;
 
 BB57_3:
-	.loc 2 64 2
+	.loc 2 68 2
 	ret;
 }
 
@@ -9375,47 +9375,47 @@ BB57_3:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 65 1
+	.loc 2 69 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r16, %r1, %r10, %r11;
-	.loc 2 65 1
+	.loc 2 69 1
 	setp.ge.s32	%p1, %r16, %r6;
 	@%p1 bra 	BB58_3;
 
-	.loc 2 65 24
+	.loc 2 69 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB58_2:
-	.loc 2 65 1
+	.loc 2 69 1
 	mul.lo.s32 	%r13, %r16, %r8;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 65 1
+	.loc 2 69 1
 	mul.lo.s32 	%r14, %r16, %r9;
 	mul.wide.s32 	%rd9, %r14, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 65 1
+	.loc 2 69 1
 	ld.global.f32 	%f1, [%rd10];
 	ld.global.f32 	%f2, [%rd8];
 	.loc 4 3608 3
 	div.rn.f32 	%f3, %f2, %f1;
-	.loc 2 65 37
+	.loc 2 69 37
 	mul.lo.s32 	%r15, %r16, %r7;
 	mul.wide.s32 	%rd11, %r15, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 65 37
+	.loc 2 69 37
 	st.global.f32 	[%rd12], %f3;
-	.loc 2 65 24
+	.loc 2 69 24
 	add.s32 	%r16, %r3, %r16;
-	.loc 2 65 1
+	.loc 2 69 1
 	setp.lt.s32	%p2, %r16, %r6;
 	@%p2 bra 	BB58_2;
 
 BB58_3:
-	.loc 2 65 2
+	.loc 2 69 2
 	ret;
 }
 
@@ -9442,42 +9442,42 @@ BB58_3:
 	ld.param.f32 	%f1, [map2_v_s_div_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 65 1
+	.loc 2 69 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 65 1
+	.loc 2 69 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB59_3;
 
-	.loc 2 65 24
+	.loc 2 69 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB59_2:
-	.loc 2 65 1
+	.loc 2 69 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 65 1
+	.loc 2 69 1
 	ld.global.f32 	%f2, [%rd6];
 	.loc 4 3608 3
 	div.rn.f32 	%f3, %f2, %f1;
-	.loc 2 65 37
+	.loc 2 69 37
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 65 37
+	.loc 2 69 37
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 65 24
+	.loc 2 69 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 65 1
+	.loc 2 69 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB59_2;
 
 BB59_3:
-	.loc 2 65 2
+	.loc 2 69 2
 	ret;
 }
 
@@ -9504,42 +9504,42 @@ BB59_3:
 	ld.param.u32 	%r8, [map2_s_v_div_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 65 1
+	.loc 2 69 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 65 1
+	.loc 2 69 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB60_3;
 
-	.loc 2 65 24
+	.loc 2 69 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB60_2:
-	.loc 2 65 1
+	.loc 2 69 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 65 1
+	.loc 2 69 1
 	ld.global.f32 	%f2, [%rd6];
 	.loc 4 3608 3
 	div.rn.f32 	%f3, %f1, %f2;
-	.loc 2 65 37
+	.loc 2 69 37
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 65 37
+	.loc 2 69 37
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 65 24
+	.loc 2 69 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 65 1
+	.loc 2 69 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB60_2;
 
 BB60_3:
-	.loc 2 65 2
+	.loc 2 69 2
 	ret;
 }
 
@@ -9569,33 +9569,33 @@ BB60_3:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 66 1
+	.loc 2 70 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r12, %ctaid.x;
 	mov.u32 	%r13, %tid.x;
 	mad.lo.s32 	%r33, %r1, %r12, %r13;
-	.loc 2 66 1
+	.loc 2 70 1
 	setp.ge.s32	%p1, %r33, %r8;
 	@%p1 bra 	BB61_17;
 
-	.loc 2 66 24
+	.loc 2 70 24
 	mov.u32 	%r14, %nctaid.x;
 	mul.lo.s32 	%r3, %r14, %r1;
 
 BB61_2:
-	.loc 2 66 1
+	.loc 2 70 1
 	mul.lo.s32 	%r15, %r33, %r10;
 	mul.wide.s32 	%rd7, %r15, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 66 1
+	.loc 2 70 1
 	mul.lo.s32 	%r16, %r33, %r11;
 	mul.wide.s32 	%rd9, %r16, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 66 1
+	.loc 2 70 1
 	ld.global.f32 	%f1, [%rd8];
 	.loc 3 8651 10
 	abs.f32 	%f46, %f1;
-	.loc 2 66 1
+	.loc 2 70 1
 	ld.global.f32 	%f3, [%rd10];
 	.loc 3 8651 10
 	abs.f32 	%f4, %f3;
@@ -9720,20 +9720,20 @@ BB61_15:
 	selp.f32	%f47, %f42, %f41, %p19;
 
 BB61_16:
-	.loc 2 66 116
+	.loc 2 70 116
 	mul.lo.s32 	%r32, %r33, %r9;
 	mul.wide.s32 	%rd11, %r32, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 66 116
+	.loc 2 70 116
 	st.global.f32 	[%rd12], %f47;
-	.loc 2 66 24
+	.loc 2 70 24
 	add.s32 	%r33, %r3, %r33;
-	.loc 2 66 1
+	.loc 2 70 1
 	setp.lt.s32	%p20, %r33, %r8;
 	@%p20 bra 	BB61_2;
 
 BB61_17:
-	.loc 2 66 2
+	.loc 2 70 2
 	ret;
 }
 
@@ -9760,29 +9760,29 @@ BB61_17:
 	ld.param.f32 	%f20, [map2_v_s_mod_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 66 1
+	.loc 2 70 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r11, %ctaid.x;
 	mov.u32 	%r12, %tid.x;
 	mad.lo.s32 	%r31, %r1, %r11, %r12;
-	.loc 2 66 1
+	.loc 2 70 1
 	setp.ge.s32	%p1, %r31, %r8;
 	@%p1 bra 	BB62_17;
 
 	.loc 3 8651 10
 	abs.f32 	%f1, %f20;
-	.loc 2 66 24
+	.loc 2 70 24
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r3, %r13, %r1;
 	.loc 3 8651 10
 	add.f32 	%f2, %f1, %f1;
 
 BB62_2:
-	.loc 2 66 1
+	.loc 2 70 1
 	mul.lo.s32 	%r14, %r31, %r10;
 	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 66 1
+	.loc 2 70 1
 	ld.global.f32 	%f3, [%rd6];
 	.loc 3 8651 10
 	abs.f32 	%f46, %f3;
@@ -9907,20 +9907,20 @@ BB62_15:
 	selp.f32	%f47, %f42, %f41, %p19;
 
 BB62_16:
-	.loc 2 66 72
+	.loc 2 70 72
 	mul.lo.s32 	%r30, %r31, %r9;
 	mul.wide.s32 	%rd7, %r30, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 66 72
+	.loc 2 70 72
 	st.global.f32 	[%rd8], %f47;
-	.loc 2 66 24
+	.loc 2 70 24
 	add.s32 	%r31, %r3, %r31;
-	.loc 2 66 1
+	.loc 2 70 1
 	setp.lt.s32	%p20, %r31, %r8;
 	@%p20 bra 	BB62_2;
 
 BB62_17:
-	.loc 2 66 2
+	.loc 2 70 2
 	ret;
 }
 
@@ -9947,18 +9947,18 @@ BB62_17:
 	ld.param.u32 	%r11, [map2_s_v_mod_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 66 1
+	.loc 2 70 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r12, %ctaid.x;
 	mov.u32 	%r13, %tid.x;
 	mad.lo.s32 	%r31, %r1, %r12, %r13;
-	.loc 2 66 1
+	.loc 2 70 1
 	setp.ge.s32	%p1, %r31, %r9;
 	@%p1 bra 	BB63_17;
 
 	.loc 3 8651 10
 	abs.f32 	%f1, %f20;
-	.loc 2 66 24
+	.loc 2 70 24
 	mov.u32 	%r14, %nctaid.x;
 	mul.lo.s32 	%r3, %r14, %r1;
 	.loc 3 8651 10
@@ -9967,11 +9967,11 @@ BB62_17:
 	and.b32  	%r4, %r15, -2147483648;
 
 BB63_2:
-	.loc 2 66 1
+	.loc 2 70 1
 	mul.lo.s32 	%r16, %r31, %r11;
 	mul.wide.s32 	%rd5, %r16, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 66 1
+	.loc 2 70 1
 	ld.global.f32 	%f3, [%rd6];
 	.loc 3 8651 10
 	abs.f32 	%f4, %f3;
@@ -10099,20 +10099,20 @@ BB63_15:
 	selp.f32	%f50, %f42, %f41, %p18;
 
 BB63_16:
-	.loc 2 66 72
+	.loc 2 70 72
 	mul.lo.s32 	%r30, %r31, %r10;
 	mul.wide.s32 	%rd7, %r30, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 66 72
+	.loc 2 70 72
 	st.global.f32 	[%rd8], %f50;
-	.loc 2 66 24
+	.loc 2 70 24
 	add.s32 	%r31, %r3, %r31;
-	.loc 2 66 1
+	.loc 2 70 1
 	setp.lt.s32	%p20, %r31, %r9;
 	@%p20 bra 	BB63_2;
 
 BB63_17:
-	.loc 2 66 2
+	.loc 2 70 2
 	ret;
 }
 
@@ -10142,36 +10142,36 @@ BB63_17:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 67 1
+	.loc 2 71 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r34, %r1, %r10, %r11;
-	.loc 2 67 1
+	.loc 2 71 1
 	setp.ge.s32	%p1, %r34, %r6;
 	@%p1 bra 	BB64_20;
 
-	.loc 2 67 24
+	.loc 2 71 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB64_2:
-	.loc 2 67 1
+	.loc 2 71 1
 	mul.lo.s32 	%r13, %r34, %r8;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 67 1
+	.loc 2 71 1
 	mul.lo.s32 	%r14, %r34, %r9;
 	mul.wide.s32 	%rd9, %r14, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 67 1
+	.loc 2 71 1
 	ld.global.f32 	%f1, [%rd10];
 	.loc 3 8684 10
 	mul.f32 	%f16, %f1, 0f3F000000;
 	cvt.rzi.f32.f32	%f17, %f16;
 	fma.rn.f32 	%f18, %f17, 0fC0000000, %f1;
 	abs.f32 	%f2, %f18;
-	.loc 2 67 1
+	.loc 2 71 1
 	ld.global.f32 	%f3, [%rd8];
 	.loc 3 8684 10
 	setp.eq.f32	%p2, %f3, 0f3F800000;
@@ -10371,20 +10371,20 @@ BB64_18:
 	add.f32 	%f100, %f3, %f1;
 
 BB64_19:
-	.loc 2 67 116
+	.loc 2 71 116
 	mul.lo.s32 	%r33, %r34, %r7;
 	mul.wide.s32 	%rd11, %r33, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 67 116
+	.loc 2 71 116
 	st.global.f32 	[%rd12], %f100;
-	.loc 2 67 24
+	.loc 2 71 24
 	add.s32 	%r34, %r3, %r34;
-	.loc 2 67 1
+	.loc 2 71 1
 	setp.lt.s32	%p31, %r34, %r6;
 	@%p31 bra 	BB64_2;
 
 BB64_20:
-	.loc 2 67 2
+	.loc 2 71 2
 	ret;
 }
 
@@ -10410,12 +10410,12 @@ BB64_20:
 	ld.param.u32 	%r10, [map2_v_s_pow_float_param_4];
 	ld.param.f32 	%f16, [map2_v_s_pow_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
-	.loc 2 67 1
+	.loc 2 71 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r11, %ctaid.x;
 	mov.u32 	%r12, %tid.x;
 	mad.lo.s32 	%r32, %r1, %r11, %r12;
-	.loc 2 67 1
+	.loc 2 71 1
 	setp.ge.s32	%p1, %r32, %r8;
 	@%p1 bra 	BB65_20;
 
@@ -10424,7 +10424,7 @@ BB64_20:
 	cvt.rzi.f32.f32	%f18, %f17;
 	fma.rn.f32 	%f19, %f18, 0fC0000000, %f16;
 	abs.f32 	%f1, %f19;
-	.loc 2 67 24
+	.loc 2 71 24
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r3, %r13, %r1;
 	.loc 3 8684 10
@@ -10435,11 +10435,11 @@ BB64_20:
 	cvta.to.global.u64 	%rd4, %rd2;
 
 BB65_2:
-	.loc 2 67 1
+	.loc 2 71 1
 	mul.lo.s32 	%r14, %r32, %r10;
 	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd4, %rd5;
-	.loc 2 67 1
+	.loc 2 71 1
 	ld.global.f32 	%f3, [%rd6];
 	.loc 3 8684 10
 	setp.eq.f32	%p3, %f3, 0f3F800000;
@@ -10637,20 +10637,20 @@ BB65_18:
 	add.f32 	%f100, %f3, %f16;
 
 BB65_19:
-	.loc 2 67 72
+	.loc 2 71 72
 	mul.lo.s32 	%r31, %r32, %r9;
 	mul.wide.s32 	%rd7, %r31, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 67 72
+	.loc 2 71 72
 	st.global.f32 	[%rd8], %f100;
-	.loc 2 67 24
+	.loc 2 71 24
 	add.s32 	%r32, %r3, %r32;
-	.loc 2 67 1
+	.loc 2 71 1
 	setp.lt.s32	%p31, %r32, %r8;
 	@%p31 bra 	BB65_2;
 
 BB65_20:
-	.loc 2 67 2
+	.loc 2 71 2
 	ret;
 }
 
@@ -10677,16 +10677,16 @@ BB65_20:
 	ld.param.u32 	%r9, [map2_s_v_pow_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 67 1
+	.loc 2 71 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r32, %r1, %r10, %r11;
-	.loc 2 67 1
+	.loc 2 71 1
 	setp.ge.s32	%p1, %r32, %r7;
 	@%p1 bra 	BB66_20;
 
-	.loc 2 67 24
+	.loc 2 71 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 	.loc 3 8684 10
@@ -10694,11 +10694,11 @@ BB65_20:
 	mov.b32 	 %r4, %f16;
 
 BB66_2:
-	.loc 2 67 1
+	.loc 2 71 1
 	mul.lo.s32 	%r13, %r32, %r9;
 	mul.wide.s32 	%rd5, %r13, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 67 1
+	.loc 2 71 1
 	ld.global.f32 	%f1, [%rd6];
 	.loc 3 8684 10
 	mul.f32 	%f17, %f1, 0f3F000000;
@@ -10903,20 +10903,20 @@ BB66_18:
 	add.f32 	%f100, %f1, %f15;
 
 BB66_19:
-	.loc 2 67 72
+	.loc 2 71 72
 	mul.lo.s32 	%r31, %r32, %r8;
 	mul.wide.s32 	%rd7, %r31, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 67 72
+	.loc 2 71 72
 	st.global.f32 	[%rd8], %f100;
-	.loc 2 67 24
+	.loc 2 71 24
 	add.s32 	%r32, %r3, %r32;
-	.loc 2 67 1
+	.loc 2 71 1
 	setp.lt.s32	%p31, %r32, %r7;
 	@%p31 bra 	BB66_2;
 
 BB66_20:
-	.loc 2 67 2
+	.loc 2 71 2
 	ret;
 }
 
@@ -10946,47 +10946,47 @@ BB66_20:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 68 1
+	.loc 2 72 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r16, %r1, %r10, %r11;
-	.loc 2 68 1
+	.loc 2 72 1
 	setp.ge.s32	%p1, %r16, %r6;
 	@%p1 bra 	BB67_3;
 
-	.loc 2 68 24
+	.loc 2 72 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB67_2:
-	.loc 2 68 1
+	.loc 2 72 1
 	mul.lo.s32 	%r13, %r16, %r8;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 68 1
+	.loc 2 72 1
 	mul.lo.s32 	%r14, %r16, %r9;
 	mul.wide.s32 	%rd9, %r14, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 68 1
+	.loc 2 72 1
 	ld.global.f32 	%f1, [%rd10];
 	ld.global.f32 	%f2, [%rd8];
 	.loc 4 2770 10
 	max.f32 	%f3, %f2, %f1;
-	.loc 2 68 108
+	.loc 2 72 108
 	mul.lo.s32 	%r15, %r16, %r7;
 	mul.wide.s32 	%rd11, %r15, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 68 108
+	.loc 2 72 108
 	st.global.f32 	[%rd12], %f3;
-	.loc 2 68 24
+	.loc 2 72 24
 	add.s32 	%r16, %r3, %r16;
-	.loc 2 68 1
+	.loc 2 72 1
 	setp.lt.s32	%p2, %r16, %r6;
 	@%p2 bra 	BB67_2;
 
 BB67_3:
-	.loc 2 68 2
+	.loc 2 72 2
 	ret;
 }
 
@@ -11013,42 +11013,42 @@ BB67_3:
 	ld.param.f32 	%f1, [map2_v_s_max_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 68 1
+	.loc 2 72 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 68 1
+	.loc 2 72 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB68_3;
 
-	.loc 2 68 24
+	.loc 2 72 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB68_2:
-	.loc 2 68 1
+	.loc 2 72 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 68 1
+	.loc 2 72 1
 	ld.global.f32 	%f2, [%rd6];
 	.loc 4 2770 10
 	max.f32 	%f3, %f2, %f1;
-	.loc 2 68 64
+	.loc 2 72 64
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 68 64
+	.loc 2 72 64
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 68 24
+	.loc 2 72 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 68 1
+	.loc 2 72 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB68_2;
 
 BB68_3:
-	.loc 2 68 2
+	.loc 2 72 2
 	ret;
 }
 
@@ -11075,42 +11075,42 @@ BB68_3:
 	ld.param.u32 	%r8, [map2_s_v_max_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 68 1
+	.loc 2 72 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 68 1
+	.loc 2 72 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB69_3;
 
-	.loc 2 68 24
+	.loc 2 72 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB69_2:
-	.loc 2 68 1
+	.loc 2 72 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 68 1
+	.loc 2 72 1
 	ld.global.f32 	%f2, [%rd6];
 	.loc 4 2770 10
 	max.f32 	%f3, %f1, %f2;
-	.loc 2 68 64
+	.loc 2 72 64
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 68 64
+	.loc 2 72 64
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 68 24
+	.loc 2 72 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 68 1
+	.loc 2 72 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB69_2;
 
 BB69_3:
-	.loc 2 68 2
+	.loc 2 72 2
 	ret;
 }
 
@@ -11140,47 +11140,47 @@ BB69_3:
 	cvta.to.global.u64 	%rd1, %rd4;
 	cvta.to.global.u64 	%rd2, %rd6;
 	cvta.to.global.u64 	%rd3, %rd5;
-	.loc 2 69 1
+	.loc 2 73 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r10, %ctaid.x;
 	mov.u32 	%r11, %tid.x;
 	mad.lo.s32 	%r16, %r1, %r10, %r11;
-	.loc 2 69 1
+	.loc 2 73 1
 	setp.ge.s32	%p1, %r16, %r6;
 	@%p1 bra 	BB70_3;
 
-	.loc 2 69 24
+	.loc 2 73 24
 	mov.u32 	%r12, %nctaid.x;
 	mul.lo.s32 	%r3, %r12, %r1;
 
 BB70_2:
-	.loc 2 69 1
+	.loc 2 73 1
 	mul.lo.s32 	%r13, %r16, %r8;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd3, %rd7;
-	.loc 2 69 1
+	.loc 2 73 1
 	mul.lo.s32 	%r14, %r16, %r9;
 	mul.wide.s32 	%rd9, %r14, 4;
 	add.s64 	%rd10, %rd2, %rd9;
-	.loc 2 69 1
+	.loc 2 73 1
 	ld.global.f32 	%f1, [%rd10];
 	ld.global.f32 	%f2, [%rd8];
 	.loc 4 2765 10
 	min.f32 	%f3, %f2, %f1;
-	.loc 2 69 108
+	.loc 2 73 108
 	mul.lo.s32 	%r15, %r16, %r7;
 	mul.wide.s32 	%rd11, %r15, 4;
 	add.s64 	%rd12, %rd1, %rd11;
-	.loc 2 69 108
+	.loc 2 73 108
 	st.global.f32 	[%rd12], %f3;
-	.loc 2 69 24
+	.loc 2 73 24
 	add.s32 	%r16, %r3, %r16;
-	.loc 2 69 1
+	.loc 2 73 1
 	setp.lt.s32	%p2, %r16, %r6;
 	@%p2 bra 	BB70_2;
 
 BB70_3:
-	.loc 2 69 2
+	.loc 2 73 2
 	ret;
 }
 
@@ -11207,42 +11207,42 @@ BB70_3:
 	ld.param.f32 	%f1, [map2_v_s_min_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 69 1
+	.loc 2 73 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 69 1
+	.loc 2 73 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB71_3;
 
-	.loc 2 69 24
+	.loc 2 73 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB71_2:
-	.loc 2 69 1
+	.loc 2 73 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 69 1
+	.loc 2 73 1
 	ld.global.f32 	%f2, [%rd6];
 	.loc 4 2765 10
 	min.f32 	%f3, %f2, %f1;
-	.loc 2 69 64
+	.loc 2 73 64
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 69 64
+	.loc 2 73 64
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 69 24
+	.loc 2 73 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 69 1
+	.loc 2 73 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB71_2;
 
 BB71_3:
-	.loc 2 69 2
+	.loc 2 73 2
 	ret;
 }
 
@@ -11269,42 +11269,42 @@ BB71_3:
 	ld.param.u32 	%r8, [map2_s_v_min_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 69 1
+	.loc 2 73 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 69 1
+	.loc 2 73 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB72_3;
 
-	.loc 2 69 24
+	.loc 2 73 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB72_2:
-	.loc 2 69 1
+	.loc 2 73 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 69 1
+	.loc 2 73 1
 	ld.global.f32 	%f2, [%rd6];
 	.loc 4 2765 10
 	min.f32 	%f3, %f1, %f2;
-	.loc 2 69 64
+	.loc 2 73 64
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 69 64
+	.loc 2 73 64
 	st.global.f32 	[%rd8], %f3;
-	.loc 2 69 24
+	.loc 2 73 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 69 1
+	.loc 2 73 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB72_2;
 
 BB72_3:
-	.loc 2 69 2
+	.loc 2 73 2
 	ret;
 }
 
@@ -11331,39 +11331,39 @@ BB72_3:
 	ld.param.u32 	%r8, [map2_set_float_param_6];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 70 1
+	.loc 2 74 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 70 1
+	.loc 2 74 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB73_3;
 
-	.loc 2 70 24
+	.loc 2 74 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB73_2:
-	.loc 2 70 1
+	.loc 2 74 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 70 1
+	.loc 2 74 1
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 70 1
+	.loc 2 74 1
 	ld.global.f32 	%f1, [%rd6];
 	st.global.f32 	[%rd8], %f1;
-	.loc 2 70 24
+	.loc 2 74 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 70 1
+	.loc 2 74 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB73_2;
 
 BB73_3:
-	.loc 2 70 2
+	.loc 2 74 2
 	ret;
 }
 
@@ -11387,34 +11387,34 @@ BB73_3:
 	ld.param.u32 	%r7, [map2_v_s_set_float_param_2];
 	ld.param.f32 	%f1, [map2_v_s_set_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd2;
-	.loc 2 70 1
+	.loc 2 74 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r8, %ctaid.x;
 	mov.u32 	%r9, %tid.x;
 	mad.lo.s32 	%r12, %r1, %r8, %r9;
-	.loc 2 70 1
+	.loc 2 74 1
 	setp.ge.s32	%p1, %r12, %r6;
 	@%p1 bra 	BB74_3;
 
-	.loc 2 70 24
+	.loc 2 74 24
 	mov.u32 	%r10, %nctaid.x;
 	mul.lo.s32 	%r3, %r10, %r1;
 
 BB74_2:
-	.loc 2 70 1
+	.loc 2 74 1
 	mul.lo.s32 	%r11, %r12, %r7;
 	mul.wide.s32 	%rd3, %r11, 4;
 	add.s64 	%rd4, %rd1, %rd3;
-	.loc 2 70 1
+	.loc 2 74 1
 	st.global.f32 	[%rd4], %f1;
-	.loc 2 70 24
+	.loc 2 74 24
 	add.s32 	%r12, %r3, %r12;
-	.loc 2 70 1
+	.loc 2 74 1
 	setp.lt.s32	%p2, %r12, %r6;
 	@%p2 bra 	BB74_2;
 
 BB74_3:
-	.loc 2 70 2
+	.loc 2 74 2
 	ret;
 }
 
@@ -11440,39 +11440,39 @@ BB74_3:
 	ld.param.u32 	%r8, [map2_s_v_set_float_param_5];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 70 1
+	.loc 2 74 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r9, %ctaid.x;
 	mov.u32 	%r10, %tid.x;
 	mad.lo.s32 	%r14, %r1, %r9, %r10;
-	.loc 2 70 1
+	.loc 2 74 1
 	setp.ge.s32	%p1, %r14, %r6;
 	@%p1 bra 	BB75_3;
 
-	.loc 2 70 24
+	.loc 2 74 24
 	mov.u32 	%r11, %nctaid.x;
 	mul.lo.s32 	%r3, %r11, %r1;
 
 BB75_2:
-	.loc 2 70 1
+	.loc 2 74 1
 	mul.lo.s32 	%r12, %r14, %r8;
 	mul.wide.s32 	%rd5, %r12, 4;
 	add.s64 	%rd6, %rd2, %rd5;
-	.loc 2 70 1
+	.loc 2 74 1
 	mul.lo.s32 	%r13, %r14, %r7;
 	mul.wide.s32 	%rd7, %r13, 4;
 	add.s64 	%rd8, %rd1, %rd7;
-	.loc 2 70 1
+	.loc 2 74 1
 	ld.global.f32 	%f1, [%rd6];
 	st.global.f32 	[%rd8], %f1;
-	.loc 2 70 24
+	.loc 2 74 24
 	add.s32 	%r14, %r3, %r14;
-	.loc 2 70 1
+	.loc 2 74 1
 	setp.lt.s32	%p2, %r14, %r6;
 	@%p2 bra 	BB75_2;
 
 BB75_3:
-	.loc 2 70 2
+	.loc 2 74 2
 	ret;
 }
 
@@ -11495,12 +11495,12 @@ BB75_3:
 	ld.param.u32 	%r12, [reduce_add_float_param_3];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 72 1
+	.loc 2 76 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r2, %ctaid.x;
 	mov.u32 	%r3, %tid.x;
 	mad.lo.s32 	%r23, %r1, %r2, %r3;
-	.loc 2 72 1
+	.loc 2 76 1
 	setp.lt.s32	%p1, %r23, %r11;
 	@%p1 bra 	BB76_2;
 
@@ -11508,32 +11508,32 @@ BB75_3:
 	bra.uni 	BB76_4;
 
 BB76_2:
-	.loc 2 72 24
+	.loc 2 76 24
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r5, %r13, %r1;
 	mov.f32 	%f12, 0f00000000;
 
 BB76_3:
-	.loc 2 72 1
+	.loc 2 76 1
 	mul.lo.s32 	%r14, %r23, %r12;
 	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
 	ld.global.f32 	%f9, [%rd6];
 	add.f32 	%f12, %f12, %f9;
-	.loc 2 72 24
+	.loc 2 76 24
 	add.s32 	%r23, %r5, %r23;
-	.loc 2 72 1
+	.loc 2 76 1
 	setp.lt.s32	%p2, %r23, %r11;
 	@%p2 bra 	BB76_3;
 
 BB76_4:
-	.loc 2 72 1
+	.loc 2 76 1
 	bar.sync 	0;
-	.loc 2 72 1
+	.loc 2 76 1
 	setp.lt.u32	%p3, %r1, 2;
 	@%p3 bra 	BB76_7;
 
-	.loc 2 72 1
+	.loc 2 76 1
 	mov.u32 	%r16, WARP_SZ;
 	mov.u32 	%r17, 32;
 	.loc 5 140 1
@@ -11547,27 +11547,27 @@ BB76_6:
 	// inline asm
 	shfl.down.b32 %f10, %f12, %r24, %r8;
 	// inline asm
-	.loc 2 72 1
+	.loc 2 76 1
 	add.f32 	%f12, %f12, %f10;
-	.loc 2 72 40
+	.loc 2 76 40
 	shl.b32 	%r24, %r24, 1;
-	.loc 2 72 1
+	.loc 2 76 1
 	setp.lt.u32	%p4, %r24, %r1;
 	@%p4 bra 	BB76_6;
 
 BB76_7:
-	.loc 2 72 1
+	.loc 2 76 1
 	and.b32  	%r22, %r3, 31;
 	setp.ne.s32	%p5, %r22, 0;
 	@%p5 bra 	BB76_9;
 
-	.loc 2 72 1
+	.loc 2 76 1
 	mul.wide.u32 	%rd7, %r2, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	st.global.f32 	[%rd8], %f12;
 
 BB76_9:
-	.loc 2 72 2
+	.loc 2 76 2
 	ret;
 }
 
@@ -11590,12 +11590,12 @@ BB76_9:
 	ld.param.u32 	%r12, [reduce_max_float_param_3];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 73 1
+	.loc 2 77 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r2, %ctaid.x;
 	mov.u32 	%r3, %tid.x;
 	mad.lo.s32 	%r23, %r1, %r2, %r3;
-	.loc 2 73 1
+	.loc 2 77 1
 	setp.lt.s32	%p1, %r23, %r11;
 	@%p1 bra 	BB77_2;
 
@@ -11603,33 +11603,33 @@ BB76_9:
 	bra.uni 	BB77_4;
 
 BB77_2:
-	.loc 2 73 24
+	.loc 2 77 24
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r5, %r13, %r1;
 	mov.f32 	%f12, 0fFF800000;
 
 BB77_3:
-	.loc 2 73 1
+	.loc 2 77 1
 	mul.lo.s32 	%r14, %r23, %r12;
 	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
 	ld.global.f32 	%f9, [%rd6];
 	.loc 4 2770 10
 	max.f32 	%f12, %f12, %f9;
-	.loc 2 73 24
+	.loc 2 77 24
 	add.s32 	%r23, %r5, %r23;
-	.loc 2 73 1
+	.loc 2 77 1
 	setp.lt.s32	%p2, %r23, %r11;
 	@%p2 bra 	BB77_3;
 
 BB77_4:
-	.loc 2 73 1
+	.loc 2 77 1
 	bar.sync 	0;
-	.loc 2 73 1
+	.loc 2 77 1
 	setp.lt.u32	%p3, %r1, 2;
 	@%p3 bra 	BB77_7;
 
-	.loc 2 73 1
+	.loc 2 77 1
 	mov.u32 	%r16, WARP_SZ;
 	mov.u32 	%r17, 32;
 	.loc 5 140 1
@@ -11645,25 +11645,25 @@ BB77_6:
 	// inline asm
 	.loc 4 2770 10
 	max.f32 	%f12, %f12, %f10;
-	.loc 2 73 40
+	.loc 2 77 40
 	shl.b32 	%r24, %r24, 1;
-	.loc 2 73 1
+	.loc 2 77 1
 	setp.lt.u32	%p4, %r24, %r1;
 	@%p4 bra 	BB77_6;
 
 BB77_7:
-	.loc 2 73 1
+	.loc 2 77 1
 	and.b32  	%r22, %r3, 31;
 	setp.ne.s32	%p5, %r22, 0;
 	@%p5 bra 	BB77_9;
 
-	.loc 2 73 1
+	.loc 2 77 1
 	mul.wide.u32 	%rd7, %r2, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	st.global.f32 	[%rd8], %f12;
 
 BB77_9:
-	.loc 2 73 2
+	.loc 2 77 2
 	ret;
 }
 
@@ -11686,12 +11686,12 @@ BB77_9:
 	ld.param.u32 	%r12, [reduce_min_float_param_3];
 	cvta.to.global.u64 	%rd1, %rd3;
 	cvta.to.global.u64 	%rd2, %rd4;
-	.loc 2 74 1
+	.loc 2 78 1
 	mov.u32 	%r1, %ntid.x;
 	mov.u32 	%r2, %ctaid.x;
 	mov.u32 	%r3, %tid.x;
 	mad.lo.s32 	%r23, %r1, %r2, %r3;
-	.loc 2 74 1
+	.loc 2 78 1
 	setp.lt.s32	%p1, %r23, %r11;
 	@%p1 bra 	BB78_2;
 
@@ -11699,33 +11699,33 @@ BB77_9:
 	bra.uni 	BB78_4;
 
 BB78_2:
-	.loc 2 74 24
+	.loc 2 78 24
 	mov.u32 	%r13, %nctaid.x;
 	mul.lo.s32 	%r5, %r13, %r1;
 	mov.f32 	%f12, 0f7F800000;
 
 BB78_3:
-	.loc 2 74 1
+	.loc 2 78 1
 	mul.lo.s32 	%r14, %r23, %r12;
 	mul.wide.s32 	%rd5, %r14, 4;
 	add.s64 	%rd6, %rd2, %rd5;
 	ld.global.f32 	%f9, [%rd6];
 	.loc 4 2765 10
 	min.f32 	%f12, %f12, %f9;
-	.loc 2 74 24
+	.loc 2 78 24
 	add.s32 	%r23, %r5, %r23;
-	.loc 2 74 1
+	.loc 2 78 1
 	setp.lt.s32	%p2, %r23, %r11;
 	@%p2 bra 	BB78_3;
 
 BB78_4:
-	.loc 2 74 1
+	.loc 2 78 1
 	bar.sync 	0;
-	.loc 2 74 1
+	.loc 2 78 1
 	setp.lt.u32	%p3, %r1, 2;
 	@%p3 bra 	BB78_7;
 
-	.loc 2 74 1
+	.loc 2 78 1
 	mov.u32 	%r16, WARP_SZ;
 	mov.u32 	%r17, 32;
 	.loc 5 140 1
@@ -11741,25 +11741,25 @@ BB78_6:
 	// inline asm
 	.loc 4 2765 10
 	min.f32 	%f12, %f12, %f10;
-	.loc 2 74 40
+	.loc 2 78 40
 	shl.b32 	%r24, %r24, 1;
-	.loc 2 74 1
+	.loc 2 78 1
 	setp.lt.u32	%p4, %r24, %r1;
 	@%p4 bra 	BB78_6;
 
 BB78_7:
-	.loc 2 74 1
+	.loc 2 78 1
 	and.b32  	%r22, %r3, 31;
 	setp.ne.s32	%p5, %r22, 0;
 	@%p5 bra 	BB78_9;
 
-	.loc 2 74 1
+	.loc 2 78 1
 	mul.wide.u32 	%rd7, %r2, 4;
 	add.s64 	%rd8, %rd1, %rd7;
 	st.global.f32 	[%rd8], %f12;
 
 BB78_9:
-	.loc 2 74 2
+	.loc 2 78 2
 	ret;
 }
 
