@@ -5,6 +5,7 @@ import breeze.linalg.operators._
 import breeze.linalg._
 import breeze.linalg.qr.QR
 import breeze.linalg.support.{CanCopy, CanCollapseAxis, CanTranspose, CanSlice2}
+import breeze.linalg.svd.SVD
 import org.bridj.Pointer
 
 import jcuda.jcublas.{cublasOperation, cublasHandle, JCublas2}
@@ -881,17 +882,19 @@ trait CuMatrixOps extends CuMatrixFuns { this: CuMatrix.type =>
    * Singular Value Decomposition. Returns (U, E, VT) (unlike matlab, which
    * returns the V without the transpose)
    */
-  implicit def canSVDFloat(implicit blas: cublasHandle): svd.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] =
-    new svd.Impl[CuMatrix[Float], (CuMatrix[Float], CuMatrix[Float], CuMatrix[Float])] {
+  implicit def canSVDFloat(implicit blas: cublasHandle): svd.Impl[CuMatrix[Float], SVD[CuMatrix[Float], CuMatrix[Float]]] =
+    new svd.Impl[CuMatrix[Float], SVD[CuMatrix[Float], CuMatrix[Float]]] {
       def apply(_a: CuMatrix[Float]) = {
-        CuSVD.SVDFloat(_a)
+        val (u, e, vt) = CuSVD.SVDFloat(_a)
+        SVD(u, e, vt)
       }
     }
 
-  implicit def canSVDDouble(implicit blas: cublasHandle): svd.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] =
-    new svd.Impl[CuMatrix[Double], (CuMatrix[Double], CuMatrix[Double], CuMatrix[Double])] {
+  implicit def canSVDDouble(implicit blas: cublasHandle): svd.Impl[CuMatrix[Double], SVD[CuMatrix[Double], CuMatrix[Double]]] =
+    new svd.Impl[CuMatrix[Double], SVD[CuMatrix[Double], CuMatrix[Double]]] {
       def apply(_a: CuMatrix[Double]) = {
-        CuSVD.SVDDouble(_a)
+        val (u, e, vt) = CuSVD.SVDDouble(_a)
+        SVD(u, e, vt)
       }
     }
 

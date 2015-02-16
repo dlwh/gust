@@ -1,6 +1,7 @@
 package gust.linalg.cuda
 
 import breeze.linalg.qr.QR
+import breeze.linalg.svd.SVD
 import org.scalatest.{Outcome, BeforeAndAfterEach, FunSuite}
 import jcuda.jcublas.{JCublas2, cublasHandle}
 import breeze.linalg._
@@ -359,6 +360,18 @@ class CuMatrixTest extends org.scalatest.fixture.FunSuite {
 
     val QR(q, r) = qr(cumat)
     assert(max(abs(q * r - cumat)) < 1E-4)
+
+  }
+
+  test("svd") {  (_handle: cublasHandle) =>
+    implicit val handle = _handle
+    val rand: DenseMatrix[Float] = convert(DenseMatrix.rand(40, 40), Float)
+    val cumat: CuMatrix[Float] = CuMatrix.fromDense(rand)
+
+    val SVD(u, s, vt) = svd(cumat)
+    assert((sum(u.t * u) - u.rows) < 1E-4)
+    assert((sum(vt * vt.t) - vt.rows) < 1E-4)
+    assert(max(abs(u * s * vt - cumat)) < 1E-4)
 
   }
 
